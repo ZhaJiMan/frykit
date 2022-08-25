@@ -25,7 +25,6 @@ def set_extent_and_ticks_rectangular(
     ax, extents=None,
     xticks=None, yticks=None, nx=0, ny=0,
     xformatter=None, yformatter=None,
-    bottom=True, top=False, left=True, right=False,
     grid=False, **kwargs
 ):
     '''
@@ -59,9 +58,6 @@ def set_extent_and_ticks_rectangular(
     yformatter : Formatter, optional
         纬度刻度标签的Formatter. 默认使用无参数的LatitudeFormatter.
 
-    bottom, top, left, right : bool, optional
-        刻度的位置. 默认开启下边和坐标的刻度.
-
     grid : bool, optional
         是否沿主刻度绘制网格线.
 
@@ -74,15 +70,6 @@ def set_extent_and_ticks_rectangular(
         xformatter = LongitudeFormatter()
     if yformatter is None:
         yformatter = LatitudeFormatter()
-
-    # 设置刻度位置.
-    ax.tick_params(
-        which='both',
-        bottom=bottom, labelbottom=bottom,
-        top=top, labeltop=top,
-        left=left, labelleft=left,
-        right=right, labelright=right
-    )
 
     # 设置主次刻度.
     crs = ccrs.PlateCarree()
@@ -111,7 +98,6 @@ def set_extent_and_ticks_non_rectangular(
     ax, extents,
     xticks=None, yticks=None,
     xformatter=None, yformatter=None,
-    bottom=True, top=False, left=True, right=False,
     grid=False, **kwargs
 ):
     '''
@@ -137,9 +123,6 @@ def set_extent_and_ticks_non_rectangular(
 
     yformatter : Formatter, optional
         纬度刻度标签的Formatter. 默认使用无参数的LatitudeFormatter.
-
-    bottom, top, left, right : bool, optional
-        刻度的位置. 默认开启下边和坐标的刻度.
 
     grid : bool, optional
         是否沿主刻度绘制网格线.
@@ -172,14 +155,6 @@ def set_extent_and_ticks_non_rectangular(
         xformatter = LongitudeFormatter()
     if yformatter is None:
         yformatter = LatitudeFormatter()
-
-    # 设置刻度位置.
-    ax.tick_params(
-        bottom=bottom, labelbottom=bottom,
-        top=top, labeltop=top,
-        left=left, labelleft=left,
-        right=right, labelright=right
-    )
 
     # 以经线与上下横轴的交点作为刻度.
     if xticks is not None:
@@ -571,6 +546,12 @@ def add_cn_province(ax, name=None, **kwargs):
     if not isinstance(provinces, list):
         provinces = [provinces]
     add_polygons(ax, provinces, _select_shp_crs(ax), **kwargs)
+
+def add_nine_line(ax, **kwargs):
+    '''向Axes或GeoAxes添加九段线.'''
+    _set_path_kwargs(kwargs)
+    nine_line = fshp.get_nine_line()
+    add_polygons(ax, [nine_line], _select_shp_crs(ax), **kwargs)
 
 def clip_by_polygon(artist, polygon, crs=None, fix=False):
     '''

@@ -26,6 +26,7 @@ def get_cnshp(level='国', province=None, city=None, as_dict=False):
 
     接口仿照cnmaps.maps.get_adm_maps
     数据源: https://github.com/GaryBikini/ChinaAdminDivisonSHP
+    使用了PRCoords库从GCJ-02坐标变换到了WGS-84坐标.
 
     用法:
     - 获取国界: get_cn_shp(level='国')
@@ -47,7 +48,7 @@ def get_cnshp(level='国', province=None, city=None, as_dict=False):
         市名. 默认不指定.
 
     as_dict : bool, optional
-        是否以字典形式返回结果. 默认不返回.
+        是否以字典形式返回结果. 默认直接返回多边形对象.
         字典的键包括:
         - cn_name, pr_name, ct_name: 国省市名
         - cn_adcode, pr_adcode, ct_adcode: 国省市的区划代码
@@ -98,6 +99,27 @@ def get_cnshp(level='国', province=None, city=None, as_dict=False):
                     raise ValueError('市名错误')
     else:
         raise ValueError('level错误')
+
+def get_nine_line(as_dict=False):
+    '''
+    获取九段线的多边形.
+
+    数据源: http://datav.aliyun.com/portal/school/atlas/area_selector
+    使用了PRCoords库从GCJ-02坐标变换到了WGS-84坐标.
+
+    Parameters
+    ----------
+    as_dict : bool, optional
+        是否以字典形式返回结果. 默认直接返回多边形对象.
+
+    Returns
+    -------
+    nine_line : MultiPolygon
+        用十个多边形表示的九段线.
+    '''
+    filepath_shp = dirpath_shp / 'nine_line.shp'
+    with shapefile.Reader(str(filepath_shp)) as reader:
+        return _convert_shapeRecord(reader.shapeRecord(0), as_dict)
 
 def _ring_codes(n):
     '''为长度为n的环生成codes.'''

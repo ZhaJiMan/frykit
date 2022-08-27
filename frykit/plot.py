@@ -2,10 +2,11 @@ from pathlib import Path
 
 import numpy as np
 import shapely.geometry as sgeom
+from pyproj import Geod
 import matplotlib.colors as mcolors
 import matplotlib.ticker as mticker
-from matplotlib.patches import Rectangle
-from matplotlib.transforms import Bbox
+import matplotlib.patches as mpatches
+import matplotlib.transforms as mtransforms
 from matplotlib.collections import PathCollection
 import cartopy.crs as ccrs
 from cartopy.mpl.geoaxes import GeoAxes
@@ -62,7 +63,7 @@ def set_extent_and_ticks_rectangular(
         是否沿主刻度绘制网格线.
 
     **kwargs
-        网格线线条的参数.
+        绘制网格线的关键字参数.
         例如color, linewidth和linestyle等
     '''
     # 设置Formatter.
@@ -128,7 +129,7 @@ def set_extent_and_ticks_non_rectangular(
         是否沿主刻度绘制网格线.
 
     **kwargs
-        网格线线条的参数.
+        绘制网格线的关键字参数.
         例如color, linewidth和linestyle等
     '''
     # 先设置范围, 使边框呈矩形.
@@ -241,7 +242,7 @@ def add_box(ax, extents, **kwargs):
     xmin, xmax, ymin, ymax = extents
     dx = xmax - xmin
     dy = ymax - ymin
-    patch = Rectangle((xmin, ymin), dx, dy, **kwargs)
+    patch = mpatches.Rectangle((xmin, ymin), dx, dy, **kwargs)
     ax.add_patch(patch)
 
 def locate_sub_axes(ax_main, ax_sub, shrink=0.4, loc='bottom right'):
@@ -296,7 +297,7 @@ def locate_sub_axes(ax_main, ax_sub, shrink=0.4, loc='bottom right'):
         y1 = bbox_main.y1
     else:
         raise ValueError('loc参数错误')
-    bbox_new = Bbox.from_extents(x0, y0, x1, y1)
+    bbox_new = mtransforms.Bbox.from_extents(x0, y0, x1, y1)
     ax_sub.set_position(bbox_new)
 
 def add_side_axes(ax_main, loc, pad, depth):
@@ -324,7 +325,7 @@ def add_side_axes(ax_main, loc, pad, depth):
     '''
     # 获取一组Axes的位置.
     axes = np.atleast_1d(ax_main).ravel()
-    bbox_main = Bbox.union([ax.get_position() for ax in axes])
+    bbox_main = mtransforms.Bbox.union([ax.get_position() for ax in axes])
 
     # 可选四个方向.
     if loc == 'left':
@@ -349,7 +350,7 @@ def add_side_axes(ax_main, loc, pad, depth):
         y1 = y0 + depth
     else:
         raise ValueError('loc参数错误')
-    bbox_side = Bbox.from_extents(x0, y0, x1, y1)
+    bbox_side = mtransforms.Bbox.from_extents(x0, y0, x1, y1)
     ax_side = axes[0].figure.add_axes(bbox_side)
 
     return ax_side
@@ -526,8 +527,7 @@ def _set_path_kwargs(kwargs):
         kwargs['facecolor'] = 'none'
     if not any(key in kwargs for key in ['edgecolor', 'edgecolors', 'ec']):
         kwargs['edgecolor'] = 'black'
-    if 'zorder' not in kwargs:
-        kwargs['zorder'] = 1.5
+    kwargs.setdefault('zorder', 1.5)
 
 def _select_shp_crs(ax):
     '''根据ax的类型为fshp.get_cnshp的几何对象选择坐标系.'''
@@ -597,19 +597,10 @@ def clip_by_cn_border(artist, fix=False):
     country = fshp.get_cnshp(level='国')
     clip_by_polygon(artist, country, _select_shp_crs(artist.axes), fix)
 
-def _set_patch_kwargs(kwargs):
-    '''初始化绘制Rectangle用的参数.'''
-    if 'facecolor' not in kwargs and 'fc' not in kwargs:
-        kwargs['facecolor'] = 'white'
-    if 'edgecolor' not in kwargs and 'ec' not in kwargs:
-        kwargs['edgecolor'] = 'black'
-    if 'linewidth' not in kwargs and 'lw' not in kwargs:
-        kwargs['linewidth'] = 0.8
-
 def add_quiver_legend(
     Q, U, units='m/s',
     width=0.15, height=0.15, loc='bottom right',
-    patch_kwargs={}, key_kwargs={}
+    patch_kwargs=None, key_kwargs=None
 ):
     '''
     为Axes.quiver的结果添加图例.
@@ -642,14 +633,6 @@ def add_quiver_legend(
 
     key_kwargs : dict, optional
         传给quiverkey的参数. 例如labelsep, fontproperties等.
-
-    Returns
-    -------
-    patch : Rectangle
-        方框对象.
-
-    qk : Quiverkey
-        key及其标签的对象.
     '''
     # 决定legend的位置.
     if loc == 'bottom left':
@@ -667,31 +650,185 @@ def add_quiver_legend(
     else:
         raise ValueError('loc参数错误')
 
+    # 初始化参数.
+    patch_kwargs = {} if patch_kwargs is None else patch_kwargs.copy()
+    if 'facecolor' not in patch_kwargs and 'fc' not in patch_kwargs:
+        patch_kwargs['facecolor'] = 'white'
+    if 'edgecolor' not in patch_kwargs and 'ec' not in patch_kwargs:
+        patch_kwargs['edgecolor'] = 'black'
+    if 'linewidth' not in patch_kwargs and 'lw' not in patch_kwargs:
+        patch_kwargs['linewidth'] = 0.8
+    patch_kwargs.setdefault('zorder', 3)
+    key_kwargs = {} if key_kwargs is None else key_kwargs.copy()
+
     # 在ax上添加patch.
     ax = Q.axes
-    _set_patch_kwargs(patch_kwargs)
-    patch = Rectangle(
+    patch = mpatches.Rectangle(
         (x - width / 2, y - height / 2), width, height,
-        transform=ax.transAxes, zorder=2.5, **patch_kwargs
+        transform=ax.transAxes, **patch_kwargs
     )
     ax.add_patch(patch)
 
     # 先创建QuiverKey对象.
-    qk = Q.axes.quiverkey(
+    qk = ax.quiverkey(
         Q, X=x, Y=y, U=U, label=f'{U} {units}',
         labelpos='S', **key_kwargs
     )
-    qk.set_zorder(3)  # 在参数中设置无效.
+    # 在参数中设置zorder无效.
+    zorder = key_kwargs.get('zorder', 3)
+    qk.set_zorder(zorder)
 
     # 再将qk调整至patch的中心.
-    forward = ax.transAxes.transform
-    backward = ax.transAxes.inverted().transform
-    xd, yd = forward((x, y))
-    fontsize = qk.text.get_fontsize() / 72 * ax.figure.dpi
-    yd = yd + (qk.labelsep + fontsize) / 2
-    qk.X, qk.Y = backward((xd, yd))
+    fontsize = qk.text.get_fontsize() / 72
+    dy = (qk._labelsep_inches + fontsize) / 2
+    transform = mtransforms.offset_copy(ax.transAxes, ax.figure, 0, dy)
+    qk._set_transform = lambda: None  # 无效类方法.
+    qk.set_transform(transform)
 
-    return patch, qk
+def add_north_arrow(ax, xy, length=20, **kwargs):
+    '''
+    向Axes添加指北针
+
+    Parameters
+    ----------
+    ax : Axes
+        目标Axes.
+
+    xy : 2-tuple of float
+        指北针的坐标. 基于Axes坐标系.
+
+    length : float, optional
+        指北针箭头的长度. 单位为点.
+
+    **kwargs
+        绘制指北针N字的关键字参数.
+        例如fontsize, fontweight和fontfamily等.
+    '''
+    # 初始化参数.
+    if 'fontsize' not in kwargs and 'size' not in kwargs:
+        kwargs['fontsize'] = length / 1.5
+    zorder = kwargs.setdefault('zorder', 3)
+
+    # 绘制箭头.
+    x, y = xy
+    offset = mtransforms.ScaledTranslation(x, y, ax.transAxes)
+    transform = ax.figure.dpi_scale_trans + offset
+    len_inches = length / 72
+    width = axis = len_inches * 2 / 3
+    left_part = mpatches.Polygon(
+        [(0, 0), (-width / 2, -len_inches), (0, -axis), (0, 0)],
+        fc='k', ec='k', lw=1, clip_on=False, zorder=zorder,
+        transform=transform
+    )
+    right_part = mpatches.Polygon(
+        [(0, 0), (0, -axis), (width / 2, -len_inches), (0, 0)],
+        fc='w', ec='k', lw=1, clip_on=False, zorder=zorder,
+        transform=transform
+    )
+    ax.add_patch(left_part)
+    ax.add_patch(right_part)
+
+    # 添加文字.
+    pad = len_inches / 10
+    ax.text(
+        0, pad, 'N', ha='center', va='bottom',
+        transform=transform, **kwargs
+    )
+
+def add_map_scale(
+    ax, xy, length=1000, ticks=None, ticklength=5,
+    line_kwargs=None, text_kwargs=None
+):
+    '''
+    向GeoAxes添加地图比例尺.
+
+    Parameters
+    ----------
+    ax : GeoAxes
+        目标GeoAxes.
+
+    xy : 2-tuple of float
+        比例尺的中心坐标. 基于Axes坐标系.
+
+    length : float, optional
+        比例尺的总长度. 默认为1000km.
+
+    ticks : list of float, optional
+        刻度位置. 单位为km, 默认取[0, length]作为刻度.
+        超出这一范围的刻度不会被画出.
+
+    ticklength : float, optional
+        刻度长度. 单位为点, 默认为5.
+
+    line_kwargs
+        绘制比例尺线条的关键字参数.
+
+    text_kwargs
+        绘制刻度标签文字的关键字参数.
+    '''
+    # 初始化线条参数.
+    line_kwargs = {} if line_kwargs is None else line_kwargs.copy()
+    if 'linewidth' not in line_kwargs and 'lw' not in line_kwargs:
+        line_kwargs['linewidth'] = 1.2
+    if 'color' not in line_kwargs and 'c' not in line_kwargs:
+        line_kwargs['color'] = 'k'
+    line_kwargs.setdefault('zorder', 3)
+    line_kwargs.setdefault('clip_on', False)
+
+    # 初始化文字参数.
+    text_kwargs = {} if text_kwargs is None else text_kwargs.copy()
+    if 'fontsize' not in text_kwargs and 'size' not in text_kwargs:
+        text_kwargs['fontsize'] = 8
+
+    # 取地图中心的水平线计算单位投影坐标的长度.
+    crs = ccrs.PlateCarree()
+    xmin, xmax = ax.get_xlim()
+    ymin, ymax = ax.get_ylim()
+    xmid = (xmin + xmax) / 2
+    ymid = (ymin + ymax) / 2
+    dx = (xmax - xmin)
+    x0 = xmid - dx / 2
+    x1 = xmid + dx / 2
+    lon0, lat0 = crs.transform_point(x0, ymid, ax.projection)
+    lon1, lat1 = crs.transform_point(x1, ymid, ax.projection)
+    g = Geod(ellps='WGS84')
+    dr = g.inv(lon0, lat0, lon1, lat1)[2] / 1000
+    dxdr = dx / dr
+
+    # xy转为data坐标.
+    axes_to_data = ax.transAxes - ax.transData
+    x, y = axes_to_data.transform(xy)
+    dx = length * dxdr
+    x0 = x - dx / 2
+    x1 = x + dx / 2
+
+    # 计算刻度位置.
+    if ticks is None:
+        ticks = [0, length]
+    else:
+        ticks = [tick for tick in ticks if 0 <= tick <= length]
+    locs = np.array(ticks) * dxdr + x - dx / 2
+
+    # 绘制比例尺.
+    ticklength = ticklength / 72
+    labelpad = ticklength / 2
+    yrev = -line_kwargs['linewidth'] / 72 / 2
+    offset = mtransforms.ScaledTranslation(0, y, ax.transData)
+    transform = mtransforms.blended_transform_factory(
+        ax.transData, ax.figure.dpi_scale_trans + offset
+    )
+    ax.hlines(y, x0, x1, transform=ax.transData, **line_kwargs)
+    ax.vlines(locs, yrev, ticklength, transform=transform, **line_kwargs)
+    for tick, loc in zip(ticks, locs):
+        ax.text(
+            loc, ticklength + labelpad, tick, ha='center', va='bottom',
+            transform=transform, **text_kwargs
+        )
+    # 添加单位标签.
+    ax.text(
+        x, -1.5 * labelpad, 'km', ha='center', va='top',
+        transform=transform, **text_kwargs
+    )
 
 def make_gif(
     filepaths_img, filepath_gif,

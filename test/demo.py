@@ -41,11 +41,11 @@ fplt.set_extent_and_ticks(
 # 添加要素.
 ax_main.add_feature(cfeature.LAND.with_scale('50m'), fc='floralwhite')
 ax_main.add_feature(cfeature.OCEAN.with_scale('50m'), fc='skyblue')
-ax_main.coastlines(resolution='50m', lw=0.3)
 fplt.add_cn_province(ax_main, lw=0.3)
 fplt.add_nine_line(ax_main, lw=0.5)
 # 绘制填色图.
-levels = np.linspace(0, 32, 9)
+levels = np.linspace(0, 32, 50)
+cticks = np.linspace(0, 32, 9)
 cf = ax_main.contourf(
     t2m.longitude, t2m.latitude, t2m, levels,
     cmap='turbo', extend='both', transform=crs_data
@@ -55,9 +55,9 @@ fplt.clip_by_cn_border(cf, fix=True)
 cbar = fig.colorbar(
     cf, ax=ax_main, orientation='horizontal',
     shrink=0.6, pad=0.1, aspect=30,
-    extendrect=True, extendfrac='auto'
+    ticks=cticks, extendfrac=0
 )
-cbar.ax.tick_params(length=0, labelsize=8)
+cbar.ax.tick_params(length=4, labelsize=8)
 # 添加指北针和比例尺.
 path_effects = [
     patheffects.Stroke(linewidth=2, foreground='w'),
@@ -83,7 +83,6 @@ ax_sub.gridlines(
 )
 ax_sub.add_feature(cfeature.LAND.with_scale('50m'), fc='floralwhite')
 ax_sub.add_feature(cfeature.OCEAN.with_scale('50m'), fc='skyblue')
-ax_sub.coastlines(resolution='50m', lw=0.3)
 fplt.add_nine_line(ax_sub, lw=0.5)
 # 只画出部分省份节省时间.
 for name in ['广西壮族自治区', '广东省', '福建省', '海南省', '台湾省']:

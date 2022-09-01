@@ -515,6 +515,11 @@ def add_polygons(ax, polygons, crs=None, **kwargs):
     '''
     if crs is not None:
         polygons = fshp.transform_geometries(polygons, crs, ax.projection)
+
+    array = kwargs.get('array', None)
+    if array is not None and len(array) != len(polygons):
+        raise ValueError('array的长度与polygons不匹配')
+
     paths = [fshp.polygon_to_path(polygon) for polygon in polygons]
     pc = PathCollection(paths, **kwargs)
     ax.add_collection(pc)

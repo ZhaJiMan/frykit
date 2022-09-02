@@ -5,6 +5,7 @@ import shapely.geometry as sgeom
 from pyproj import Geod
 import matplotlib.colors as mcolors
 import matplotlib.ticker as mticker
+import matplotlib.path as mpath
 import matplotlib.patches as mpatches
 import matplotlib.transforms as mtransforms
 from matplotlib.collections import PathCollection
@@ -528,9 +529,9 @@ def add_polygons(ax, polygons, crs=None, **kwargs):
 
 def _set_path_kwargs(kwargs):
     '''初始化绘制PathCollection的参数'''
-    if not any(key in kwargs for key in ['facecolor', 'facecolors', 'fc']):
+    if not any(kw in kwargs for kw in ['facecolor', 'facecolors', 'fc']):
         kwargs['facecolor'] = 'none'
-    if not any(key in kwargs for key in ['edgecolor', 'edgecolors', 'ec']):
+    if not any(kw in kwargs for kw in ['edgecolor', 'edgecolors', 'ec']):
         kwargs['edgecolor'] = 'black'
     kwargs.setdefault('zorder', 1.5)
 
@@ -602,6 +603,10 @@ def clip_by_cn_border(artist, fix=False):
     country = fshp.get_cnshp(level='国')
     clip_by_polygon(artist, country, _select_shp_crs(artist.axes), fix)
 
+def _create_kwargs(kwargs):
+    '''创建参数字典.'''
+    return {} if kwargs is None else kwargs.copy()
+
 def add_quiver_legend(
     Q, U, units='m/s',
     width=0.15, height=0.15, loc='bottom right',
@@ -656,7 +661,7 @@ def add_quiver_legend(
         raise ValueError('loc参数错误')
 
     # 初始化参数.
-    patch_kwargs = {} if patch_kwargs is None else patch_kwargs.copy()
+    patch_kwargs = _create_kwargs(patch_kwargs)
     if 'facecolor' not in patch_kwargs and 'fc' not in patch_kwargs:
         patch_kwargs['facecolor'] = 'white'
     if 'edgecolor' not in patch_kwargs and 'ec' not in patch_kwargs:
@@ -664,7 +669,7 @@ def add_quiver_legend(
     if 'linewidth' not in patch_kwargs and 'lw' not in patch_kwargs:
         patch_kwargs['linewidth'] = 0.8
     patch_kwargs.setdefault('zorder', 3)
-    key_kwargs = {} if key_kwargs is None else key_kwargs.copy()
+    key_kwargs = _create_kwargs(key_kwargs)
 
     # 在ax上添加patch.
     ax = Q.axes
@@ -690,7 +695,7 @@ def add_quiver_legend(
     qk._set_transform = lambda: None  # 无效类方法.
     qk.set_transform(transform)
 
-def add_north_arrow(ax, xy, length=20, **kwargs):
+def add_north_arrow(ax, xy, length=20, path_kwargs=None, text_kwargs=None):
     '''
     向Axes添加指北针
 
@@ -705,14 +710,29 @@ def add_north_arrow(ax, xy, length=20, **kwargs):
     length : float, optional
         指北针箭头的长度. 单位为点.
 
-    **kwargs
+    path_kwargs : dict, optional
+        指北针箭头的关键字参数.
+        例如facecolors, edgecolors, linewidth等.
+
+    text_kwargs : dict, optional
         绘制指北针N字的关键字参数.
         例如fontsize, fontweight和fontfamily等.
     '''
-    # 初始化参数.
-    if 'fontsize' not in kwargs and 'size' not in kwargs:
-        kwargs['fontsize'] = length / 1.5
-    zorder = kwargs.setdefault('zorder', 3)
+    # 初始化箭头参数.
+    path_kwargs = _create_kwargs(path_kwargs)
+    if not any(kw in path_kwargs for kw in ['facecolor', 'facecolors', 'fc']):
+        path_kwargs['facecolors'] = ['k', 'w']
+    if not any(kw in path_kwargs for kw in ['edgecolor', 'edgecolors', 'ec']):
+        path_kwargs['edgecolors'] = 'k'
+    if not any(kw in path_kwargs for kw in ['linewidth', 'linewidths', 'lw']):
+        path_kwargs['linewidths'] = 1
+    path_kwargs.setdefault('zorder', 3)
+    path_kwargs.setdefault('clip_on', False)
+
+    # 初始化文字参数.
+    text_kwargs = _create_kwargs(text_kwargs)
+    if 'fontsize' not in text_kwargs and 'size' not in text_kwargs:
+        text_kwargs['fontsize'] = length / 1.5
 
     # 绘制箭头.
     x, y = xy
@@ -720,24 +740,17 @@ def add_north_arrow(ax, xy, length=20, **kwargs):
     transform = ax.figure.dpi_scale_trans + offset
     len_inches = length / 72
     width = axis = len_inches * 2 / 3
-    left_part = mpatches.Polygon(
-        [(0, 0), (-width / 2, -len_inches), (0, -axis), (0, 0)],
-        fc='k', ec='k', lw=1, clip_on=False, zorder=zorder,
-        transform=transform
-    )
-    right_part = mpatches.Polygon(
-        [(0, 0), (0, -axis), (width / 2, -len_inches), (0, 0)],
-        fc='w', ec='k', lw=1, clip_on=False, zorder=zorder,
-        transform=transform
-    )
-    ax.add_patch(left_part)
-    ax.add_patch(right_part)
+    verts_left = [(0, 0), (-width / 2, -len_inches), (0, -axis), (0, 0)]
+    verts_right = [(0, 0), (0, -axis), (width / 2, -len_inches), (0, 0)]
+    paths = [mpath.Path(verts_left), mpath.Path(verts_right)]
+    collection = PathCollection(paths, transform=transform, **path_kwargs)
+    ax.add_collection(collection)
 
     # 添加文字.
     pad = len_inches / 10
     ax.text(
         0, pad, 'N', ha='center', va='bottom',
-        transform=transform, **kwargs
+        transform=transform, **text_kwargs
     )
 
 def add_map_scale(
@@ -772,7 +785,7 @@ def add_map_scale(
         绘制刻度标签文字的关键字参数.
     '''
     # 初始化线条参数.
-    line_kwargs = {} if line_kwargs is None else line_kwargs.copy()
+    line_kwargs = _create_kwargs(line_kwargs)
     if 'linewidth' not in line_kwargs and 'lw' not in line_kwargs:
         line_kwargs['linewidth'] = 1.2
     if 'color' not in line_kwargs and 'c' not in line_kwargs:
@@ -781,7 +794,7 @@ def add_map_scale(
     line_kwargs.setdefault('clip_on', False)
 
     # 初始化文字参数.
-    text_kwargs = {} if text_kwargs is None else text_kwargs.copy()
+    text_kwargs = _create_kwargs(text_kwargs)
     if 'fontsize' not in text_kwargs and 'size' not in text_kwargs:
         text_kwargs['fontsize'] = 8
 

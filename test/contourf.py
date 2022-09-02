@@ -8,7 +8,7 @@ import cartopy.feature as cfeature
 import frykit.plot as fplt
 
 # 读取数据.
-ds = xr.load_dataset('data.nc')
+ds = xr.load_dataset('../frykit/data/test.nc')
 t2m = ds['t2m'].isel(time=0) - 273.15
 t2m[:] = gaussian_filter(t2m.values, sigma=1)
 
@@ -63,10 +63,11 @@ path_effects = [
     patheffects.Stroke(linewidth=2, foreground='w'),
     patheffects.Normal()
 ]
-fplt.add_north_arrow(ax_main, (0.95, 0.9), path_effects=path_effects)
+text_kwargs = {'path_effects': path_effects}
+fplt.add_north_arrow(ax_main, (0.95, 0.9), text_kwargs=text_kwargs)
 fplt.add_map_scale(
     ax_main, (0.1, 0.1), length=1000, ticks=[0, 500, 1000],
-    text_kwargs={'path_effects': path_effects}
+    text_kwargs=text_kwargs
 )
 # 设置标题.
 ax_main.set_title(
@@ -100,5 +101,5 @@ fplt.add_map_scale(
 fplt.locate_sub_axes(ax_main, ax_sub)
 
 # 保存图片.
-fig.savefig('demo.png', dpi=300, bbox_inches='tight')
+fig.savefig('../image/contourf.png', dpi=300, bbox_inches='tight')
 plt.close(fig)

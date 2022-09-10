@@ -37,7 +37,7 @@ country = fshp.get_cnshp(level='国')
 provinces = fshp.get_cnshp(level='省')
 ```
 
-行政区划的 shapefile 文件来自 [GaryBikini](https://github.com/GaryBikini) 的 [ChinaAdminDivisonSHP](https://github.com/GaryBikini/ChinaAdminDivisonSHP) 项目，坐标已从 GCJ-02 坐标系处理到了 WGS84 坐标系上。
+行政区划的 shapefile 文件来自 [ChinaAdminDivisonSHP](https://github.com/GaryBikini/ChinaAdminDivisonSHP) 项目，坐标已从 GCJ-02 坐标系处理到了 WGS84 坐标系上。
 
 在 `Axes` 或 `GeoAxes` 上直接绘制中国省界和九段线
 
@@ -86,5 +86,7 @@ fplt.locate_sub_axes(ax, sub, shrink=0.4)
 ![contourf](image/contourf.png)
 
 ![fill](image/fill.png)
+
+![nerv_style](image/nerv_style.png)
 
 示例代码请见 `test` 目录。

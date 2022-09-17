@@ -1,6 +1,7 @@
 import math
 from pathlib import Path
 from functools import partial
+from itertools import chain
 
 import numpy as np
 import shapefile
@@ -13,9 +14,9 @@ def _convert_shapeRecord(shapeRec, as_dict=False):
     '''将shapeRecord转换为几何对象.'''
     geom = sgeom.shape(shapeRec.shape)
     if as_dict:
-        d = shapeRec.record.as_dict()
-        d['geometry'] = geom
-        return d
+        data = shapeRec.record.as_dict()
+        data['geometry'] = geom
+        return data
     else:
         return geom
 
@@ -34,7 +35,7 @@ def get_cnshp(level='国', province=None, city=None, as_dict=False):
     - 获取某个省: get_cn_shp(level='省', province='河北省')
     - 获取所有市: get_cn_shp(level='市')
     - 获取某个省的所有市: get_cn_shp(level='市', province='河北省')
-    - 获取某个市: get_cn_shp(level='石家庄市')
+    - 获取某个市: get_cn_shp(level='市', city='石家庄市')
 
     Parameters
     ----------
@@ -60,43 +61,70 @@ def get_cnshp(level='国', province=None, city=None, as_dict=False):
         行政区划的多边形或多边形构成的列表.
     '''
     convert = partial(_convert_shapeRecord, as_dict=as_dict)
+
     if level == '国':
         filepath_shp = dirpath_shp / 'country.shp'
         with shapefile.Reader(str(filepath_shp)) as reader:
             return convert(reader.shapeRecord(0))
+
     elif level == '省':
+        if city is not None:
+            raise ValueError("level='省'时不能指定市")
         filepath_shp = dirpath_shp / 'province.shp'
+        with shapefile.Reader(str(filepath_shp)) as reader:
+            shapeRecs = reader.shapeRecords()
         if province is None:
-            with shapefile.Reader(str(filepath_shp)) as reader:
-                return list(map(convert, reader.shapeRecords()))
+            return [convert(shapeRec) for shapeRec in shapeRecs]
+        elif isinstance(province, (list, tuple)):
+            mapping = {
+                shapeRec.record['pr_name']: shapeRec
+                for shapeRec in shapeRecs
+            }
+            return [convert(mapping[name]) for name in province]
         else:
-            with shapefile.Reader(str(filepath_shp)) as reader:
-                for shapeRec in reader.iterShapeRecords():
-                    if shapeRec.record['pr_name'] == province:
-                        return convert(shapeRec)
-                else:
-                    raise ValueError('省名错误')
+            for shapeRec in shapeRecs:
+                if shapeRec.record['pr_name'] == province:
+                    return convert(shapeRec)
+            else:
+                raise KeyError(province)
+
     elif level == '市':
+        if province is not None and city is not None:
+            raise ValueError("level='市'时不能同时指定省和市")
         filepath_shp = dirpath_shp / 'city.shp'
+        with shapefile.Reader(str(filepath_shp)) as reader:
+            shapeRecs = reader.shapeRecords()
         if province is None and city is None:
-            with shapefile.Reader(str(filepath_shp)) as reader:
-                return list(map(convert, reader.shapeRecords()))
+            return [convert(shapeRec) for shapeRec in shapeRecs]
         elif province is not None:
-            shps = []
-            with shapefile.Reader(str(filepath_shp)) as reader:
-                for shapeRec in reader.iterShapeRecords():
-                    if shapeRec.record['pr_name'] == province:
-                        shps.append(convert(shapeRec))
-            if not shps:
-                raise ValueError('省名错误')
-            return shps
-        elif city is not None:
-            with shapefile.Reader(str(filepath_shp)) as reader:
-                for shapeRec in reader.iterShapeRecords():
+            mapping = {}
+            for shapeRec in shapeRecs:
+                name = shapeRec.record['pr_name']
+                if name in mapping:
+                    mapping[name].append(shapeRec)
+                else:
+                    mapping[name] = [shapeRec]
+            if isinstance(province, (list, tuple)):
+                return [
+                    convert(shapeRec) for shapeRec in
+                    chain.from_iterable([mapping[name] for name in province])
+                ]
+            else:
+                return [convert(shapeRec) for shapeRec in mapping[province]]
+        else:
+            if isinstance(city, (list, tuple)):
+                mapping = {
+                    shapeRec.record['ct_name']: shapeRec
+                    for shapeRec in shapeRecs
+                }
+                return [convert(mapping[name]) for name in city]
+            else:
+                for shapeRec in shapeRecs:
                     if shapeRec.record['ct_name'] == city:
                         return convert(shapeRec)
                 else:
-                    raise ValueError('市名错误')
+                    raise KeyError(city)
+
     else:
         raise ValueError('level错误')
 
@@ -121,6 +149,13 @@ def get_nine_line(as_dict=False):
     with shapefile.Reader(str(filepath_shp)) as reader:
         return _convert_shapeRecord(reader.shapeRecord(0), as_dict)
 
+def simplify_province_name(name):
+    '''简化省名到2或3个字.'''
+    if name.startswith('内蒙古') or name.startswith('黑龙江'):
+        return name[:3]
+    else:
+        return name[:2]
+
 def _ring_codes(n):
     '''为长度为n的环生成codes.'''
     codes = [mpath.Path.LINETO] * n
@@ -136,7 +171,7 @@ def polygon_to_path(polygon):
     elif isinstance(polygon, sgeom.MultiPolygon):
         polygons = polygon.geoms
     else:
-        raise ValueError('polygon不是多边形对象')
+        raise TypeError('polygon不是多边形对象')
 
     # 空多边形需要占位.
     if polygon.is_empty:
@@ -177,7 +212,7 @@ def polygon_to_mask(polygon, x, y):
     if x.shape != y.shape:
         raise ValueError('x和y的形状不匹配')
     if not isinstance(polygon, (sgeom.Polygon, sgeom.MultiPolygon)):
-        raise ValueError('polygon不是多边形对象')
+        raise TypeError('polygon不是多边形对象')
     prepared = prep(polygon)
 
     def recursion(x, y):
@@ -269,7 +304,7 @@ def _transform(func, geom):
         else:
             return type(geom)()
     else:
-        raise ValueError('geom不是几何对象')
+        raise TypeError('geom不是几何对象')
 
 def transform_geometries(geoms, crs_from, crs_to):
     '''

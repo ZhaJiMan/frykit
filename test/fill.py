@@ -73,12 +73,10 @@ fplt.add_map_scale(ax_main, (0.45, 0.8), length=1000, ticks=[0, 500, 1000])
 
 # 简化名称.
 for i, name in enumerate(names):
-    if '香港' in name or '澳门' in name:
-        names[i] = ''
-    elif '内蒙古' in name or '黑龙江' in name:
-        names[i] = name[:3]
-    else:
-        names[i] = name[:2]
+    name = fshp.simplify_province_name(name)
+    if name == '香港' or name == '澳门':
+        name = ''
+    names[i] = name
 
 # 添加省名.
 for name, province in zip(names, provinces):

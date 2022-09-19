@@ -1,6 +1,6 @@
 import math
+import json
 from pathlib import Path
-from functools import partial
 from itertools import chain
 
 import numpy as np
@@ -10,15 +10,15 @@ from shapely.prepared import prep
 from pyproj import Transformer
 import matplotlib.path as mpath
 
-def _convert_shapeRecord(shapeRec, as_dict=False):
-    '''将shapeRecord转换为几何对象.'''
-    geom = sgeom.shape(shapeRec.shape)
-    if as_dict:
-        data = shapeRec.record.as_dict()
-        data['geometry'] = geom
-        return data
-    else:
-        return geom
+def _to_geom(shapeRec):
+    '''将shapeRecord转为几何对象.'''
+    return sgeom.shape(shapeRec.shape)
+
+def _to_dict(shapeRec):
+    '''将shapeRecord转为字典.'''
+    d = shapeRec.record.as_dict()
+    d['geometry'] = _to_geom(shapeRec)
+    return d
 
 dirpath_shp = Path(__file__).parent / 'data' / 'shp'
 def get_cnshp(level='国', province=None, city=None, as_dict=False):
@@ -60,73 +60,56 @@ def get_cnshp(level='国', province=None, city=None, as_dict=False):
     shps : Polygon or list of Polygon, dict or list of dict
         行政区划的多边形或多边形构成的列表.
     '''
-    convert = partial(_convert_shapeRecord, as_dict=as_dict)
+    to = _to_dict if as_dict else _to_geom
+    dict_level = {'国': 'country', '省': 'province', '市': 'city'}
+    filepath_shp = dirpath_shp / f'{dict_level[level]}.shp'
+    # 利用提前制作的index.json提高查找速度.
+    filepath_index = dirpath_shp / 'index.json'
+    with open(str(filepath_index), 'r', encoding='utf-8') as f:
+        dict_index = json.load(f)
 
     if level == '国':
-        filepath_shp = dirpath_shp / 'country.shp'
         with shapefile.Reader(str(filepath_shp)) as reader:
-            return convert(reader.shapeRecord(0))
+            return to(reader.shapeRecord(0))
 
-    elif level == '省':
+    if level == '省':
+        dict_province = dict_index['province']
         if city is not None:
             raise ValueError("level='省'时不能指定市")
-        filepath_shp = dirpath_shp / 'province.shp'
-        with shapefile.Reader(str(filepath_shp)) as reader:
-            shapeRecs = reader.shapeRecords()
         if province is None:
-            return [convert(shapeRec) for shapeRec in shapeRecs]
+            index = None
         elif isinstance(province, (list, tuple)):
-            mapping = {
-                shapeRec.record['pr_name']: shapeRec
-                for shapeRec in shapeRecs
-            }
-            return [convert(mapping[name]) for name in province]
+            index = [dict_province[name] for name in province]
         else:
-            for shapeRec in shapeRecs:
-                if shapeRec.record['pr_name'] == province:
-                    return convert(shapeRec)
-            else:
-                raise KeyError(province)
+            index = dict_province[province]
 
-    elif level == '市':
+    if level == '市':
+        dict_city = dict_index['city']
         if province is not None and city is not None:
             raise ValueError("level='市'时不能同时指定省和市")
-        filepath_shp = dirpath_shp / 'city.shp'
-        with shapefile.Reader(str(filepath_shp)) as reader:
-            shapeRecs = reader.shapeRecords()
         if province is None and city is None:
-            return [convert(shapeRec) for shapeRec in shapeRecs]
-        elif province is not None:
-            mapping = {}
-            for shapeRec in shapeRecs:
-                name = shapeRec.record['pr_name']
-                if name in mapping:
-                    mapping[name].append(shapeRec)
-                else:
-                    mapping[name] = [shapeRec]
+            index = None
+        if province is not None:
+            dict_by_pr = dict_city['by_pr']
             if isinstance(province, (list, tuple)):
-                return [
-                    convert(shapeRec) for shapeRec in
-                    chain.from_iterable([mapping[name] for name in province])
-                ]
+                lists = [dict_by_pr[name] for name in province]
+                index = list(chain.from_iterable(lists))
             else:
-                return [convert(shapeRec) for shapeRec in mapping[province]]
-        else:
+                index = dict_by_pr[province]
+        if city is not None:
+            dict_by_ct = dict_city['by_ct']
             if isinstance(city, (list, tuple)):
-                mapping = {
-                    shapeRec.record['ct_name']: shapeRec
-                    for shapeRec in shapeRecs
-                }
-                return [convert(mapping[name]) for name in city]
+                index = [dict_by_ct[name] for name in city]
             else:
-                for shapeRec in shapeRecs:
-                    if shapeRec.record['ct_name'] == city:
-                        return convert(shapeRec)
-                else:
-                    raise KeyError(city)
+                index = dict_by_ct[city]
 
-    else:
-        raise ValueError('level错误')
+    with shapefile.Reader(str(filepath_shp)) as reader:
+        if index is None:
+            return [to(shapeRec) for shapeRec in reader.shapeRecords()]
+        elif isinstance(index, list):
+            return [to(reader.shapeRecord(i)) for i in index]
+        else:
+            return to(reader.shapeRecord(index))
 
 def get_nine_line(as_dict=False):
     '''
@@ -145,9 +128,10 @@ def get_nine_line(as_dict=False):
     nine_line : MultiPolygon
         用十个多边形表示的九段线.
     '''
+    to = _to_dict if as_dict else _to_geom
     filepath_shp = dirpath_shp / 'nine_line.shp'
     with shapefile.Reader(str(filepath_shp)) as reader:
-        return _convert_shapeRecord(reader.shapeRecord(0), as_dict)
+        return to(reader.shapeRecord(0))
 
 def simplify_province_name(name):
     '''简化省名到2或3个字.'''

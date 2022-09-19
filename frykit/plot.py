@@ -514,13 +514,13 @@ def add_polygons(ax, polygons, crs=None, **kwargs):
     pc : PathCollection
         代表Path的集合对象.
     '''
-    if crs is not None:
-        polygons = fshp.transform_geometries(polygons, crs, ax.projection)
-
+    kwargs.setdefault('zorder', 1.5)
     array = kwargs.get('array', None)
     if array is not None and len(array) != len(polygons):
         raise ValueError('array的长度与polygons不匹配')
 
+    if crs is not None:
+        polygons = fshp.transform_geometries(polygons, crs, ax.projection)
     paths = [fshp.polygon_to_path(polygon) for polygon in polygons]
     pc = PathCollection(paths, **kwargs)
     ax.add_collection(pc)
@@ -530,12 +530,11 @@ def add_polygons(ax, polygons, crs=None, **kwargs):
 def _set_path_kwargs(kwargs):
     '''初始化绘制PathCollection的参数'''
     if not any(kw in kwargs for kw in ['facecolor', 'facecolors', 'fc']):
-        kwargs['facecolor'] = 'none'
+        kwargs['facecolors'] = 'none'
     if not any(kw in kwargs for kw in ['edgecolor', 'edgecolors', 'ec']):
-        kwargs['edgecolor'] = 'black'
-    kwargs.setdefault('zorder', 1.5)
+        kwargs['edgecolors'] = 'black'
 
-def _select_shp_crs(ax):
+def _select_crs(ax):
     '''根据ax的类型为fshp.get_cnshp的几何对象选择坐标系.'''
     return ccrs.PlateCarree() if isinstance(ax, GeoAxes) else None
 
@@ -543,7 +542,7 @@ def add_cn_border(ax, **kwargs):
     '''向Axes或GeoAxes添加中国国界.'''
     _set_path_kwargs(kwargs)
     country = fshp.get_cnshp(level='国')
-    add_polygons(ax, [country], _select_shp_crs(ax), **kwargs)
+    add_polygons(ax, [country], _select_crs(ax), **kwargs)
 
 def add_cn_province(ax, name=None, **kwargs):
     '''向Axes或GeoAxes添加中国省界. 默认画出所有省.'''
@@ -551,13 +550,13 @@ def add_cn_province(ax, name=None, **kwargs):
     provinces = fshp.get_cnshp(level='省', province=name)
     if not isinstance(provinces, list):
         provinces = [provinces]
-    add_polygons(ax, provinces, _select_shp_crs(ax), **kwargs)
+    add_polygons(ax, provinces, _select_crs(ax), **kwargs)
 
 def add_nine_line(ax, **kwargs):
     '''向Axes或GeoAxes添加九段线.'''
     _set_path_kwargs(kwargs)
     nine_line = fshp.get_nine_line()
-    add_polygons(ax, [nine_line], _select_shp_crs(ax), **kwargs)
+    add_polygons(ax, [nine_line], _select_crs(ax), **kwargs)
 
 def clip_by_polygon(artist, polygon, crs=None, fix=False):
     '''
@@ -601,7 +600,7 @@ def clip_by_polygon(artist, polygon, crs=None, fix=False):
 def clip_by_cn_border(artist, fix=False):
     '''用中国国界裁剪Artist.'''
     country = fshp.get_cnshp(level='国')
-    clip_by_polygon(artist, country, _select_shp_crs(artist.axes), fix)
+    clip_by_polygon(artist, country, _select_crs(artist.axes), fix)
 
 def _create_kwargs(kwargs):
     '''创建参数字典.'''
@@ -721,9 +720,9 @@ def add_north_arrow(ax, xy, length=20, path_kwargs=None, text_kwargs=None):
     # 初始化箭头参数.
     path_kwargs = _create_kwargs(path_kwargs)
     if not any(kw in path_kwargs for kw in ['facecolor', 'facecolors', 'fc']):
-        path_kwargs['facecolors'] = ['k', 'w']
+        path_kwargs['facecolors'] = ['black', 'white']
     if not any(kw in path_kwargs for kw in ['edgecolor', 'edgecolors', 'ec']):
-        path_kwargs['edgecolors'] = 'k'
+        path_kwargs['edgecolors'] = 'black'
     if not any(kw in path_kwargs for kw in ['linewidth', 'linewidths', 'lw']):
         path_kwargs['linewidths'] = 1
     path_kwargs.setdefault('zorder', 3)
@@ -789,7 +788,7 @@ def add_map_scale(
     if 'linewidth' not in line_kwargs and 'lw' not in line_kwargs:
         line_kwargs['linewidth'] = 1.2
     if 'color' not in line_kwargs and 'c' not in line_kwargs:
-        line_kwargs['color'] = 'k'
+        line_kwargs['color'] = 'black'
     line_kwargs.setdefault('zorder', 3)
     line_kwargs.setdefault('clip_on', False)
 

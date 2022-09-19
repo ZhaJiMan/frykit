@@ -1,7 +1,6 @@
 import opencc
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
-import cartopy.feature as cfeature
 import frykit.shp as fshp
 import frykit.plot as fplt
 
@@ -21,12 +20,10 @@ cities = fshp.get_cnshp(level='市')
 # 简化省名并繁体化.
 converter = opencc.OpenCC('s2t.json')
 for i, name in enumerate(names):
-    if '香港' in name or '澳门' in name:
-        names[i] = ''
-    elif '内蒙古' in name or '黑龙江' in name:
-        names[i] = converter.convert(name[:3])
-    else:
-        names[i] = converter.convert(name[:2])
+    name = fshp.simplify_province_name(name)
+    if name == '香港' or name == '澳门':
+        name = ''
+    names[i] = converter.convert(name)
 
 # 设置投影.
 crs_map = ccrs.LambertConformal(
@@ -84,5 +81,5 @@ for name, province in zip(names, provinces):
     )
 
 # 保存图片.
-fig.savefig('nerv_style.png', dpi=300, bbox_inches='tight')
+fig.savefig('../image/nerv_style.png', dpi=300, bbox_inches='tight')
 plt.close(fig)

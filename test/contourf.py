@@ -86,8 +86,8 @@ ax_sub.add_feature(cfeature.LAND.with_scale('50m'), fc='floralwhite')
 ax_sub.add_feature(cfeature.OCEAN.with_scale('50m'), fc='skyblue')
 fplt.add_nine_line(ax_sub, lw=0.5)
 # 只画出部分省份节省时间.
-for name in ['广西壮族自治区', '广东省', '福建省', '海南省', '台湾省']:
-    fplt.add_cn_province(ax_sub, name, lw=0.5)
+names = ['广西壮族自治区', '广东省', '福建省', '海南省', '台湾省']
+fplt.add_cn_province(ax_sub, names, lw=0.5)
 cf = ax_sub.contourf(
     t2m.longitude, t2m.latitude, t2m, levels,
     cmap='turbo', extend='both', transform=crs_data

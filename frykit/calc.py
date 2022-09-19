@@ -47,6 +47,21 @@ def uv_to_wswd(u, v):
 
     return ws, wd
 
+def haversine(lon1, lat1, lon2, lat2, as_degrees=False):
+    '''利用haversine公式计算两点间的圆心角.'''
+    lon1, lat1, lon2, lat2 = map(np.deg2rad, [lon1, lat1, lon2, lat2])
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+
+    hav = lambda x: np.sin(x / 2)**2
+    a = hav(dlat)
+    b = np.cos(lat1) * np.cos(lat2) * hav(dlon)
+    dtheta = 2 * np.arcsin(np.sqrt(a + b))
+    if as_degrees:
+        dtheta = np.rad2deg(dtheta)
+
+    return dtheta
+
 def region_ind(lon, lat, extents, form='mask'):
     '''
     返回落入给定经纬度方框范围内的索引.

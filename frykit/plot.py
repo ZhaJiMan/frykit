@@ -2,6 +2,7 @@ from pathlib import Path
 
 import numpy as np
 import shapely.geometry as sgeom
+from shapely.ops import unary_union
 from pyproj import Geod
 import matplotlib.colors as mcolors
 import matplotlib.ticker as mticker
@@ -10,6 +11,7 @@ import matplotlib.patches as mpatches
 import matplotlib.transforms as mtransforms
 from matplotlib.collections import PathCollection
 import cartopy.crs as ccrs
+import cartopy.feature as cfeature
 from cartopy.mpl.geoaxes import GeoAxes
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 from PIL import Image
@@ -486,12 +488,50 @@ def letter_axes(axes, x, y, **kwargs):
             transform=ax.transAxes, **kwargs
         )
 
+def add_polygon(ax, polygon, crs=None, **kwargs):
+    '''
+    将一个多边形添加到Axes上.
+
+    画图结果有误时可以尝试使用transform参数指定CRS.
+
+    Parameters
+    ----------
+    ax : Axes or GeoAxes
+        目标Axes.
+
+    polygon : Polygon or MultiPolygon
+        多边形对象.
+
+    crs : CRS, optional
+        多边形所处的坐标系. 当crs不为None时, 认为ax是GeoAxes,
+        会将polygons从crs变换到ax.projection坐标系上.
+
+    **kwargs
+        创建PathPatch时的关键字参数.
+        例如facecolor, edgecolor和linewidth等.
+
+    Returns
+    -------
+    patch : PathPatch
+        代表多边形的补丁对象.
+    '''
+    kwargs.setdefault('zorder', 1.5)
+    if crs is not None:
+        polygon = fshp.transform_geometry(polygon, crs, ax.projection)
+    path = fshp.polygon_to_path(polygon)
+    patch = mpatches.PathPatch(path, **kwargs)
+    ax.add_patch(patch)
+
+    return patch
+
 def add_polygons(ax, polygons, crs=None, **kwargs):
     '''
-    将多边形添加到Axes上.
+    将一组多边形添加到Axes上.
 
-    与GeoAxes.add_geometries的区别是坐标变换更快, 能返回PathCollection对象.
-    若画图结果有误, 可以考虑传入transform参数.
+    与GeoAxes.add_geometries的区别是:
+    - 坐标变换更快, 但缺少多次运行的缓存机制. 可以考虑在函数外先做好坐标变换.
+    - 能返回PathCollection对象, 且不会漏掉显示范围外的多边形.
+    画图结果有误时可以尝试使用transform参数指定CRS.
 
     Parameters
     ----------
@@ -507,12 +547,12 @@ def add_polygons(ax, polygons, crs=None, **kwargs):
 
     **kwargs
         创建PathCollection时的关键字参数.
-        例如facecolor, edgecolor, cmap, norm和array等.
+        例如facecolors, edgecolors, cmap, norm和array等.
 
     Returns
     -------
     pc : PathCollection
-        代表Path的集合对象.
+        代表一组多边形的集合对象.
     '''
     kwargs.setdefault('zorder', 1.5)
     array = kwargs.get('array', None)
@@ -535,7 +575,7 @@ def _set_path_kwargs(kwargs):
         kwargs['edgecolors'] = 'black'
 
 def _select_crs(ax):
-    '''根据ax的类型为fshp.get_cnshp的几何对象选择坐标系.'''
+    '''根据ax的类型为WGS84坐标系的几何对象选择坐标系.'''
     return ccrs.PlateCarree() if isinstance(ax, GeoAxes) else None
 
 def add_cn_border(ax, **kwargs):
@@ -581,6 +621,7 @@ def clip_by_polygon(artist, polygon, crs=None, fix=False):
 
     fix : bool, optional
         是否修正裁剪后Artist会超出GeoAxes的问题. 默认不修正.
+        仅当边界是方框, 且横纵坐标范围设定好后才起效.
     '''
     ax = artist.axes
     if crs is not None:
@@ -597,10 +638,48 @@ def clip_by_polygon(artist, polygon, crs=None, fix=False):
     else:
         artist.set_clip_path(path, ax.transData)
 
+def clip_by_polygons(artist, polygons, crs=None, fix=False):
+    '''
+    利用一组多边形裁剪Artist, 只显示这些多边形内的内容.
+
+    Parameters
+    ----------
+    artist : Artist
+        被裁剪的Artist对象. 可以返回自以下方法:
+        - contour, contourf
+        - pcolor, pcolormesh
+        - imshow
+        - quiver
+        - scatter
+
+    polygons : list of Polygon or MultiPolygon
+        用于裁剪的一组多边形.
+
+    crs : CRS, optional
+        多边形所处的坐标系. 当crs不为None时, 认为ax是GeoAxes,
+        会将polygons从crs变换到ax.projection坐标系上.
+
+    fix : bool, optional
+        是否修正裁剪后Artist会超出GeoAxes的问题. 默认不修正.
+        仅当边界是方框, 且横纵坐标范围设定好后才起效.
+    '''
+    polygon = unary_union(polygons)
+    clip_by_polygon(artist, polygon, crs, fix)
+
 def clip_by_cn_border(artist, fix=False):
     '''用中国国界裁剪Artist.'''
     country = fshp.get_cnshp(level='国')
     clip_by_polygon(artist, country, _select_crs(artist.axes), fix)
+
+def clip_by_land(artist, scale='110m', fix=False):
+    '''用陆地裁剪Artist. 需要Cartopy自动下载数据, 分辨率太高时运行较慢.'''
+    polygons = list(cfeature.LAND.with_scale(scale).geometries())
+    clip_by_polygons(artist, polygons, _select_crs(artist.axes), fix)
+
+def clip_by_ocean(artist, scale='110m', fix=False):
+    '''用海洋裁剪Artist. 需要Cartopy自动下载数据, 分辨率太高时运行较慢.'''
+    polygons = list(cfeature.OCEAN.with_scale(scale).geometries())
+    clip_by_polygons(artist, polygons, _select_crs(artist.axes), fix)
 
 def _create_kwargs(kwargs):
     '''创建参数字典.'''

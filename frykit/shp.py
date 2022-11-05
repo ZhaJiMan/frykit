@@ -60,48 +60,55 @@ def get_cnshp(level='国', province=None, city=None, as_dict=False):
     shps : Polygon or list of Polygon, dict or list of dict
         行政区划的多边形或多边形构成的列表.
     '''
+    if level == '国':
+        filename = 'country.shp'
+    elif level == '省':
+        filename = 'province.shp'
+    elif level == '市':
+        filename = 'city.shp'
+    else:
+        raise ValueError('level参数错误')
+    filepath_shp = dirpath_shp / filename
     to = _to_dict if as_dict else _to_geom
-    dict_level = {'国': 'country', '省': 'province', '市': 'city'}
-    filepath_shp = dirpath_shp / f'{dict_level[level]}.shp'
+
     # 利用提前制作的index.json提高查找速度.
     filepath_index = dirpath_shp / 'index.json'
     with open(str(filepath_index), 'r', encoding='utf-8') as f:
-        dict_index = json.load(f)
+        mapping = json.load(f)
 
     if level == '国':
         with shapefile.Reader(str(filepath_shp)) as reader:
             return to(reader.shapeRecord(0))
 
     if level == '省':
-        dict_province = dict_index['province']
+        pr_name_to_pr_index = mapping['pr_name_to_pr_index']
         if city is not None:
             raise ValueError("level='省'时不能指定市")
         if province is None:
             index = None
         elif isinstance(province, (list, tuple)):
-            index = [dict_province[name] for name in province]
+            index = [pr_name_to_pr_index[name] for name in province]
         else:
-            index = dict_province[province]
+            index = pr_name_to_pr_index[province]
 
     if level == '市':
-        dict_city = dict_index['city']
+        ct_name_to_ct_index = mapping['ct_name_to_ct_index']
+        pr_name_to_ct_indices = mapping['pr_name_to_ct_indices']
         if province is not None and city is not None:
             raise ValueError("level='市'时不能同时指定省和市")
         if province is None and city is None:
             index = None
         if province is not None:
-            dict_by_pr = dict_city['by_pr']
             if isinstance(province, (list, tuple)):
-                lists = [dict_by_pr[name] for name in province]
+                lists = [pr_name_to_ct_indices[name] for name in province]
                 index = list(chain.from_iterable(lists))
             else:
-                index = dict_by_pr[province]
+                index = pr_name_to_ct_indices[province]
         if city is not None:
-            dict_by_ct = dict_city['by_ct']
             if isinstance(city, (list, tuple)):
-                index = [dict_by_ct[name] for name in city]
+                index = [ct_name_to_ct_index[name] for name in city]
             else:
-                index = dict_by_ct[city]
+                index = ct_name_to_ct_index[city]
 
     with shapefile.Reader(str(filepath_shp)) as reader:
         if index is None:

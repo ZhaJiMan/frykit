@@ -12,7 +12,7 @@ def lon_to_360(lon):
 
 def month_to_season(month):
     '''将月份换算为季节. 月份用[1, 12]表示, 季节用[1, 4]表示.'''
-    return month % 12 // 3 + 1
+    return (month - 3) % 12 // 3 + 1
 
 def polar_to_xy(r, phi, radians=True):
     '''极坐标转直角坐标.'''

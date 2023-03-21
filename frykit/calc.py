@@ -98,7 +98,7 @@ def region_ind(lon, lat, extents, form='mask'):
     '''
     lonmin, lonmax, latmin, latmax = extents
     mask_lon = (lon >= lonmin) & (lon <= lonmax)
-    mask_lat = (lat <= latmin) & (lat <= latmax)
+    mask_lat = (lat >= latmin) & (lat <= latmax)
     if form == 'mask':
         if lon.shape != lat.shape:
             raise ValueError('lon和lat的形状不匹配.')

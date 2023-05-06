@@ -1,4 +1,4 @@
-from numpy.random import default_rng
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import matplotlib.patches as mpatches
@@ -7,38 +7,33 @@ import frykit.plot as fplt
 import frykit.shp as fshp
 
 # 读取shp文件记录.
-names = []
-provinces = []
-for record in fshp.get_cnshp(level='省', as_dict=True):
-    names.append(record['pr_name'])
-    provinces.append(record['geometry'])
-
-# 生成0-100的随机数据.
-rng = default_rng(1)
-data = rng.random(len(names)) * 100
+names = fshp.get_cn_province_names()
+provinces = fshp.get_cn_shp(level='省')
+data = np.linspace(0, 100, len(names))
 
 # 设置地图范围.
-extents_main = [78, 134, 14, 55]
-extents_sub = [105, 120, 2, 25]
+extents1 = [78, 134, 14, 55]
+extents2 = [105, 120, 2, 25]
 
 # 设置投影.
-crs_map = ccrs.LambertConformal(
-    central_longitude=105, standard_parallels=(25, 47)
+map_crs = ccrs.LambertConformal(
+    central_longitude=105,
+    standard_parallels=(25, 47)
 )
-crs_data = ccrs.PlateCarree()
+data_crs = ccrs.PlateCarree()
 
 # 准备主地图.
 fig = plt.figure(figsize=(10, 6))
-ax_main = fig.add_subplot(111, projection=crs_map)
-ax_main.set_extent(extents_main, crs=crs_data)
-fplt.add_nine_line(ax_main, lw=0.5)
-ax_main.axis('off')
+ax1 = fig.add_subplot(projection=map_crs)
+ax1.set_extent(extents1, crs=data_crs)
+fplt.add_nine_line(ax1, lw=0.5)
+ax1.axis('off')
 
 # 准备小地图.
-ax_sub = fig.add_axes(ax_main.get_position(), projection=crs_map)
-ax_sub.set_extent(extents_sub, crs=crs_data)
-fplt.add_nine_line(ax_sub, lw=0.5)
-fplt.locate_sub_axes(ax_main, ax_sub, shrink=0.4)
+ax2 = fig.add_subplot(projection=map_crs)
+ax2.set_extent(extents2, crs=data_crs)
+fplt.add_nine_line(ax2, lw=0.5)
+fplt.move_axes_to_corner(ax2, ax1)
 
 # 填色参数.
 bins = [0, 20, 40, 60, 80, 100]
@@ -50,9 +45,9 @@ labels = [f'{bins[i]} - {bins[i + 1]}' for i in range(nbin)]
 norm = mcolors.BoundaryNorm(bins, nbin)
 cmap = mcolors.ListedColormap(colors)
 # 绘制填色的多边形
-for ax in [ax_main, ax_sub]:
+for ax in [ax1, ax2]:
     fplt.add_polygons(
-        ax, provinces, crs_data, array=data,
+        ax, provinces, array=data,
         cmap=cmap, norm=norm, ec='k', lw=0.4
     )
 
@@ -61,15 +56,16 @@ patches = []
 for color, label in zip(colors, labels):
     patch = mpatches.Patch(fc=color, ec='k', lw=0.5, label=label)
     patches.append(patch)
-ax_main.legend(
+ax1.legend(
     handles=patches, loc=(0.05, 0.05),
     frameon=False, handleheight=1.5, fontsize='small',
     title='data (units)'
 )
 
 # 添加指北针和比例尺.
-fplt.add_north_arrow(ax_main, (0.1, 0.85))
-fplt.add_map_scale(ax_main, (0.45, 0.8), length=1000, ticks=[0, 500, 1000])
+fplt.add_compass(ax1, 0.95, 0.8, size=15, style='star')
+scale = fplt.add_map_scale(ax1, 0.36, 0.8, length=1000)
+scale.set_xticks([0, 500, 1000])
 
 # 简化名称.
 for i, name in enumerate(names):
@@ -81,10 +77,12 @@ for i, name in enumerate(names):
 # 添加省名.
 for name, province in zip(names, provinces):
     point = province.representative_point()
-    ax_main.text(
+    ax1.text(
         point.x, point.y, name,
-        ha='center', va='center', fontsize='xx-small',
-        fontfamily='Source Han Sans SC', transform=crs_data
+        ha='center', va='center',
+        fontsize='xx-small',
+        fontfamily='Source Han Sans SC',
+        transform=data_crs
     )
 
 # 保存图片.

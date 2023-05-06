@@ -1,14 +1,29 @@
 import math
 import json
 from pathlib import Path
-from itertools import chain
 
 import numpy as np
+import pandas as pd
 import shapefile
 import shapely.geometry as sgeom
 from shapely.prepared import prep
 from pyproj import Transformer
-import matplotlib.path as mpath
+from matplotlib.path import Path as mPath
+
+# 中国行政区划的目录和表格.
+dirpath = Path(__file__).parent / 'data' / 'shp'
+table = pd.read_csv(
+    str(dirpath / 'table.csv'),
+    index_col=['level', 'province', 'city']
+)
+
+def get_cn_province_names():
+    '''获取中国省名.'''
+    return table.index.levels[1].to_list()
+
+def get_cn_city_names():
+    '''获取中国市名.'''
+    return table.index.levels[2].to_list()
 
 def _to_geom(shapeRec):
     '''将shapeRecord转为几何对象.'''
@@ -18,10 +33,10 @@ def _to_dict(shapeRec):
     '''将shapeRecord转为字典.'''
     d = shapeRec.record.as_dict()
     d['geometry'] = _to_geom(shapeRec)
+
     return d
 
-dirpath_shp = Path(__file__).parent / 'data' / 'shp'
-def get_cnshp(level='国', province=None, city=None, as_dict=False):
+def get_cn_shp(level='国', province=None, city=None, as_dict=False):
     '''
     获取中国行政区划的多边形. 支持国界, 省界和市界.
 
@@ -42,15 +57,15 @@ def get_cnshp(level='国', province=None, city=None, as_dict=False):
     level : {'国', '省', '市'}, optional
         边界等级. 默认为'国'.
 
-    province : str, optional
-        省名. 默认不指定.
+    province : str or list of str, optional
+        省名. 默认为None.
 
-    city : str, optional
-        市名. 默认不指定.
+    city : str or list of str, optional
+        市名. 默认为None.
 
     as_dict : bool, optional
-        是否以字典形式返回结果. 默认直接返回多边形对象.
-        字典的键包括:
+        是否以字典形式返回结果. 默认为False.
+        字典的键大致包括:
         - cn_name, pr_name, ct_name: 国省市名
         - cn_adcode, pr_adcode, ct_adcode: 国省市的区划代码
         - geometry: 多边形对象
@@ -59,64 +74,36 @@ def get_cnshp(level='国', province=None, city=None, as_dict=False):
     -------
     shps : Polygon or list of Polygon, dict or list of dict
         行政区划的多边形或多边形构成的列表.
+        as_dict为True时则是字典或字典构成的列表.
     '''
-    if level == '国':
-        filename = 'country.shp'
-    elif level == '省':
-        filename = 'province.shp'
-    elif level == '市':
-        filename = 'city.shp'
-    else:
-        raise ValueError('level参数错误')
-    filepath_shp = dirpath_shp / filename
     to = _to_dict if as_dict else _to_geom
-
-    # 利用提前制作的index.json提高查找速度.
-    filepath_index = dirpath_shp / 'index.json'
-    with open(str(filepath_index), 'r', encoding='utf-8') as f:
-        mapping = json.load(f)
-
     if level == '国':
-        with shapefile.Reader(str(filepath_shp)) as reader:
-            return to(reader.shapeRecord(0))
-
-    if level == '省':
-        pr_name_to_pr_index = mapping['pr_name_to_pr_index']
+        filepath = dirpath / 'country.shp'
+        if province is not None or city is not None:
+            raise ValueError("level='国'时不能指定province或city")
+    elif level == '省':
+        filepath = dirpath / 'province.shp'
         if city is not None:
-            raise ValueError("level='省'时不能指定市")
-        if province is None:
-            index = None
-        elif isinstance(province, (list, tuple)):
-            index = [pr_name_to_pr_index[name] for name in province]
-        else:
-            index = pr_name_to_pr_index[province]
-
-    if level == '市':
-        ct_name_to_ct_index = mapping['ct_name_to_ct_index']
-        pr_name_to_ct_indices = mapping['pr_name_to_ct_indices']
+            raise ValueError("level='省'时不能指定city")
+    elif level == '市':
+        filepath = dirpath / 'city.shp'
         if province is not None and city is not None:
-            raise ValueError("level='市'时不能同时指定省和市")
-        if province is None and city is None:
-            index = None
-        if province is not None:
-            if isinstance(province, (list, tuple)):
-                lists = [pr_name_to_ct_indices[name] for name in province]
-                index = list(chain.from_iterable(lists))
-            else:
-                index = pr_name_to_ct_indices[province]
-        if city is not None:
-            if isinstance(city, (list, tuple)):
-                index = [ct_name_to_ct_index[name] for name in city]
-            else:
-                index = ct_name_to_ct_index[city]
+            raise ValueError("level='市'时不能同时指定province和city")
+    else:
+        raise ValueError("level只能为{'国', '省', '市'}中的一种")
 
-    with shapefile.Reader(str(filepath_shp)) as reader:
-        if index is None:
-            return [to(shapeRec) for shapeRec in reader.shapeRecords()]
-        elif isinstance(index, list):
-            return [to(reader.shapeRecord(i)) for i in index]
-        else:
-            return to(reader.shapeRecord(index))
+    # 因为索引含有slice(None), 所以inds总为Series.
+    if province is None:
+        province = slice(None)
+    if city is None:
+        city = slice(None)
+    inds = table.loc[(level, province, city), 'index']
+
+    with shapefile.Reader(str(filepath)) as reader:
+        shps = [to(reader.shapeRecord(i)) for i in inds]
+
+    # 只含一条记录时返回标量.
+    return shps if len(shps) > 1 else shps[0]
 
 def get_nine_line(as_dict=False):
     '''
@@ -128,16 +115,16 @@ def get_nine_line(as_dict=False):
     Parameters
     ----------
     as_dict : bool, optional
-        是否以字典形式返回结果. 默认直接返回多边形对象.
+        是否以字典形式返回结果. 默认为False.
 
     Returns
     -------
-    nine_line : MultiPolygon
+    nine_line : MultiPolygon or dict
         用十个多边形表示的九段线.
     '''
     to = _to_dict if as_dict else _to_geom
-    filepath_shp = dirpath_shp / 'nine_line.shp'
-    with shapefile.Reader(str(filepath_shp)) as reader:
+    filepath = dirpath / 'nine_line.shp'
+    with shapefile.Reader(str(filepath)) as reader:
         return to(reader.shapeRecord(0))
 
 def simplify_province_name(name):
@@ -149,32 +136,47 @@ def simplify_province_name(name):
 
 def _ring_codes(n):
     '''为长度为n的环生成codes.'''
-    codes = [mpath.Path.LINETO] * n
-    codes[0] = mpath.Path.MOVETO
-    codes[-1] = mpath.Path.CLOSEPOLY
+    codes = [mPath.LINETO] * n
+    codes[0] = mPath.MOVETO
+    codes[-1] = mPath.CLOSEPOLY
 
     return codes
 
-def polygon_to_path(polygon):
-    '''将Polygon或MultiPolygon转为Path.'''
-    if isinstance(polygon, sgeom.Polygon):
-        polygons = [polygon]
-    elif isinstance(polygon, sgeom.MultiPolygon):
-        polygons = polygon.geoms
-    else:
+def polygon_to_path(polygon, keep_empty=True):
+    '''
+    将Polygon或MultiPolygon转为Path.
+
+    Parameters
+    ----------
+    polygon : Polygon or MultiPolygon
+        多边形对象.
+
+    keep_empty : bool, optional
+        是否用只含(0, 0)点的Path表示空多边形. 默认为True.
+        这样在占位的同时不会影响Matplotlib的画图效果.
+
+    Returns
+    -------
+    path : Path
+        Path对象.
+    '''
+    if not isinstance(polygon, (sgeom.Polygon, sgeom.MultiPolygon)):
         raise TypeError('polygon不是多边形对象')
 
-    # 空多边形需要占位.
     if polygon.is_empty:
-        return mpath.Path([(0, 0)])
+        if keep_empty:
+            return mPath([(0, 0)])
+        else:
+            raise ValueError('polygon不能为空多边形')
 
     # 用多边形含有的所有环的顶点构造Path.
     vertices, codes = [], []
-    for polygon in polygons:
-        for ring in [polygon.exterior] + polygon.interiors[:]:
-            vertices += ring.coords[:]
+    for polygon in getattr(polygon, 'geoms', [polygon]):
+        for ring in [polygon.exterior] + list(polygon.interiors):
+            vertices.append(np.asarray(ring.coords))
             codes += _ring_codes(len(ring.coords))
-    path = mpath.Path(vertices, codes)
+    vertices = np.vstack(vertices)
+    path = mPath(vertices, codes)
 
     return path
 
@@ -301,8 +303,8 @@ def transform_geometries(geoms, crs_from, crs_to):
     '''
     对一组几何对象的坐标进行变换, 返回变换后的对象组成的列表.
 
-    使用pyproj.Transformer进行变换, 当几何对象跨边界时会产生错误的连线.
-    此时建议使用cartopy.crs.Projection.project_geometry.
+    基于pyproj.Transformer实现. 相比cartopy.crs.Projection.project_geometry
+    速度更快, 但当几何对象跨越坐标系边界时可能产生错误的连线.
 
     Parameters
     ----------
@@ -333,5 +335,26 @@ def transform_geometries(geoms, crs_from, crs_to):
     return [_transform(func, geom) for geom in geoms]
 
 def transform_geometry(geom, crs_from, crs_to):
-    '''对几何对象的坐标进行变换, 返回变换后的对象.'''
+    '''
+    对一个几何对象的坐标进行变换.
+
+    基于pyproj.Transformer实现. 相比cartopy.crs.Projection.project_geometry
+    速度更快, 但当几何对象跨越坐标系边界时可能产生错误的连线.
+
+    Parameters
+    ----------
+    geom : BaseGeometry or BaseMultipartGeometry
+        源坐标系上的几何对象.
+
+    crs_from : CRS
+        源坐标系.
+
+    crs_to : CRS
+        目标坐标系.
+
+    Returns
+    -------
+    geom : BaseGeometry or BaseMultipartGeometry
+        目标坐标系上的几何对象.
+    '''
     return transform_geometries([geom], crs_from, crs_to)[0]

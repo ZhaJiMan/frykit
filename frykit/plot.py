@@ -137,7 +137,8 @@ def add_polygon(ax, polygon, crs=None, **kwargs):
 def _get_boundary(ax):
     '''将GeoAxes.patch转为data坐标系下的多边形.'''
     patch = ax.patch
-    ax.draw_artist(patch)  # 决定patch的形状.
+    # 决定patch的形状. 兼容Matplotlib3.6之前的版本.
+    patch.draw(ax.figure.canvas.get_renderer())
     trans = patch.get_transform() - ax.transData
     # get_path比get_verts更可靠.
     path = patch.get_path().transformed(trans)

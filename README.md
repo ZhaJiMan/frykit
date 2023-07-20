@@ -6,7 +6,7 @@
 
 - 读取中国行政区划数据
 - 创建多边形掩膜（mask）
-- 地理坐标变换
+- 多边形坐标变换
 
 `plot` 模块的功能包括：
 
@@ -28,7 +28,7 @@
 pip install frykit
 ```
 
-依赖仅需 `cartopy>=0.20.0`。
+依赖为 `cartopy>=0.20.0`。如果觉得 Cartopy 不太好装，可以只复制所需函数的源码，然后自行修改到可以使用。
 
 ## 示例
 
@@ -96,6 +96,15 @@ fplt.clip_by_cn_border(cf)
 
 当用于裁剪的多边形超出 `GeoAxes` 的显示范围时，直接用 `Artist.set_clip_path` 做裁剪会发生填色图出界的现象（[cartopy/issues/2052](https://github.com/SciTools/cartopy/issues/2052)）。工具箱内的 `clip_by_xxx` 系列函数对此进行了处理。
 
+### 加速绘制和裁剪
+
+绘制多边形和裁剪填色图过程中需要对多边形进行坐标变换，工具箱默认进行速度更快，但结果不够严格的变换方法。快速和严格两种变换方法间的切换为：
+
+```Python
+enable_fast_transform()
+disable_fast_transform()
+```
+
 ### 添加指北针和比例尺
 
 ```Python
@@ -106,7 +115,7 @@ scale.set_xticks([0, 500, 1000])
 
 指北针目前只是单纯指向图片上方，并不能真正指向所在地点的北方。
 
-比例尺的尺寸是用地图中心处单位长度对应的距离计算得到。
+比例尺的尺寸是用 `GeoAxes` 中心处单位长度对应的距离计算得到。
 
 ### 定位南海小地图
 
@@ -118,9 +127,19 @@ fplt.move_axes_to_corner(sub_ax, ax)
 
 需要先确定主图和子图的显示范围，再利用 `move_axes_to_corner` 函数将子图缩小并定位到主图的角落。
 
+### 详细介绍
+
+工具箱的原理和使用场景可见下面几篇博文：
+
+- [Cartopy 系列：探索 shapefile](https://zhajiman.github.io/post/cartopy_shapefile/)
+- [Cartopy 系列：裁剪填色图出界问题](https://zhajiman.github.io/post/cartopy_clip_outside/)
+- [CALIPSO L2 VFM 产品的读取和绘制（with Python）](https://zhajiman.github.io/post/calipso_vfm/)
+
 ### 效果图
 
-`example` 目录下有一些示例脚本：
+`cd` 到包的 `example` 目录里可以执行示例脚本：
+
+![axes](image/axes.png)
 
 ![contourf](image/contourf.png)
 

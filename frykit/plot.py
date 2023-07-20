@@ -2,25 +2,30 @@ from pathlib import Path
 from weakref import WeakValueDictionary, WeakKeyDictionary
 
 import numpy as np
-import shapely.geometry as sgeom
-from shapely.ops import unary_union
-from pyproj import Geod
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-import matplotlib.patches as mpatches
 import matplotlib.transforms as mtransforms
+from matplotlib.axes import Axes
 from matplotlib.ticker import AutoMinorLocator
 from matplotlib.path import Path as mPath
+from matplotlib.patches import Rectangle
 from matplotlib.collections import PathCollection
 from matplotlib.cbook import silent_list
+from PIL import Image
+
+import frykit.shp as fshp
+
+import cartopy
+if cartopy.__version__ < '0.20.0':
+    raise RuntimeError('cartopy版本不低于0.20.0')
 import cartopy.crs as ccrs
 from cartopy.mpl.geoaxes import GeoAxes
 from cartopy.mpl.feature_artist import _GeomKey
 from cartopy.feature import LAND, OCEAN
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
-from PIL import Image
-
-import frykit.shp as fshp
+import shapely.geometry as sgeom
+from shapely.ops import unary_union
+from pyproj import Geod
 
 # 当polygon的引用计数为零时, 弱引用会自动清理缓存.
 _key_to_polygon_cache = WeakValueDictionary()
@@ -88,17 +93,18 @@ def add_polygons(ax, polygons, crs=None, **kwargs):
     if array is not None and len(array) != len(polygons):
         raise ValueError('array的长度与polygons不匹配')
 
-    if crs is None:
-        crs = ccrs.PlateCarree()
-
     # GeoAxes会对多边形做坐标变换.
-    trans = ax.transData
-    to = fshp.polygon_to_path
     if isinstance(ax, GeoAxes):
+        crs = ccrs.PlateCarree() if crs is None else crs
         trans = ax.projection._as_mpl_transform(ax)
         to = lambda x: fshp.polygon_to_path(
             _cached_transform(x, crs, ax.projection)
         )
+    elif isinstance(ax, Axes):
+        trans = ax.transData
+        to = fshp.polygon_to_path
+    else:
+        raise ValueError('ax应该为Axes或GeoAxes')
 
     # PathCollection比PathPatch更快
     paths = [to(polygon) for polygon in polygons]
@@ -172,17 +178,19 @@ def clip_by_polygon(artist, polygon, crs=None):
     is_list = isinstance(artist, silent_list)
     ax = artist[0].axes if is_list else artist.axes
 
-    if crs is None:
-        crs = ccrs.PlateCarree()
-
     # Axes会自动给Artist设置clipbox, 所以不会出界.
     # GeoAxes需要在data坐标系里求polygon和patch的交集.
-    trans = ax.transData
     if isinstance(ax, GeoAxes):
         trans = ax.projection._as_mpl_transform(ax)
+        crs = ccrs.PlateCarree() if crs is None else crs
         polygon = _cached_transform(polygon, crs, ax.projection)
         boundary = _get_boundary(ax)
         polygon = polygon & boundary
+    elif isinstance(ax, Axes):
+        trans = ax.transData
+    else:
+        raise ValueError('ax应该为Axes或GeoAxes')
+
     path = fshp.polygon_to_path(polygon)
 
     # TODO:
@@ -550,11 +558,11 @@ def _set_non_rectangular(
         ax.set_xticklabels(bottom_ticklabels + top_ticklabels)
         ind = len(bottom_ticklabels)
         for tick in ax.xaxis.get_major_ticks()[:ind]:
-            tick.tick2line.set_visible(False)
-            tick.label2.set_visible(False)
+            tick.tick2line.set_alpha(0)
+            tick.label2.set_alpha(0)
         for tick in ax.xaxis.get_major_ticks()[ind:]:
-            tick.tick1line.set_visible(False)
-            tick.label1.set_visible(False)
+            tick.tick1line.set_alpha(0)
+            tick.label1.set_alpha(0)
 
     # 以纬线与左右axis的交点作为刻度.
     if yticks is not None:
@@ -583,11 +591,11 @@ def _set_non_rectangular(
         ax.set_yticklabels(left_ticklabels + right_ticklabels)
         ind = len(left_ticklabels)
         for tick in ax.yaxis.get_major_ticks()[:ind]:
-            tick.tick2line.set_visible(False)
-            tick.label2.set_visible(False)
+            tick.tick2line.set_alpha(False)
+            tick.label2.set_alpha(False)
         for tick in ax.yaxis.get_major_ticks()[ind:]:
-            tick.tick1line.set_visible(False)
-            tick.label1.set_visible(False)
+            tick.tick1line.set_alpha(False)
+            tick.label1.set_alpha(False)
 
 def set_extent_and_ticks(
     ax, extents=None,
@@ -723,7 +731,7 @@ def add_quiver_legend(
 
     # 在ax上添加patch.
     ax = Q.axes
-    rect = mpatches.Rectangle(
+    rect = Rectangle(
         (x - width / 2, y - height / 2), width, height,
         transform=ax.transAxes, **rect_kwargs
     )
@@ -931,7 +939,7 @@ def add_box(ax, extents, **kwargs):
     xmin, xmax, ymin, ymax = extents
     dx = xmax - xmin
     dy = ymax - ymin
-    rect = mpatches.Rectangle((xmin, ymin), dx, dy, **kwargs)
+    rect = Rectangle((xmin, ymin), dx, dy, **kwargs)
     ax.add_patch(rect)
 
     return rect

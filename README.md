@@ -120,7 +120,7 @@ scale.set_xticks([0, 500, 1000])
 ### 定位南海小地图
 
 ```Python
-sub_ax = fig.add_projection(projection=map_crs)
+sub_ax = fig.add_subplot(projection=map_crs)
 sub_ax.set_extent([105, 120, 2, 25], crs=data_crs)
 fplt.move_axes_to_corner(sub_ax, ax)
 ```

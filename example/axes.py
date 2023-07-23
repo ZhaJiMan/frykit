@@ -13,8 +13,8 @@ ax.grid(ls='--')
 
 # 手动添加刻度标签的度数符号.
 degree = '\N{DEGREE SIGN}'
-ax.xaxis.set_major_formatter('{x:.0f}E' + degree)
-ax.yaxis.set_major_formatter('{x:.0f}N' + degree)
+ax.xaxis.set_major_formatter('{x:.0f}' + degree + 'E')
+ax.yaxis.set_major_formatter('{x:.0f}' + degree + 'N')
 
 # 保存图片.
 ax.set_title('Use Matplotlib Axes')

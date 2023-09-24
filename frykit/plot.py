@@ -4,6 +4,7 @@ from weakref import WeakValueDictionary, WeakKeyDictionary
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+from matplotlib.cm import ScalarMappable
 import matplotlib.transforms as mtransforms
 from matplotlib.axes import Axes
 from matplotlib.ticker import AutoMinorLocator
@@ -1054,63 +1055,64 @@ def add_side_axes(ax, loc, pad, depth):
 
     return side_ax
 
-def get_slice_xticks(
-    lon, lat, ntick=6, decimals=2,
+def get_cross_section_xticks(
+    lon, lat, ntick=6,
     lon_formatter=None, lat_formatter=None
 ):
     '''
-    返回垂直剖面图所需的横坐标, 刻度位置和刻度标签.
+    返回垂直截面图所需的横坐标, 刻度位置和刻度标签.
 
-    用经纬度数组的点数表示横坐标, 在横坐标上取ntick个等距的刻度,
-    利用线性插值计算每个刻度标签的经纬度值.
+    用经纬度的欧式距离表示横坐标, 在横坐标上取ntick个等距的刻度,
+    利用线性插值计算每个刻度对应的经纬度值并用作刻度标签.
 
     Parameters
     ----------
     lon : (npt,) array_like
-        剖面对应的经度数组.
+        横截面对应的经度数组.
 
     lat : (npt,) array_like
-        剖面对应的纬度数组.
+        横截面对应的纬度数组.
 
     ntick : int, optional
         刻度的数量. 默认为6.
 
-    decimals : int, optional
-        刻度标签的小数位数. 默认为2.
-
     lon_formatter : Formatter, optional
-        刻度标签里经度的Formatter. 默认为None, 表示LongitudeFormatter.
+        刻度标签里经度的Formatter, 用来控制字符串的格式.
+        默认为None, 表示LongitudeFormatter.
 
     lat_formatter : Formatter, optional
-        刻度标签里纬度的Formatter. 默认为None, 表示LatitudeFormatter.
+        刻度标签里纬度的Formatter. 用来控制字符串的格式.
+        默认为None, 表示LatitudeFormatter.
 
     Returns
     -------
     x : (npt,) ndarray
-        剖面数据的横坐标. 数值等于np.arange(npt).
+        横截面的横坐标.
 
     xticks : (ntick,) ndarray
-        横坐标的刻度位置.
+        刻度的横坐标.
 
     xticklabels : (ntick,) list of str
-        横坐标的刻度标签. 用刻度处的经纬度值表示.
+        用经纬度表示的刻度标签.
     '''
     # 线性插值计算刻度的经纬度值.
     npt = len(lon)
-    x = np.arange(npt)
-    xticks = np.linspace(0, npt - 1, ntick)
-    lon_ticks = np.interp(xticks, x, lon).round(decimals)
-    lat_ticks = np.interp(xticks, x, lat).round(decimals)
+    dlon = lon - lon[0]
+    dlat = lat - lat[0]
+    x = np.hypot(dlon, dlat)
+    xticks = np.linspace(x[0], x[-1], ntick)
+    tlon = np.interp(xticks, x, lon)
+    tlat = np.interp(xticks, x, lat)
 
     # 获取字符串形式的刻度标签.
     xticklabels = []
     if lon_formatter is None:
-        lon_formatter = LongitudeFormatter()
+        lon_formatter = LongitudeFormatter(number_format='.1f')
     if lat_formatter is None:
-        lat_formatter = LatitudeFormatter()
+        lat_formatter = LatitudeFormatter(number_format='.1f')
     for i in range(ntick):
-        lon_label = lon_formatter(lon_ticks[i])
-        lat_label = lat_formatter(lat_ticks[i])
+        lon_label = lon_formatter(tlon[i])
+        lat_label = lat_formatter(tlat[i])
         xticklabels.append(lon_label + '\n' + lat_label)
 
     return x, xticks, xticklabels
@@ -1150,6 +1152,45 @@ def get_aod_cmap():
 
     return cmap
 
+class CenteredBoundaryNorm(mcolors.BoundaryNorm):
+    '''将vcenter所在的bin映射到cmap中间的BoundaryNorm.'''
+    def __init__(self, boundaries, vcenter=0, clip=None):
+        super().__init__(boundaries, len(boundaries) - 1, clip)
+        boundaries = np.asarray(boundaries)
+        self.N1 = np.count_nonzero(boundaries < vcenter)
+        self.N2 = np.count_nonzero(boundaries > vcenter)
+        if self.N1 < 1 or self.N2 < 1:
+            raise ValueError('vcenter两侧至少各有一条边界')
+
+    def __call__(self, value, clip=None):
+        # 将BoundaryNorm的[0, N-1]又映射到[0.0, 1.0]内.
+        result = super().__call__(value, clip)
+        if self.N1 + self.N2 == self.N - 1:
+            result = np.ma.where(
+                result < self.N1,
+                result / (2 * self.N1),
+                (result - self.N1 + self.N2 + 1) / (2 * self.N2)
+            )
+        else:
+            # 当result是MaskedArray时除以零不会报错.
+            result = np.ma.where(
+                result < self.N1,
+                result / (2 * (self.N1 - 1)),
+                (result - self.N1 + self.N2) / (2 * (self.N2 - 1))
+            )
+
+        return result
+
+def plot_colormap(cmap, norm=None, ax=None):
+    '''快速展示一条colormap.'''
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(8, 1))
+        fig.subplots_adjust(bottom=0.5)
+    mappable = ScalarMappable(norm=norm, cmap=cmap)
+    cbar = plt.colorbar(mappable, cax=ax, orientation='horizontal')
+
+    return cbar
+
 def letter_axes(axes, x, y, **kwargs):
     '''
     给一组Axes按顺序标注字母.
@@ -1185,7 +1226,7 @@ def letter_axes(axes, x, y, **kwargs):
         )
 
 def make_gif(
-    filepaths_img, filepath_gif,
+    img_filepaths, gif_filepath,
     duration=500, loop=0, optimize=False
 ):
     '''
@@ -1193,10 +1234,10 @@ def make_gif(
 
     Parameters
     ----------
-    filepaths_img : list of str or Path
+    img_filepaths : list of str or Path
         图片路径的列表. 要求至少含两个元素.
 
-    filepath_gif : str or Path
+    gif_filepath : str or Path
         输出GIF图片的路径.
 
     duration : int or list or tuple, optional
@@ -1209,11 +1250,11 @@ def make_gif(
     optimize : bool, optional
         尝试压缩GIF图片的调色板.
     '''
-    if len(filepaths_img) < 2:
+    if len(img_filepaths) < 2:
         raise ValueError('至少需要两张图片')
 
-    images = [Image.open(str(filepath)) for filepath in filepaths_img]
+    images = [Image.open(str(filepath)) for filepath in img_filepaths]
     images[0].save(
-        str(filepath_gif), save_all=True, append_images=images[1:],
+        str(gif_filepath), save_all=True, append_images=images[1:],
         duration=duration, loop=loop, optimize=optimize
     )

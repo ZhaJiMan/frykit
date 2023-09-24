@@ -17,6 +17,7 @@
 - 添加风矢量图的图例
 - 添加指北针
 - 添加地图比例尺
+- 制作离散色表
 
 没有文档，但是每个函数都有详细的 docstring，可以在 Python命令行中通过 `help` 函数查看，或者在 IDE 中查看。
 
@@ -127,6 +128,29 @@ fplt.move_axes_to_corner(sub_ax, ax)
 
 需要先确定主图和子图的显示范围，再利用 `move_axes_to_corner` 函数将子图缩小并定位到主图的角落。
 
+### 离散 colorbar
+
+```Python
+# 一个颜色对应一个刻度的定性colorbar.
+colors = [
+    'orangered', 'orange', 'yellow',
+    'limegreen', 'royalblue', 'darkviolet'
+]
+cmap, norm, ticks = fplt.make_qualitative_cmap(colors)
+cbar = fplt.plot_colormap(cmap, norm)
+cbar.set_ticks(ticks)
+cbar.set_ticklabels(colors)
+
+# 保证零值区间对应白色的离散colorbar.
+import cmaps
+boundaries = [-10, -5, -2, -1, 1, 2, 5, 10, 20, 50, 100]
+norm = fplt.CenteredBoundaryNorm(boundaries)
+cbar = fplt.plot_colormap(cmaps.BlueWhiteOrangeRed, norm)
+cbar.set_ticks(boundaries)
+```
+
+![colorbar](image/colorbar.png)
+
 ### 详细介绍
 
 工具箱的原理和使用场景可见下面几篇博文：
@@ -134,8 +158,9 @@ fplt.move_axes_to_corner(sub_ax, ax)
 - [Cartopy 系列：探索 shapefile](https://zhajiman.github.io/post/cartopy_shapefile/)
 - [Cartopy 系列：裁剪填色图出界问题](https://zhajiman.github.io/post/cartopy_clip_outside/)
 - [CALIPSO L2 VFM 产品的读取和绘制（with Python）](https://zhajiman.github.io/post/calipso_vfm/)
+- [Matplotlib 系列：colormap 的设置](https://zhajiman.github.io/post/matplotlib_colormap/)
 
-### 效果图
+### 示例效果
 
 `cd` 到包的 `example` 目录里可以执行示例脚本：
 

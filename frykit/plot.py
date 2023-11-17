@@ -1,32 +1,33 @@
-from pathlib import Path
 from weakref import WeakValueDictionary, WeakKeyDictionary
 
 import numpy as np
+import shapely.geometry as sgeom
+from shapely.ops import unary_union
+from pyproj import Geod
+
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-from matplotlib.cm import ScalarMappable
 import matplotlib.transforms as mtransforms
 from matplotlib.axes import Axes
-from matplotlib.ticker import AutoMinorLocator
 from matplotlib.path import Path as mPath
+from matplotlib.cm import ScalarMappable
+from matplotlib.ticker import AutoMinorLocator
 from matplotlib.patches import Rectangle
 from matplotlib.collections import PathCollection
 from matplotlib.cbook import silent_list
 from PIL import Image
 
-import frykit.shp as fshp
-
 import cartopy
 if cartopy.__version__ < '0.20.0':
     raise RuntimeError('cartopy版本不低于0.20.0')
 import cartopy.crs as ccrs
+from cartopy.feature import LAND, OCEAN
 from cartopy.mpl.geoaxes import GeoAxes
 from cartopy.mpl.feature_artist import _GeomKey
-from cartopy.feature import LAND, OCEAN
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
-import shapely.geometry as sgeom
-from shapely.ops import unary_union
-from pyproj import Geod
+
+import frykit.shp as fshp
+from frykit import DATA_DIRPATH
 
 # 当polygon的引用计数为零时, 弱引用会自动清理缓存.
 _key_to_polygon_cache = WeakValueDictionary()
@@ -78,7 +79,7 @@ def add_polygons(ax, polygons, crs=None, **kwargs):
 
     crs : CRS, optional
         多边形所处的坐标系. 默认为ccrs.PlateCarree().
-        当ax是Axes时该参数无效, 不会对多边形进行坐标变换.
+          当ax是Axes时该参数只能为None, 表示不会对多边形做坐标变换.
 
     **kwargs
         创建PathCollection时的关键字参数.
@@ -102,10 +103,12 @@ def add_polygons(ax, polygons, crs=None, **kwargs):
             _cached_transform(x, crs, ax.projection)
         )
     elif isinstance(ax, Axes):
+        if crs is not None:
+            raise ValueError('ax是Axes时crs只能为None')
         trans = ax.transData
         to = fshp.polygon_to_path
     else:
-        raise ValueError('ax应该为Axes或GeoAxes')
+        raise ValueError('ax只能是Axes或GeoAxes')
 
     # PathCollection比PathPatch更快
     paths = [to(polygon) for polygon in polygons]
@@ -128,7 +131,7 @@ def add_polygon(ax, polygon, crs=None, **kwargs):
 
     crs : CRS, optional
         多边形所处的坐标系. 默认为ccrs.PlateCarree().
-        当ax是Axes时该参数无效, 不会对多边形进行坐标变换.
+        当ax是Axes时该参数只能为None, 表示不会对多边形做坐标变换.
 
     **kwargs
         创建PathCollection时的关键字参数.
@@ -174,7 +177,7 @@ def clip_by_polygon(artist, polygon, crs=None):
 
     crs : CRS, optional
         多边形所处的坐标系. 默认为ccrs.PlateCarree().
-        当ax是Axes时该参数无效, 不会对多边形进行坐标变换.
+        当ax是Axes时该参数只能为None, 表示不会对多边形做坐标变换.
     '''
     is_list = isinstance(artist, silent_list)
     ax = artist[0].axes if is_list else artist.axes
@@ -188,9 +191,11 @@ def clip_by_polygon(artist, polygon, crs=None):
         boundary = _get_boundary(ax)
         polygon = polygon & boundary
     elif isinstance(ax, Axes):
+        if crs is not None:
+            raise ValueError('ax是Axes时crs只能为None')
         trans = ax.transData
     else:
-        raise ValueError('ax应该为Axes或GeoAxes')
+        raise ValueError('ax只能是Axes或GeoAxes')
 
     path = fshp.polygon_to_path(polygon)
 
@@ -230,7 +235,7 @@ def clip_by_polygons(artist, polygons, crs=None):
 
     crs : CRS, optional
         多边形所处的坐标系. 默认为ccrs.PlateCarree().
-        当ax是Axes时该参数无效, 不会对多边形进行坐标变换.
+        当ax是Axes时该参数只能为None, 表示不会对多边形做坐标变换.
     '''
     polygon = unary_union(polygons)
     clip_by_polygon(artist, polygon, crs)
@@ -503,7 +508,7 @@ def _set_rectangular(
 
 def _set_non_rectangular(
     ax, extents=None,
-    xticks=None, yticks=None,
+    xticks=None, yticks=None, nx=0, ny=0,
     xformatter=None, yformatter=None
 ):
     '''设置非矩形投影的GeoAxes的范围和刻度.'''
@@ -627,11 +632,11 @@ def set_extent_and_ticks(
         纬度主刻度的坐标. 默认为None, 表示不设置.
 
     nx : int, optional
-        经度主刻度之间次刻度的个数. 默认为None, 表示没有次刻度.
+        经度主刻度之间次刻度的个数. 默认为0.
         当投影为非矩形投影或经度不是等距分布时, 请不要进行设置.
 
     ny : int, optional
-        纬度主刻度之间次刻度的个数. 默认为None, 表示没有次刻度.
+        纬度主刻度之间次刻度的个数. 默认为0.
         当投影为非矩形投影或纬度不是等距分布时, 请不要进行设置.
 
     xformatter : Formatter, optional
@@ -641,18 +646,12 @@ def set_extent_and_ticks(
         纬度刻度标签的Formatter. 默认为None, 表示无参数的LatitudeFormatter.
     '''
     if not isinstance(ax, GeoAxes):
-        raise ValueError('ax应该是GeoAxes')
-    kwargs = {
-        'ax': ax, 'extents': extents,
-        'xticks': xticks, 'yticks': yticks, 'nx': nx, 'ny': ny,
-        'xformatter': xformatter, 'yformatter': yformatter
-    }
-
+        raise ValueError('ax必须是GeoAxes')
     if isinstance(ax.projection, (ccrs._RectangularProjection, ccrs.Mercator)):
-        _set_rectangular(**kwargs)
+        func = _set_rectangular
     else:
-        del kwargs['nx'], kwargs['ny']
-        _set_non_rectangular(**kwargs)
+        func = _set_non_rectangular
+    func(ax, extents, xticks, yticks, nx, ny, xformatter, yformatter)
 
 def _create_kwargs(kwargs):
     '''创建参数字典.'''
@@ -756,6 +755,7 @@ def add_quiver_legend(
 
     return rect, qk
 
+# TODO: 添加rotation参数.
 def add_compass(
     ax, x, y, size=20, style='arrow',
     path_kwargs=None, text_kwargs=None
@@ -881,13 +881,13 @@ def add_map_scale(ax, x, y, length=1000, units='km'):
     else:
         raise ValueError('units参数错误')
 
-    # 取地图中心的水平线计算单位投影坐标的长度.
+    # 取地图中心一小段水平线计算单位投影坐标的长度.
     crs = ccrs.PlateCarree()
     xmin, xmax = ax.get_xlim()
     ymin, ymax = ax.get_ylim()
     xmid = (xmin + xmax) / 2
     ymid = (ymin + ymax) / 2
-    dx = xmax - xmin
+    dx = (xmax - xmin) / 10
     x0 = xmid - dx / 2
     x1 = xmid + dx / 2
     lon0, lat0 = crs.transform_point(x0, ymid, ax.projection)
@@ -1097,6 +1097,8 @@ def get_cross_section_xticks(
     '''
     # 线性插值计算刻度的经纬度值.
     npt = len(lon)
+    if npt <= 1:
+        raise ValueError('lon和lat至少有2个元素')
     dlon = lon - lon[0]
     dlat = lat - lat[0]
     x = np.hypot(dlon, dlat)
@@ -1146,7 +1148,7 @@ def make_qualitative_cmap(colors):
 
 def get_aod_cmap():
     '''返回适用于AOD的cmap.'''
-    filepath = Path(__file__).parent / 'data' / 'NEO_modis_aer_od.csv'
+    filepath = DATA_DIRPATH / 'NEO_modis_aer_od.csv'
     rgb = np.loadtxt(str(filepath), delimiter=',') / 256
     cmap = mcolors.ListedColormap(rgb)
 

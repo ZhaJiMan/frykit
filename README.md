@@ -6,13 +6,13 @@
 
 - 读取中国行政区划数据
 - 创建多边形掩膜（mask）
-- 多边形坐标变换
+- 多边形在不同投影坐标系之间的变换
 
 `plot` 模块的功能包括：
 
 - 读取中国行政区划数据
 - 向地图添加中国国界和省界
-- 利用国界和省界对填色图进行裁剪（白化）
+- 利用国界和省界对填色图做裁剪（白化）
 - 设置地图刻度
 - 添加风矢量图的图例
 - 添加指北针
@@ -29,7 +29,7 @@
 pip install frykit
 ```
 
-依赖为 `cartopy>=0.20.0`。如果觉得 Cartopy 不太好装，可以只复制所需函数的源码，然后自行修改到可以使用。
+依赖为 `cartopy>=0.20.0`。
 
 ## 示例
 
@@ -38,14 +38,14 @@ pip install frykit
 ```Python
 import frykit.shp as fshp
 
-# 读取中国国界.
+# 读取国界.
 country = fshp.get_cn_shp(level='国')
 
-# 读取中国省界.
+# 读取省界.
 provinces = fshp.get_cn_shp(level='省')
 anhui = fshp.get_cn_shp(level='省', province='安徽省')
 
-# 读取中国市界.
+# 读取市界.
 cities = fshp.get_cn_shp(level='市')
 hefei = fshp.get_cn_shp(level='市', city='合肥市')
 cities_of_anhui = fshp.get_cn_shp(level='市', province='安徽省')
@@ -53,20 +53,20 @@ cities_of_anhui = fshp.get_cn_shp(level='市', province='安徽省')
 
 返回结果为 Shapely 的多边形对象，可以进行交并等几何运算。
 
-行政区划的 shapefile 文件来自 [ChinaAdminDivisonSHP](https://github.com/GaryBikini/ChinaAdminDivisonSHP) 项目，坐标已从 GCJ-02 坐标系处理到了 WGS84 坐标系上。
+行政区划的 shapefile 文件来自 [ChinaAdminDivisonSHP](https://github.com/GaryBikini/ChinaAdminDivisonSHP) 项目，已从 GCJ-02 坐标系处理到了 WGS84 坐标系上。文件都在 `frykit.DATA_DIRPATH` 指向的目录里。
 
 ### 绘制中国国界和省界
 
 ```Python
-# 绘制中国国界.
+# 绘制国界.
 fplt.add_cn_border(ax)
 
-# 绘制中国省界.
+# 绘制省界.
 fplt.add_cn_province(ax)
 fplt.add_cn_province(ax, name=['安徽省', '江苏省'])
 ```
 
-`ax` 可以为 `Axes` 或 `GeoAxes`。多次调用时能够通过缓存节省读取数据的时间开销。
+`ax` 可以是 `Axes` 或 `GeoAxes`。
 
 ### 绘制任意多边形
 
@@ -82,15 +82,16 @@ pc = fplt.add_polygons(ax, polygons, array=data, cmap=cmap, norm=norm)
 cbar = fig.colorbar(pc, ax=ax)
 ```
 
-只要在主程序中维持对 `polygon` 的引用，就能在多次调用时通过缓存节省坐标变换的时间开销。
-
 Cartopy 的 `GeoAxes.add_geometries` 会自动去除 `polygons` 中不在 `GeoAxes` 显示范围内的多边形，破坏 `polygons` 和 `array` 的一一对应关系，打乱填色的结果。工具箱中的 `add_polygons` 函数不会进行这一操作，能够产生正确的填色结果。
 
 ### 裁剪填色图
 
 ```Python
 cf = ax.contourf(lon, lat, data, transform=data_crs)
+
+# 用国界或省界裁剪.
 fplt.clip_by_cn_border(cf)
+fplt.clip_by_cn_province(cf, '河北省')
 ```
 
 被裁剪的对象还可以是 `contour`、`clabel`、`pcolormesh`、`quiver` 等方法的返回值。
@@ -106,6 +107,17 @@ enable_fast_transform()
 disable_fast_transform()
 ```
 
+`add_cn_xxx` 系列函数会通过缓存节省读取国界和省界数据的时间开销。`add_polygon`、`add_polygons` 和 `clip_by_xxx` 系列函数会通过缓存节省多边形坐标变换的时间开销。
+
+```Python
+# 维持对多边形对象的引用.
+polygon = sgeom.polygon(...)
+
+# 第二次调用耗时更短.
+fplt.add_polygon(ax, polygon)
+fplt.add_polygon(ax, polygon)
+```
+
 ### 添加指北针和比例尺
 
 ```Python
@@ -116,7 +128,7 @@ scale.set_xticks([0, 500, 1000])
 
 指北针目前只是单纯指向图片上方，并不能真正指向所在地点的北方。
 
-比例尺的尺寸是用 `GeoAxes` 中心处单位长度对应的距离计算得到。
+比例尺的长度通过 `GeoAxes` 中心处单位长度和实际距离的比值计算得到。比例尺本身由一个压扁了的 `Axes` 模拟，所以可通过 `set_xticks` 等方法修改样式。
 
 ### 定位南海小地图
 
@@ -127,6 +139,14 @@ fplt.move_axes_to_corner(sub_ax, ax)
 ```
 
 需要先确定主图和子图的显示范围，再利用 `move_axes_to_corner` 函数将子图缩小并定位到主图的角落。
+
+### 添加风矢量图例
+
+```Python
+fplt.add_quiver_legend(Q, U=10, width=0.15, height=0.12)
+```
+
+在 `Axes` 的角落添加一个白色矩形背景的风矢量图例。可以通过 `rect_kwargs` 字典控制矩形的样式，通过 `key_kwargs` 字典控制 `quiverkey` 的样式。
 
 ### 离散 colorbar
 

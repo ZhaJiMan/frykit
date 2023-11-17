@@ -1,5 +1,4 @@
 import math
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -9,8 +8,10 @@ from shapely.prepared import prep
 from pyproj import Transformer
 from matplotlib.path import Path as mPath
 
+from frykit import DATA_DIRPATH
+dirpath = DATA_DIRPATH / 'shp'
+
 # 中国行政区划的目录和表格.
-dirpath = Path(__file__).parent / 'data' / 'shp'
 table = pd.read_csv(
     str(dirpath / 'table.csv'),
     index_col=['level', 'province', 'city']
@@ -269,13 +270,13 @@ def _transform(func, geom):
     '''shapely.ops.transform的修改版, 会将坐标含无效值的对象设为空对象.'''
     if geom.is_empty:
         return type(geom)()
-    if geom.type in ('Point', 'LineString', 'LinearRing'):
+    if geom.geom_type in ('Point', 'LineString', 'LinearRing'):
         coords = func(geom.coords)
         if np.isfinite(coords).all():
             return type(geom)(coords)
         else:
             return type(geom)()
-    elif geom.type == 'Polygon':
+    elif geom.geom_type == 'Polygon':
         shell = func(geom.exterior.coords)
         if not np.isfinite(shell).all():
             return sgeom.Polygon()
@@ -285,7 +286,10 @@ def _transform(func, geom):
             if np.isfinite(hole).all():
                 holes.append(hole)
         return sgeom.Polygon(shell, holes)
-    elif geom.type.startswith('Multi') or geom.type == 'GeometryCollection':
+    elif (
+        geom.geom_type.startswith('Multi')
+        or geom.geom_type == 'GeometryCollection'
+    ):
         parts = []
         for part in geom.geoms:
             part = _transform(func, part)

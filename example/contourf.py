@@ -3,11 +3,12 @@ import xarray as xr
 from scipy.ndimage import gaussian_filter
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
-import cartopy.feature as cfeature
+from cartopy.feature import LAND, OCEAN
 import frykit.plot as fplt
+from frykit import DATA_DIRPATH
 
 # 读取数据.
-ds = xr.load_dataset('../frykit/data/test.nc')
+ds = xr.load_dataset(str(DATA_DIRPATH / 'test.nc'))
 t2m = ds['t2m'].isel(time=0) - 273.15
 X, Y = np.meshgrid(t2m.longitude, t2m.latitude)
 Z = gaussian_filter(t2m, sigma=1)
@@ -44,8 +45,8 @@ ax1.gridlines(
 )
 
 # 添加要素.
-ax1.add_feature(cfeature.LAND.with_scale('50m'), fc='floralwhite')
-ax1.add_feature(cfeature.OCEAN.with_scale('50m'), fc='skyblue')
+ax1.add_feature(LAND.with_scale('50m'), fc='floralwhite')
+ax1.add_feature(OCEAN.with_scale('50m'), fc='skyblue')
 fplt.add_cn_province(ax1, lw=0.3)
 fplt.add_nine_line(ax1, lw=0.5)
 
@@ -87,8 +88,8 @@ ax2.gridlines(
 )
 
 # 添加要素.
-ax2.add_feature(cfeature.LAND.with_scale('50m'), fc='floralwhite')
-ax2.add_feature(cfeature.OCEAN.with_scale('50m'), fc='skyblue')
+ax2.add_feature(LAND.with_scale('50m'), fc='floralwhite')
+ax2.add_feature(OCEAN.with_scale('50m'), fc='skyblue')
 fplt.add_nine_line(ax2, lw=0.5)
 fplt.add_cn_province(ax2, lw=0.3)
 fplt.add_map_scale(ax2, 0.4, 0.15, length=500)

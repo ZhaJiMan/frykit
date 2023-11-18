@@ -30,37 +30,36 @@ import frykit.shp as fshp
 from frykit import DATA_DIRPATH
 
 # 当polygon的引用计数为零时, 弱引用会自动清理缓存.
-_key_to_polygon_cache = WeakValueDictionary()
-_key_to_transformed_cache = WeakKeyDictionary()
-
-_transform_geometry = None
+_key_to_polygon = WeakValueDictionary()
+_key_to_transformed_polygon = WeakKeyDictionary()
+_transform_func = None
 
 def enable_fast_transform():
     '''启用快速坐标变换. 可能在地图边界产生错误的连线.'''
-    global _transform_geometry
-    _transform_geometry = fshp.transform_geometry
-    _key_to_transformed_cache.clear()
+    global _transform_func
+    _transform_func = fshp.transform_geometry
+    _key_to_transformed_polygon.clear()
 
 def disable_fast_transform():
     '''关闭快速坐标变换. 变换结果更正确, 但速度可能较慢.'''
-    global _transform_geometry
-    def _transform_geometry(geom, crs_from, crs_to):
+    global _transform_func
+    def _transform_func(geom, crs_from, crs_to):
         return crs_to.project_geometry(geom, crs_from)
-    _key_to_transformed_cache.clear()
+    _key_to_transformed_polygon.clear()
 
 enable_fast_transform()
 
-def _cached_transform(polygon, crs_from, crs_to):
-    '''调用_transform_geometry并缓存结果.'''
+def _cached_transform_func(polygon, crs_from, crs_to):
+    '''调用_transform_func并缓存结果.'''
     if crs_from == crs_to:
         return polygon
 
     key = _GeomKey(polygon)
-    _key_to_polygon_cache.setdefault(key, polygon)
-    mapping = _key_to_transformed_cache.setdefault(key, {})
+    _key_to_polygon.setdefault(key, polygon)
+    mapping = _key_to_transformed_polygon.setdefault(key, {})
     value = mapping.get(crs_to)
     if value is None:
-        value = _transform_geometry(polygon, crs_from, crs_to)
+        value = _transform_func(polygon, crs_from, crs_to)
         mapping[crs_to] = value
 
     return value
@@ -99,19 +98,19 @@ def add_polygons(ax, polygons, crs=None, **kwargs):
     if isinstance(ax, GeoAxes):
         crs = ccrs.PlateCarree() if crs is None else crs
         trans = ax.projection._as_mpl_transform(ax)
-        to = lambda x: fshp.polygon_to_path(
-            _cached_transform(x, crs, ax.projection)
+        func = lambda x: fshp.polygon_to_path(
+            _cached_transform_func(x, crs, ax.projection)
         )
     elif isinstance(ax, Axes):
         if crs is not None:
             raise ValueError('ax是Axes时crs只能为None')
         trans = ax.transData
-        to = fshp.polygon_to_path
+        func = fshp.polygon_to_path
     else:
         raise ValueError('ax只能是Axes或GeoAxes')
 
     # PathCollection比PathPatch更快
-    paths = [to(polygon) for polygon in polygons]
+    paths = [func(polygon) for polygon in polygons]
     pc = PathCollection(paths, transform=trans, **kwargs)
     ax.add_collection(pc)
 
@@ -187,7 +186,7 @@ def clip_by_polygon(artist, polygon, crs=None):
     if isinstance(ax, GeoAxes):
         trans = ax.projection._as_mpl_transform(ax)
         crs = ccrs.PlateCarree() if crs is None else crs
-        polygon = _cached_transform(polygon, crs, ax.projection)
+        polygon = _cached_transform_func(polygon, crs, ax.projection)
         boundary = _get_boundary(ax)
         polygon = polygon & boundary
     elif isinstance(ax, Axes):
@@ -474,9 +473,14 @@ def clip_by_ocean(artist, resolution='110m'):
     clip_by_polygon(artist, ocean)
 
 def _set_rectangular(
-    ax, extents=None,
-    xticks=None, yticks=None, nx=0, ny=0,
-    xformatter=None, yformatter=None
+    ax,
+    extents=None,
+    xticks=None,
+    yticks=None,
+    nx=0,
+    ny=0,
+    xformatter=None,
+    yformatter=None
 ):
     '''设置矩形投影的GeoAxes的范围和刻度.'''
     # 默认formatter.
@@ -507,9 +511,14 @@ def _set_rectangular(
         ax.set_extent(extents, crs)
 
 def _set_non_rectangular(
-    ax, extents=None,
-    xticks=None, yticks=None, nx=0, ny=0,
-    xformatter=None, yformatter=None
+    ax,
+    extents=None,
+    xticks=None,
+    yticks=None,
+    nx=0,
+    ny=0,
+    xformatter=None,
+    yformatter=None
 ):
     '''设置非矩形投影的GeoAxes的范围和刻度.'''
     # 默认formatter.
@@ -549,7 +558,7 @@ def _set_non_rectangular(
                 continue
             lon = np.full_like(lat, xtick)
             line = sgeom.LineString(np.column_stack([lon, lat]))
-            line = _transform_geometry(line, crs, ax.projection)
+            line = _transform_func(line, crs, ax.projection)
             point = bottom_axis.intersection(line)
             if isinstance(point, sgeom.Point) and not point.is_empty:
                 bottom_ticklocs.append(point.x)
@@ -582,7 +591,7 @@ def _set_non_rectangular(
                 continue
             lat = np.full_like(lon, ytick)
             line = sgeom.LineString(np.column_stack([lon, lat]))
-            line = _transform_geometry(line, crs, ax.projection)
+            line = _transform_func(line, crs, ax.projection)
             point = left_axis.intersection(line)
             if isinstance(point, sgeom.Point) and not point.is_empty:
                 left_ticklocs.append(point.y)
@@ -604,9 +613,14 @@ def _set_non_rectangular(
             tick.label1.set_alpha(False)
 
 def set_extent_and_ticks(
-    ax, extents=None,
-    xticks=None, yticks=None, nx=0, ny=0,
-    xformatter=None, yformatter=None
+    ax,
+    extents=None,
+    xticks=None,
+    yticks=None,
+    nx=0,
+    ny=0,
+    xformatter=None,
+    yformatter=None
 ):
     '''
     设置GeoAxes的范围和刻度.
@@ -658,9 +672,13 @@ def _create_kwargs(kwargs):
     return {} if kwargs is None else kwargs.copy()
 
 def add_quiver_legend(
-    Q, U, units='m/s',
-    width=0.15, height=0.15, loc='bottom right',
-    rect_kwargs=None, key_kwargs=None
+    Q, U,
+    units='m/s',
+    width=0.15,
+    height=0.15,
+    loc='bottom right',
+    rect_kwargs=None,
+    key_kwargs=None
 ):
     '''
     为Axes.quiver的结果添加图例.
@@ -749,27 +767,34 @@ def add_quiver_legend(
     # 再将qk调整至patch的中心.
     fontsize = qk.text.get_fontsize() / 72
     dy = (qk._labelsep_inches + fontsize) / 2
-    transform = mtransforms.offset_copy(ax.transAxes, ax.figure, 0, dy)
+    trans = mtransforms.offset_copy(ax.transAxes, ax.figure, 0, dy)
     qk._set_transform = lambda: None  # 无效类方法.
-    qk.set_transform(transform)
+    qk.set_transform(trans)
 
     return rect, qk
 
-# TODO: 添加rotation参数.
 def add_compass(
-    ax, x, y, size=20, style='arrow',
-    path_kwargs=None, text_kwargs=None
+    ax, x, y,
+    angle=None,
+    size=20,
+    style='arrow',
+    path_kwargs=None,
+    text_kwargs=None
 ):
     '''
     向Axes添加指北针.
 
     Parameters
     ----------
-    ax : Axes
+    ax : Axes or GeoAxes
         目标Axes.
 
     x, y : float
         指北针的横纵坐标. 基于axes坐标系.
+
+    angle : float
+        指北针的方向, 从x轴逆时针方向算起, 单位为度.
+        默认为None, 当ax是Axes时取angle=90, 当ax是GeoAxes时会自动计算角度.
 
     size : float, optional
         指北针的大小, 单位为点. 默认为20.
@@ -811,28 +836,44 @@ def add_compass(
     if 'fontsize' not in text_kwargs and 'size' not in text_kwargs:
         text_kwargs['fontsize'] = size / 1.5
 
-    head = size / 72
-    offset = mtransforms.ScaledTranslation(x, y, ax.transAxes)
-    trans = ax.figure.dpi_scale_trans + offset
+    # 计算(lon, lat)到(lon, lat + 1)的角度.
+    # 当(x, y)超出Axes范围时会计算出无意义的角度.
+    if angle is None:
+        if isinstance(ax, GeoAxes):
+            crs = ccrs.PlateCarree()
+            axes_to_data = ax.transAxes - ax.transData
+            x0, y0 = axes_to_data.transform((x, y))
+            lon0, lat0 = crs.transform_point(x0, y0, ax.projection)
+            lon1, lat1 = lon0, min(lat0 + 1, 90)
+            x1, y1 = ax.projection.transform_point(lon1, lat1, crs)
+            angle = np.rad2deg(np.arctan2(y1 - y0, x1 - x0))
+        else:
+            angle = 90
 
-    # 指北针的大小基于物理坐标系, 位置基于axes坐标系.
+    # 指北针的大小基于物理坐标系, 旋转基于data坐标系, 平移基于axes坐标系.
+    rotation = mtransforms.Affine2D().rotate_deg(angle)
+    translation = mtransforms.ScaledTranslation(x, y, ax.transAxes)
+    trans = ax.figure.dpi_scale_trans + rotation + translation
+
+    # 用Path画出指北针箭头.
+    head = size / 72
     if style == 'arrow':
         width = axis = head * 2 / 3
-        left_verts = [(0, 0), (-width / 2, axis - head), (0, axis), (0, 0)]
-        right_verts = [(0, 0), (0, axis), (width / 2, axis - head), (0, 0)]
-        paths = [mPath(left_verts), mPath(right_verts)]
+        verts1 = [(0, 0), (axis, 0), (axis - head, width / 2), (0, 0)]
+        verts2 = [(0, 0), (axis - head, -width / 2), (axis, 0), (0, 0)]
+        paths = [mPath(verts1), mPath(verts2)]
     elif style == 'star':
         width = head / 3
         axis = head + width / 2
-        left_verts = [(0, 0), (0, axis), (-width / 2, axis - head), (0, 0)]
-        right_verts = [(0, 0), (width / 2, axis - head), (0, axis), (0, 0)]
-        left_path = mPath(left_verts)
-        right_path = mPath(right_verts)
+        verts1 = [(0, 0), (axis, 0), (axis - head, width / 2), (0, 0)]
+        verts2 = [(0, 0), (axis - head, -width / 2), (axis, 0), (0, 0)]
+        path1 = mPath(verts1)
+        path2 = mPath(verts2)
         paths = []
         for deg in range(0, 360, 90):
-            rotate = mtransforms.Affine2D().rotate_deg(deg)
-            paths.append(left_path.transformed(rotate))
-            paths.append(right_path.transformed(rotate))
+            rotation = mtransforms.Affine2D().rotate_deg(deg)
+            paths.append(path1.transformed(rotation))
+            paths.append(path2.transformed(rotation))
     else:
         raise ValueError('style参数错误')
 
@@ -841,10 +882,13 @@ def add_compass(
     ax.add_collection(pc)
 
     # 添加N字.
-    pad = head / 10
+    pad = head / 3
     text = ax.text(
-        0, axis + pad, 'N', ha='center', va='bottom',
-        transform=trans, **text_kwargs
+        axis + pad, 0, 'N',
+        ha='center', va='center',
+        rotation=angle - 90,
+        transform=trans,
+        **text_kwargs,
     )
 
     return pc, text
@@ -874,6 +918,9 @@ def add_map_scale(ax, x, y, length=1000, units='km'):
     scale : Axes
         表示比例尺的Axes对象.
     '''
+    if not isinstance(ax, GeoAxes):
+        raise ValueError("ax只能是GeoAxes")
+
     if units == 'km':
         unit = 1000
     elif units == 'm':
@@ -896,7 +943,7 @@ def add_map_scale(ax, x, y, length=1000, units='km'):
     dr = geod.inv(lon0, lat0, lon1, lat1)[2] / unit
     dxdr = dx / dr
 
-    # axes坐标系的位置转为data坐标.
+    # axes坐标转为data坐标.
     axes_to_data = ax.transAxes - ax.transData
     x, y = axes_to_data.transform((x, y))
     width = length * dxdr

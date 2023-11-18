@@ -63,8 +63,8 @@ ax1.legend(
 )
 
 # 添加指北针和比例尺.
-fplt.add_compass(ax1, 0.95, 0.8, size=15, style='star')
-scale = fplt.add_map_scale(ax1, 0.36, 0.8, length=1000)
+fplt.add_compass(ax1, 0.5, 0.85, size=15, style='star')
+scale = fplt.add_map_scale(ax1, 0.22, 0.1, length=1000)
 scale.set_xticks([0, 500, 1000])
 
 # 简化名称.

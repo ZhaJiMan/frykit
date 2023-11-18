@@ -107,16 +107,7 @@ enable_fast_transform()
 disable_fast_transform()
 ```
 
-`add_cn_xxx` 系列函数会通过缓存节省读取国界和省界数据的时间开销。`add_polygon`、`add_polygons` 和 `clip_by_xxx` 系列函数会通过缓存节省多边形坐标变换的时间开销。
-
-```Python
-# 维持对多边形对象的引用.
-polygon = sgeom.polygon(...)
-
-# 第二次调用耗时更短.
-fplt.add_polygon(ax, polygon)
-fplt.add_polygon(ax, polygon)
-```
+`add_cn_xxx` 系列函数在多次调用时会通过缓存节省读取国界和省界数据的时间开销。如果能维持对多边形对象的引用，`add_polygon`、`add_polygons` 和 `clip_by_xxx` 系列函数在多次调用时会通过缓存节省多边形坐标变换的时间开销。
 
 ### 添加指北针和比例尺
 
@@ -126,7 +117,7 @@ scale = fplt.add_map_scale(ax1, 0.36, 0.8, length=1000)
 scale.set_xticks([0, 500, 1000])
 ```
 
-指北针目前只是单纯指向图片上方，并不能真正指向所在地点的北方。
+指北针会自动指向所在位置处的北向，也可以通过 `angle` 参数手动指定角度。
 
 比例尺的长度通过 `GeoAxes` 中心处单位长度和实际距离的比值计算得到。比例尺本身由一个压扁了的 `Axes` 模拟，所以可通过 `set_xticks` 等方法修改样式。
 

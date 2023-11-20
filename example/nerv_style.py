@@ -25,9 +25,9 @@ for i, name in enumerate(names):
     names[i] = converter.convert(name)
 
 # 设置投影.
-map_crs = ccrs.LambertConformal(
+map_crs = ccrs.AzimuthalEquidistant(
     central_longitude=105,
-    standard_parallels=(25, 47)
+    central_latitude=35
 )
 data_crs = ccrs.PlateCarree()
 
@@ -57,17 +57,25 @@ solid_props = {
 # 添加说明框.
 ax.text(
     0.2, 0.2, 'CHINA MAP',
-    color=boxcolor, alpha=hollow_props['alpha'],
-    fontsize=10, fontfamily='Helvetica Neue', fontweight='bold',
-    ha='left', va='center',
+    color=boxcolor,
+    alpha=hollow_props['alpha'],
+    fontsize=10,
+    fontfamily='Helvetica Neue',
+    fontweight='bold',
+    ha='left',
+    va='center',
     bbox=hollow_props,
     transform=ax.transAxes
 )
 ax.text(
     0.2, 0.26, 'SEP 2022',
-    color=boxcolor, alpha=hollow_props['alpha'],
-    fontsize=10, fontfamily='Helvetica Neue', fontweight='bold',
-    ha='left', va='center',
+    color=boxcolor,
+    alpha=hollow_props['alpha'],
+    fontsize=10,
+    fontfamily='Helvetica Neue',
+    fontweight='bold',
+    ha='left',
+    va='center',
     transform=ax.transAxes
 )
 
@@ -76,9 +84,13 @@ for name, province in zip(names, provinces):
     point = province.representative_point()
     ax.text(
         point.x, point.y, name,
-        color=fontcolor, ha='center', va='center',
-        fontsize=4, fontfamily='FOT-Matisse Pro',
-        bbox=solid_props, transform=data_crs
+        color=fontcolor,
+        fontsize=4,
+        fontfamily='FOT-Matisse Pro',
+        ha='center',
+        va='center',
+        bbox=solid_props,
+        transform=data_crs
     )
 
 # 保存图片.

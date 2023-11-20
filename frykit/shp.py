@@ -1,15 +1,25 @@
 import math
+from collections.abc import Sequence, Callable
+from typing import Any, Union, Optional, Literal
 
 import numpy as np
 import pandas as pd
+
 import shapefile
+from shapefile import ShapeRecord
+
 import shapely.geometry as sgeom
+from shapely.geometry.base import BaseGeometry, CoordinateSequence
 from shapely.prepared import prep
 from pyproj import Transformer
-from matplotlib.path import Path as mPath
+
+from matplotlib.path import Path
+from cartopy.crs import CRS
 
 from frykit import DATA_DIRPATH
 dirpath = DATA_DIRPATH / 'shp'
+
+PolygonType = Union[sgeom.Polygon, sgeom.MultiPolygon]
 
 # 中国行政区划的目录和表格.
 table = pd.read_csv(
@@ -17,26 +27,31 @@ table = pd.read_csv(
     index_col=['level', 'province', 'city']
 )
 
-def get_cn_province_names():
+def get_cn_province_names() -> list[str]:
     '''获取中国省名.'''
     return table.index.levels[1].to_list()
 
-def get_cn_city_names():
+def get_cn_city_names() -> list[str]:
     '''获取中国市名.'''
     return table.index.levels[2].to_list()
 
-def _to_geom(shapeRec):
+def _to_geom(shapeRec: ShapeRecord) -> BaseGeometry:
     '''将shapeRecord转为几何对象.'''
     return sgeom.shape(shapeRec.shape)
 
-def _to_dict(shapeRec):
+def _to_dict(shapeRec: ShapeRecord) -> dict:
     '''将shapeRecord转为字典.'''
     d = shapeRec.record.as_dict()
     d['geometry'] = _to_geom(shapeRec)
 
     return d
 
-def get_cn_shp(level='国', province=None, city=None, as_dict=False):
+def get_cn_shp(
+    level: Literal['国', '省', '市'] = '国',
+    province: Optional[Union[str, Sequence[str]]] = None,
+    city: Optional[Union[str, Sequence[str]]] = None,
+    as_dict: bool = False
+) -> Union[PolygonType, dict, list[PolygonType], list[dict]]:
     '''
     获取中国行政区划的多边形. 支持国界, 省界和市界.
 
@@ -57,11 +72,11 @@ def get_cn_shp(level='国', province=None, city=None, as_dict=False):
     level : {'国', '省', '市'}, optional
         边界等级. 默认为'国'.
 
-    province : str or list of str, optional
-        省名. 默认为None.
+    province : str or sequence of str, optional
+        省名. 可以是字符串或一组字符串, 默认为None.
 
-    city : str or list of str, optional
-        市名. 默认为None.
+    city : str or sequence of str, optional
+        市名. 可以是字符串或一组字符串, 默认为None.
 
     as_dict : bool, optional
         是否以字典形式返回结果. 默认为False.
@@ -72,7 +87,7 @@ def get_cn_shp(level='国', province=None, city=None, as_dict=False):
 
     Returns
     -------
-    shps : Polygon or list of Polygon, dict or list of dict
+    shps : PolygonType or list of PolygonType, dict or list of dict
         行政区划的多边形或多边形构成的列表.
         as_dict为True时则是字典或字典构成的列表.
     '''
@@ -105,7 +120,7 @@ def get_cn_shp(level='国', province=None, city=None, as_dict=False):
     # 只含一条记录时返回标量.
     return shps if len(shps) > 1 else shps[0]
 
-def get_nine_line(as_dict=False):
+def get_nine_line(as_dict: bool = False) -> Union[PolygonType, dict]:
     '''
     获取九段线的多边形.
 
@@ -119,7 +134,7 @@ def get_nine_line(as_dict=False):
 
     Returns
     -------
-    nine_line : MultiPolygon or dict
+    nine_line : PolygonType or dict
         用十个多边形表示的九段线.
     '''
     to = _to_dict if as_dict else _to_geom
@@ -127,28 +142,28 @@ def get_nine_line(as_dict=False):
     with shapefile.Reader(str(filepath)) as reader:
         return to(reader.shapeRecord(0))
 
-def simplify_province_name(name):
+def simplify_province_name(name: str) -> str:
     '''简化省名到2或3个字.'''
     if name.startswith('内蒙古') or name.startswith('黑龙江'):
         return name[:3]
     else:
         return name[:2]
 
-def _ring_codes(n):
+def _ring_codes(n: int) -> list[np.uint8]:
     '''为长度为n的环生成codes.'''
-    codes = [mPath.LINETO] * n
-    codes[0] = mPath.MOVETO
-    codes[-1] = mPath.CLOSEPOLY
+    codes = [Path.LINETO] * n
+    codes[0] = Path.MOVETO
+    codes[-1] = Path.CLOSEPOLY
 
     return codes
 
-def polygon_to_path(polygon, keep_empty=True):
+def polygon_to_path(polygon: PolygonType, keep_empty: bool = True) -> Path:
     '''
-    将Polygon或MultiPolygon转为Path.
+    将多边形转为Path.
 
     Parameters
     ----------
-    polygon : Polygon or MultiPolygon
+    polygon : PolygonType
         多边形对象.
 
     keep_empty : bool, optional
@@ -165,40 +180,40 @@ def polygon_to_path(polygon, keep_empty=True):
 
     if polygon.is_empty:
         if keep_empty:
-            return mPath([(0, 0)])
+            return Path([(0, 0)])
         else:
             raise ValueError('polygon不能为空多边形')
 
     # 用多边形含有的所有环的顶点构造Path.
     vertices, codes = [], []
     for polygon in getattr(polygon, 'geoms', [polygon]):
-        for ring in [polygon.exterior] + list(polygon.interiors):
+        for ring in [polygon.exterior, *polygon.interiors]:
             vertices.append(np.asarray(ring.coords))
-            codes += _ring_codes(len(ring.coords))
+            codes.extend(_ring_codes(len(ring.coords)))
     vertices = np.vstack(vertices)
-    path = mPath(vertices, codes)
+    path = Path(vertices, codes)
 
     return path
 
-def polygon_to_mask(polygon, x, y):
+def polygon_to_mask(polygon: PolygonType, x: Any, y: Any) -> np.ndarray:
     '''
     用多边形制作掩膜(mask)数组.
 
     Parameters
     ----------
-    polygon : Polygon or MultiPolygon
-        pass
+    polygon : PolygonType
+        多边形对象.
 
     x : array_like
-        掩膜数组的横坐标. 要求形状与y相同.
+        数据点的横坐标. 要求形状与y相同.
 
     y : array_like
-        掩膜数组的纵坐标. 要求形状与x相同.
+        数据点的纵坐标. 要求形状与x相同.
 
     Returns
     -------
     mask : ndarray
-        布尔类型的掩膜数组, 真值表示落入多边形内部. 形状与x和y相同.
+        布尔类型的掩膜数组, 真值表示数据点落入多边形内部. 形状与x和y相同.
     '''
     x = np.atleast_1d(x)
     y = np.atleast_1d(y)
@@ -266,7 +281,10 @@ def polygon_to_mask(polygon, x, y):
 
     return recursion(x, y)
 
-def _transform(func, geom):
+def _transform(
+    func: Callable[[CoordinateSequence], np.ndarray],
+    geom: BaseGeometry
+) -> BaseGeometry:
     '''shapely.ops.transform的修改版, 会将坐标含无效值的对象设为空对象.'''
     if geom.is_empty:
         return type(geom)()
@@ -302,16 +320,20 @@ def _transform(func, geom):
     else:
         raise TypeError('geom不是几何对象')
 
-def transform_geometries(geoms, crs_from, crs_to):
+def transform_geometries(
+    geoms: Sequence[BaseGeometry],
+    crs_from: CRS,
+    crs_to: CRS
+) -> list[BaseGeometry]:
     '''
-    对一组几何对象的坐标进行变换, 返回变换后的对象组成的列表.
+    将一组几何对象从crs_from坐标系变换到crs_to坐标系上.
 
     基于pyproj.Transformer实现. 相比cartopy.crs.Projection.project_geometry
     速度更快, 但当几何对象跨越坐标系边界时可能产生错误的连线.
 
     Parameters
     ----------
-    geoms : list of BaseGeometry or BaseMultipartGeometry
+    geoms : sequence of BaseGeometry
         源坐标系上的一组几何对象.
 
     crs_from : CRS
@@ -322,7 +344,7 @@ def transform_geometries(geoms, crs_from, crs_to):
 
     Returns
     -------
-    geoms : list of BaseGeometry or BaseMultipartGeometry
+    geoms : list of BaseGeometry
         目标坐标系上的一组几何对象.
     '''
     # 坐标系相同时直接复制.
@@ -330,23 +352,27 @@ def transform_geometries(geoms, crs_from, crs_to):
         return [type(geom)(geom) for geom in geoms]
 
     transformer = Transformer.from_crs(crs_from, crs_to, always_xy=True)
-    def func(coords):
+    def func(coords: CoordinateSequence) -> np.ndarray:
         coords = np.asarray(coords)
         return np.column_stack(
             transformer.transform(coords[:, 0], coords[:, 1])
         ).squeeze()
     return [_transform(func, geom) for geom in geoms]
 
-def transform_geometry(geom, crs_from, crs_to):
+def transform_geometry(
+    geom: BaseGeometry,
+    crs_from: CRS,
+    crs_to: CRS
+) -> BaseGeometry:
     '''
-    对一个几何对象的坐标进行变换.
+    将一个几何对象从crs_from坐标系变换到crs_to坐标系上.
 
     基于pyproj.Transformer实现. 相比cartopy.crs.Projection.project_geometry
     速度更快, 但当几何对象跨越坐标系边界时可能产生错误的连线.
 
     Parameters
     ----------
-    geom : BaseGeometry or BaseMultipartGeometry
+    geom : BaseGeometry
         源坐标系上的几何对象.
 
     crs_from : CRS
@@ -357,7 +383,7 @@ def transform_geometry(geom, crs_from, crs_to):
 
     Returns
     -------
-    geom : BaseGeometry or BaseMultipartGeometry
+    geom : BaseGeometry
         目标坐标系上的几何对象.
     '''
     return transform_geometries([geom], crs_from, crs_to)[0]

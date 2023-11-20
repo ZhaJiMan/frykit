@@ -16,9 +16,9 @@ extents1 = [78, 134, 14, 55]
 extents2 = [105, 120, 2, 25]
 
 # 设置投影.
-map_crs = ccrs.LambertConformal(
+map_crs = ccrs.AzimuthalEquidistant(
     central_longitude=105,
-    standard_parallels=(25, 47)
+    central_latitude=35
 )
 data_crs = ccrs.PlateCarree()
 

@@ -31,6 +31,8 @@ pip install frykit
 
 依赖为 `cartopy>=0.20.0`。
 
+`frykit>=0.3.0` 时额外需要 `python>=3.9.0`。
+
 ## 示例
 
 ### 读取中国行政区划
@@ -177,8 +179,10 @@ cbar.set_ticks(boundaries)
 
 ![axes](image/axes.png)
 
-![contourf](image/contourf.png)
-
 ![fill](image/fill.png)
+
+![quiver](image/quiver.png)
+
+![contourf](image/contourf.png)
 
 ![nerv_style](image/nerv_style.png)

@@ -1,20 +1,22 @@
+from typing import Any, Union, Literal
+
 import numpy as np
 from scipy.spatial import KDTree
 from scipy.stats import binned_statistic_2d
 
-def lon_to_180(lon):
+def lon_to_180(lon: Any) -> Any:
     '''将经度换算到[-180, 180]范围内. 注意180会变成-180.'''
     return (lon + 180) % 360 - 180
 
-def lon_to_360(lon):
+def lon_to_360(lon: Any) -> Any:
     '''将经度换算到[0, 360]范围内.'''
     return lon % 360
 
-def month_to_season(month):
+def month_to_season(month: Any) -> Any:
     '''将月份换算为季节. 月份用[1, 12]表示, 季节用[1, 4]表示.'''
     return (month - 3) % 12 // 3 + 1
 
-def polar_to_xy(r, phi, radians=True):
+def polar_to_xy(r: Any, phi: Any, radians: bool = True) -> tuple[Any, Any]:
     '''极坐标转直角坐标.'''
     if not radians:
         phi = np.deg2rad(phi)
@@ -23,7 +25,7 @@ def polar_to_xy(r, phi, radians=True):
 
     return x, y
 
-def xy_to_polar(x, y, radians=True):
+def xy_to_polar(x: Any, y: Any, radians: bool = True) -> tuple[Any, Any]:
     '''直角坐标转极坐标. 角度范围[-pi, pi].'''
     r = np.hypot(x, y)
     phi = np.arctan2(y, x)
@@ -32,7 +34,7 @@ def xy_to_polar(x, y, radians=True):
 
     return r, phi
 
-def wswd_to_uv(ws, wd):
+def wswd_to_uv(ws: Any, wd: Any) -> tuple[Any, Any]:
     '''风向风速转为uv.'''
     wd = np.deg2rad(wd)
     u = -ws * np.sin(wd)
@@ -40,14 +42,20 @@ def wswd_to_uv(ws, wd):
 
     return u, v
 
-def uv_to_wswd(u, v):
+def uv_to_wswd(u: Any, v: Any) -> tuple[Any, Any]:
     '''uv转为风向风速.'''
     ws = np.hypot(u, v)
     wd = np.rad2deg(np.arctan2(u, v)) + 180
 
     return ws, wd
 
-def haversine(lon1, lat1, lon2, lat2, as_degrees=False):
+def haversine(
+    lon1: Any,
+    lat1: Any,
+    lon2: Any,
+    lat2: Any,
+    as_degrees: bool = False
+) -> Any:
     '''利用haversine公式计算两点间的圆心角.'''
     lon1, lat1, lon2, lat2 = map(np.deg2rad, [lon1, lat1, lon2, lat2])
     dlon = lon2 - lon1
@@ -62,19 +70,24 @@ def haversine(lon1, lat1, lon2, lat2, as_degrees=False):
 
     return dtheta
 
-def region_ind(lon, lat, extents, form='mask'):
+def region_ind(
+    lon: Any,
+    lat: Any,
+    extents: Any,
+    form: Literal['mask', 'ix'] = 'mask'
+) -> Union[np.ndarray, tuple[np.ndarray, np.ndarray]]:
     '''
     返回落入给定经纬度方框范围内的索引.
 
     Parameters
     ----------
-    lon : ndarray
-        经度数组. 若form='mask'则要求形状与lat一致.
+    lon : array_like
+        经度. 若form='mask'则要求形状与lat一致.
 
-    lat : ndarray
-        纬度数组. 若form='mask'则要求形状与lon一致.
+    lat : array_like
+        纬度. 若form='mask'则要求形状与lon一致.
 
-    extents : 4-tuple of float
+    extents : (4,) array_like
         经纬度方框的范围[lonmin, lonmax, latmin, latmax].
 
     form : {'mask', 'ix'}
@@ -85,7 +98,7 @@ def region_ind(lon, lat, extents, form='mask'):
     Returns
     -------
     ind : ndarray or 2-tuple of ndarray
-        索引的布尔数组或下标数组构成的元组.
+        索引的布尔数组, 或者两个下标数组构成的元组.
 
     Examples
     --------
@@ -96,6 +109,8 @@ def region_ind(lon, lat, extents, form='mask'):
     data2d_subset = data2d[ixgrid]
     data3d_subset = data3d[:, ixgrid[0], ixgrid[1]]
     '''
+    lon = np.asarray(lon)
+    lat = np.asarray(lat)
     lonmin, lonmax, latmin, latmax = extents
     mask_lon = (lon >= lonmin) & (lon <= lonmax)
     mask_lat = (lat >= latmin) & (lat <= latmax)
@@ -110,88 +125,100 @@ def region_ind(lon, lat, extents, form='mask'):
 
     return ind
 
-def interp_nearest(points, values, xi, radius, fill_value=np.nan):
+def interp_nearest(
+    points: Any,
+    values: Any,
+    xi: Any,
+    radius: float = np.inf,
+    fill_value: float = np.nan
+) -> np.ndarray:
     '''
-    最邻近插值. 接口仿照griddata.
+    可以限制搜索半径的最近邻插值.
 
     Parameters
     ----------
-    points : (n, D) ndarray or D-tuple of (n,) ndarrays
-        n个数据点的坐标. 每个点有D维个坐标分量.
+    points : (n, d) array_like
+        n个数据点的坐标, 每个点有d个坐标分量.
 
-    values : (n,) ndarray
-        n个数据点的值.
+    values : (n,) or (k, n) array_like
+        n个数据点的变量值, 可以有k个变量.
 
-    xi : (m, D) ndarray or D-tuple of (m,) ndarrays
-        m个插值点的坐标. 每个点有D维个坐标分量.
+    xi: (m, d) array_like
+        m个插值点的坐标. 每个点有d个坐标分量.
 
-    radius : float
-        插值点能匹配到数据点的最大距离(半径).
+    radius : float, optional
+        插值点能匹配到数据点的最大距离(半径). 默认为Inf.
 
     fill_value : float, optional
         距离超出radius的插值点用fill_value填充. 默认为NaN.
 
     Returns
     -------
-    result : (m,) ndarray
-        m个插值点的值.
+    result : (m,) or (k, m) ndarray
+        插值点处变量值的数组.
     '''
-    if isinstance(points, tuple):
-        points = np.column_stack(points)
-    if isinstance(xi, tuple):
-        xi = np.column_stack(xi)
-    values = np.asarray(values)
+    points = np.asarray(points)
+    xi = np.asarray(xi)
+    values = np.asarray(values, dtype=float)
 
     # 利用KDTree搜索最邻近的值.
     tree = KDTree(points)
-    dist, inds = tree.query(xi)
-    result = values[inds]
-    result[dist > radius] = fill_value
+    dd, ii = tree.query(xi)
+    result = values[..., ii]
+    result[..., dd > radius] = fill_value
 
     return result
 
-def bin_avg(lon, lat, data, bins_lon, bins_lat):
+def bin_avg(
+    x: Any,
+    y: Any,
+    data: Any,
+    xbins: Any,
+    ybins: Any
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     '''
     利用平均的方式对散点数据进行二维binning.
 
     Parameters
     ----------
-    lon : (npt,) array_like
-        一维经度数组.
+    x : (n,) array_like
+        n个数据点的横坐标.
 
-    lat : (npt,) array_like
-        一维纬度数组.
+    y : (n,) array_like
+        n个数据点的纵坐标.
 
-    data : (npt,) array_like or (nvar,) list of (npt,) array_like
-        一维变量数组. 如果是多个变量组成的列表, 那么分别对每个变量进行计算.
+    data : (n,) or (m, n) array_like
+        n个数据点的变量值, 可以有m个变量.
 
-    bins_lon : (nlon + 1,) array_like
-        用于划分经度的bins.
+    xbins : (nx + 1,) array_like
+        用于划分横坐标的bins.
 
-    bins_lat : (nlat + 1,) array_like
-        用于划分纬度的bins.
+    ybins : (ny + 1,) array_like
+        用于划分纵坐标的bins.
 
     Returns
     -------
-    glon : (nlon,) ndarray
-        网格经度.
+    xc : (nx,) ndarray
+        xbins每个bin中心的横坐标.
 
-    glat : (nlat,) ndarray
-        网格纬度.
+    yc : (ny,) ndarray
+        ybins每个bin中心的纵坐标.
 
-    avg : (nlat, nlon) or (nvar, nlat, nlon) ndarray
-        每个网格点的平均值. 为了便于画图, 纬度维在前.
+    avg : (ny, nx) or (m, ny, nx) ndarray
+        xbins和ybins构成的网格内的变量平均值.
+        为了便于画图, 采取(ny, nx)的形状.
     '''
-    def func(arr):
+    def nanmean(arr):
         '''避免空切片警告的nanmean.'''
         arr = arr[~np.isnan(arr)]
         return np.nan if arr.size == 0 else arr.mean()
 
-    avg, bins_lat, bins_lon, _ = binned_statistic_2d(
-        lat, lon, data, bins=[bins_lat, bins_lon],
-        statistic=func
+    avg, xbins, ybins, _ = binned_statistic_2d(
+        x, y, data,
+        bins=[xbins, ybins],
+        statistic=nanmean
     )
-    glon = (bins_lon[1:] + bins_lon[:-1]) / 2
-    glat = (bins_lat[1:] + bins_lat[:-1]) / 2
+    xc = (xbins[1:] + xbins[:-1]) / 2
+    yc = (ybins[1:] + ybins[:-1]) / 2
 
-    return glon, glat, avg
+    return xc, yc, avg

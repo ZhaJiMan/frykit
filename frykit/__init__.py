@@ -1,5 +1,5 @@
-from pathlib import Path
+from pathlib import PurePath
 
-__version__ = '0.2.5'
+__version__ = '0.3.0'
 
-DATA_DIRPATH = Path(__file__).parent / 'data'
+DATA_DIRPATH = PurePath(__file__).parent / 'data'

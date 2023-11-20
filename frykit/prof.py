@@ -1,10 +1,20 @@
 import time
 import cProfile
 import functools
+from pathlib import PurePath
+from collections.abc import Callable
+from typing import Any, Optional, Union
 
 from line_profiler import LineProfiler
 
-def timer(func=None, *, prompt=True, fmt=None, prec=None, out=None):
+def timer(
+    func: Optional[Callable] = None,
+    *,
+    prompt: bool = True,
+    fmt: Optional[str] = None,
+    prec: Optional[int] = None,
+    out: Optional[list] = None
+) -> Callable:
     '''
     计时用的装饰器.
 
@@ -33,7 +43,7 @@ def timer(func=None, *, prompt=True, fmt=None, prec=None, out=None):
         )
 
     @functools.wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
         t0 = time.perf_counter()
         result = func(*args, **kwargs)
         t1 = time.perf_counter()
@@ -53,26 +63,26 @@ def timer(func=None, *, prompt=True, fmt=None, prec=None, out=None):
 
     return wrapper
 
-def cprofiler(filename):
+def cprofiler(filepath: Union[str, PurePath]) -> Callable:
     '''cProfile的装饰器. 保存结果到指定路径.'''
-    def decorator(func):
+    def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             with cProfile.Profile() as profile:
                 result = func(*args, **kwargs)
-            profile.dump_stats(filename)
+            profile.dump_stats(str(filepath))
             return result
         return wrapper
     return decorator
 
-def lprofiler(filename):
+def lprofiler(filepath: Union[str, PurePath]) -> Callable:
     '''line_profiler的装饰器. 保存结果到指定路径.'''
-    def decorator(func):
+    def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             profile = LineProfiler(func)
             result = profile.runcall(func, *args, **kwargs)
-            profile.dump_stats(filename)
+            profile.dump_stats(str(filepath))
             return result
         return wrapper
     return decorator

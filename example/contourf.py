@@ -3,26 +3,26 @@ import xarray as xr
 from scipy.ndimage import gaussian_filter
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
-from cartopy.feature import LAND, OCEAN
+from cartopy.feature import LAND
 import frykit.plot as fplt
 from frykit import DATA_DIRPATH
 
 # 读取数据.
 ds = xr.load_dataset(str(DATA_DIRPATH / 'test.nc'))
-t2m = ds['t2m'].isel(time=0) - 273.15
+t2m = ds['t2m'] - 273.15
 X, Y = np.meshgrid(t2m.longitude, t2m.latitude)
 Z = gaussian_filter(t2m, sigma=1)
 
 # 设置地图范围和刻度.
-extents1 = [74, 136, 14, 56]
+extents1 = [74, 136, 13, 57]
 extents2 = [105, 122, 2, 25]
 xticks = np.arange(-180, 181, 10)
 yticks = np.arange(-90, 91, 10)
 
 # 设置投影.
-map_crs = ccrs.LambertConformal(
+map_crs = ccrs.AzimuthalEquidistant(
     central_longitude=105,
-    standard_parallels=(25, 47)
+    central_latitude=35
 )
 data_crs = ccrs.PlateCarree()
 
@@ -36,17 +36,22 @@ plt.rc('ytick', labelsize=8, right=True, labelright=True)
 fig = plt.figure(figsize=(10, 6))
 ax1 = fig.add_subplot(projection=map_crs)
 fplt.set_extent_and_ticks(
-    ax1, extents=extents1,
-    xticks=xticks, yticks=yticks
+    ax1,
+    extents=extents1,
+    xticks=xticks,
+    yticks=yticks
 )
 ax1.gridlines(
-    xlocs=xticks, ylocs=yticks,
-    lw=0.5, ls='--', color='gray'
+    xlocs=xticks,
+    ylocs=yticks,
+    lw=0.5,
+    ls='--',
+    color='gray'
 )
 
 # 添加要素.
+ax1.set_facecolor('skyblue')  # 该投影中OCEAN的变换会出错.
 ax1.add_feature(LAND.with_scale('50m'), fc='floralwhite')
-ax1.add_feature(OCEAN.with_scale('50m'), fc='skyblue')
 fplt.add_cn_province(ax1, lw=0.3)
 fplt.add_nine_line(ax1, lw=0.5)
 
@@ -54,16 +59,24 @@ fplt.add_nine_line(ax1, lw=0.5)
 levels = np.linspace(0, 32, 50)
 cticks = np.linspace(0, 32, 9)
 cf = ax1.contourf(
-    X, Y, Z, levels, cmap='turbo', extend='both',
-    transform=data_crs, transform_first=True
+    X, Y, Z, levels,
+    cmap='turbo',
+    extend='both',
+    transform=data_crs,
+    transform_first=True
 )
 fplt.clip_by_cn_border(cf)
 
 # 绘制colorbar.
 cbar = fig.colorbar(
-    cf, ax=ax1, orientation='horizontal',
-    shrink=0.6, pad=0.1, aspect=30,
-    ticks=cticks, extendfrac=0
+    cf,
+    ax=ax1,
+    orientation='horizontal',
+    shrink=0.6,
+    pad=0.1,
+    aspect=30,
+    ticks=cticks,
+    extendfrac=0
 )
 cbar.ax.tick_params(length=4, labelsize=8)
 
@@ -74,8 +87,10 @@ scale.set_xticks([0, 500, 1000])
 
 # 设置标题.
 ax1.set_title(
-    '2m Temerparture (\N{DEGREE CELSIUS})', y=1.1,
-    fontsize='large', weight='bold'
+    '2m Temerparture (\N{DEGREE CELSIUS})',
+    y=1.1,
+    fontsize='large',
+    weight='bold'
 )
 
 # 准备小地图.
@@ -83,21 +98,27 @@ ax2 = fig.add_subplot(projection=map_crs)
 ax2.set_extent(extents2, crs=data_crs)
 fplt.move_axes_to_corner(ax2, ax1)
 ax2.gridlines(
-    xlocs=xticks, ylocs=yticks,
-    lw=0.5, ls='--', color='gray'
+    xlocs=xticks,
+    ylocs=yticks,
+    lw=0.5,
+    ls='--',
+    color='gray'
 )
 
 # 添加要素.
+ax2.set_facecolor('skyblue')
 ax2.add_feature(LAND.with_scale('50m'), fc='floralwhite')
-ax2.add_feature(OCEAN.with_scale('50m'), fc='skyblue')
 fplt.add_nine_line(ax2, lw=0.5)
 fplt.add_cn_province(ax2, lw=0.3)
 fplt.add_map_scale(ax2, 0.4, 0.15, length=500)
 
 # 绘制填色图.
 cf = ax2.contourf(
-    X, Y, Z, levels, cmap='turbo', extend='both',
-    transform=data_crs, transform_first=True
+    X, Y, Z, levels,
+    cmap='turbo',
+    extend='both',
+    transform=data_crs,
+    transform_first=True
 )
 fplt.clip_by_cn_border(cf)
 

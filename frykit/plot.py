@@ -1,4 +1,8 @@
+import math
 from weakref import WeakValueDictionary, WeakKeyDictionary
+from pathlib import PurePath
+from collections.abc import Sequence
+from typing import Any, Optional, Union, Literal
 
 import numpy as np
 import shapely.geometry as sgeom
@@ -6,25 +10,28 @@ from shapely.ops import unary_union
 from pyproj import Geod
 
 import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
-import matplotlib.transforms as mtransforms
 from matplotlib.axes import Axes
-from matplotlib.path import Path as mPath
-from matplotlib.cm import ScalarMappable
-from matplotlib.ticker import AutoMinorLocator
-from matplotlib.patches import Rectangle
+from matplotlib.artist import Artist
+from matplotlib.path import Path as Path
 from matplotlib.collections import PathCollection
-from matplotlib.cbook import silent_list
+from matplotlib.patches import Rectangle
+from matplotlib.transforms import Bbox, Affine2D, ScaledTranslation, offset_copy
+from matplotlib.cm import ScalarMappable
+from matplotlib.colorbar import Colorbar
+from matplotlib.colors import Normalize, Colormap, ListedColormap, BoundaryNorm
+from matplotlib.quiver import Quiver, QuiverKey
+from matplotlib.text import Text
+from matplotlib.ticker import Formatter, AutoMinorLocator
 from PIL import Image
 
 import cartopy
 if cartopy.__version__ < '0.20.0':
     raise RuntimeError('cartopy版本不低于0.20.0')
-import cartopy.crs as ccrs
-from cartopy.feature import LAND, OCEAN
 from cartopy.mpl.geoaxes import GeoAxes
 from cartopy.mpl.feature_artist import _GeomKey
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
+from cartopy.crs import CRS, PlateCarree, Mercator, _RectangularProjection
+from cartopy.feature import LAND, OCEAN
 
 import frykit.shp as fshp
 from frykit import DATA_DIRPATH
@@ -34,13 +41,13 @@ _key_to_polygon = WeakValueDictionary()
 _key_to_transformed_polygon = WeakKeyDictionary()
 _transform_func = None
 
-def enable_fast_transform():
+def enable_fast_transform() -> None:
     '''启用快速坐标变换. 可能在地图边界产生错误的连线.'''
     global _transform_func
     _transform_func = fshp.transform_geometry
     _key_to_transformed_polygon.clear()
 
-def disable_fast_transform():
+def disable_fast_transform() -> None:
     '''关闭快速坐标变换. 变换结果更正确, 但速度可能较慢.'''
     global _transform_func
     def _transform_func(geom, crs_from, crs_to):
@@ -49,7 +56,11 @@ def disable_fast_transform():
 
 enable_fast_transform()
 
-def _cached_transform_func(polygon, crs_from, crs_to):
+def _cached_transform_func(
+    polygon: fshp.PolygonType,
+    crs_from: CRS,
+    crs_to: CRS
+) -> fshp.PolygonType:
     '''调用_transform_func并缓存结果.'''
     if crs_from == crs_to:
         return polygon
@@ -64,21 +75,26 @@ def _cached_transform_func(polygon, crs_from, crs_to):
 
     return value
 
-def add_polygons(ax, polygons, crs=None, **kwargs):
+def add_polygons(
+    ax: Axes,
+    polygons: Sequence[fshp.PolygonType],
+    crs: Optional[CRS] = None,
+    **kwargs: Any
+) -> PathCollection:
     '''
     将一组多边形添加到ax上.
 
     Parameters
     ----------
-    ax : Axes or GeoAxes
+    ax : Axes
         目标Axes.
 
-    polygons : list of Polygon or list of MultiPolygon
+    polygons : sequence of PolygonType
         多边形构成的列表.
 
     crs : CRS, optional
-        多边形所处的坐标系. 默认为ccrs.PlateCarree().
-          当ax是Axes时该参数只能为None, 表示不会对多边形做坐标变换.
+        当ax是GeoAxes时会将多边形从crs表示的坐标系变换到ax所在的坐标系上.
+        默认为None, 表示PlateCarree().
 
     **kwargs
         创建PathCollection时的关键字参数.
@@ -95,19 +111,19 @@ def add_polygons(ax, polygons, crs=None, **kwargs):
         raise ValueError('array的长度与polygons不匹配')
 
     # GeoAxes会对多边形做坐标变换.
+    if not isinstance(ax, Axes):
+        raise ValueError('ax不是Axes')
     if isinstance(ax, GeoAxes):
-        crs = ccrs.PlateCarree() if crs is None else crs
+        crs = PlateCarree() if crs is None else crs
         trans = ax.projection._as_mpl_transform(ax)
         func = lambda x: fshp.polygon_to_path(
             _cached_transform_func(x, crs, ax.projection)
         )
-    elif isinstance(ax, Axes):
+    else:
         if crs is not None:
-            raise ValueError('ax是Axes时crs只能为None')
+            raise ValueError('ax不是GeoAxes时crs只能为None')
         trans = ax.transData
         func = fshp.polygon_to_path
-    else:
-        raise ValueError('ax只能是Axes或GeoAxes')
 
     # PathCollection比PathPatch更快
     paths = [func(polygon) for polygon in polygons]
@@ -116,21 +132,26 @@ def add_polygons(ax, polygons, crs=None, **kwargs):
 
     return pc
 
-def add_polygon(ax, polygon, crs=None, **kwargs):
+def add_polygon(
+    ax: Axes,
+    polygon: fshp.PolygonType,
+    crs: Optional[CRS] = None,
+    **kwargs: Any
+) -> PathCollection:
     '''
     将一个多边形添加到ax上.
 
     Parameters
     ----------
-    ax : Axes or GeoAxes
+    ax : Axes
         目标Axes.
 
-    polygons : list of Polygon or list of MultiPolygon
-        多边形构成的列表.
+    polygon : PolygonType
+        多边形对象.
 
     crs : CRS, optional
-        多边形所处的坐标系. 默认为ccrs.PlateCarree().
-        当ax是Axes时该参数只能为None, 表示不会对多边形做坐标变换.
+        当ax是GeoAxes时会将多边形从crs表示的坐标系变换到ax所在的坐标系上.
+        默认为None, 表示PlateCarree().
 
     **kwargs
         创建PathCollection时的关键字参数.
@@ -143,7 +164,7 @@ def add_polygon(ax, polygon, crs=None, **kwargs):
     '''
     return add_polygons(ax, [polygon], crs, **kwargs)
 
-def _get_boundary(ax):
+def _get_boundary(ax: GeoAxes) -> sgeom.Polygon:
     '''将GeoAxes.patch转为data坐标系下的多边形.'''
     patch = ax.patch
     # 决定patch的形状. 兼容Matplotlib3.6之前的版本.
@@ -155,7 +176,11 @@ def _get_boundary(ax):
 
     return boundary
 
-def clip_by_polygon(artist, polygon, crs=None):
+def clip_by_polygon(
+    artist: Union[Artist, list[Artist]],
+    polygon: fshp.PolygonType,
+    crs: Optional[CRS] = None
+) -> None:
     '''
     利用多边形裁剪Artist, 只显示多边形内的内容.
 
@@ -163,7 +188,7 @@ def clip_by_polygon(artist, polygon, crs=None):
 
     Parameters
     ----------
-    artist : Artist
+    artist : Artist or list of Artist
         被裁剪的Artist对象. 可以返回自以下方法:
         - plot, scatter
         - contour, contourf, clabel
@@ -171,30 +196,31 @@ def clip_by_polygon(artist, polygon, crs=None):
         - imshow
         - quiver
 
-    polygon : Polygon or MultiPolygon
-        用于裁剪的多边形.
+    polygon : PolygonType
+        用于裁剪的多边形对象.
 
     crs : CRS, optional
-        多边形所处的坐标系. 默认为ccrs.PlateCarree().
-        当ax是Axes时该参数只能为None, 表示不会对多边形做坐标变换.
+        当Artist在GeoAxes里时会将多边形从crs表示的坐标系变换到Artist所在的坐标系上.
+        默认为None, 表示PlateCarree().
     '''
-    is_list = isinstance(artist, silent_list)
+    is_list = isinstance(artist, list)
     ax = artist[0].axes if is_list else artist.axes
 
     # Axes会自动给Artist设置clipbox, 所以不会出界.
     # GeoAxes需要在data坐标系里求polygon和patch的交集.
+    if not isinstance(ax, Axes):
+        raise ValueError('ax不是Axes')
     if isinstance(ax, GeoAxes):
         trans = ax.projection._as_mpl_transform(ax)
-        crs = ccrs.PlateCarree() if crs is None else crs
+        crs = PlateCarree() if crs is None else crs
         polygon = _cached_transform_func(polygon, crs, ax.projection)
         boundary = _get_boundary(ax)
         polygon = polygon & boundary
-    elif isinstance(ax, Axes):
-        if crs is not None:
-            raise ValueError('ax是Axes时crs只能为None')
-        trans = ax.transData
     else:
-        raise ValueError('ax只能是Axes或GeoAxes')
+        if crs is not None:
+            raise ValueError('ax不是GeoAxes时crs只能为None')
+        trans = ax.transData
+
 
     path = fshp.polygon_to_path(polygon)
 
@@ -212,7 +238,11 @@ def clip_by_polygon(artist, polygon, crs=None):
     else:
         artist.set_clip_path(path, trans)
 
-def clip_by_polygons(artist, polygons, crs=None):
+def clip_by_polygons(
+    artist: Union[Artist, list[Artist]],
+    polygons: Sequence[fshp.PolygonType],
+    crs: Optional[CRS] = None
+) -> None:
     '''
     利用一组多边形裁剪Artist, 只显示多边形内的内容.
 
@@ -221,7 +251,7 @@ def clip_by_polygons(artist, polygons, crs=None):
 
     Parameters
     ----------
-    artist : Artist
+    artist : Artist or list of Artist
         被裁剪的Artist对象. 可以返回自以下方法:
         - plot, scatter
         - contour, contourf, clabel
@@ -229,12 +259,12 @@ def clip_by_polygons(artist, polygons, crs=None):
         - imshow
         - quiver
 
-    polygons : list of Polygon or list of MultiPolygon
+    polygons : sequence of PolygonType
         用于裁剪的一组多边形.
 
     crs : CRS, optional
-        多边形所处的坐标系. 默认为ccrs.PlateCarree().
-        当ax是Axes时该参数只能为None, 表示不会对多边形做坐标变换.
+        当Artist在GeoAxes里时会将多边形从crs表示的坐标系变换到Artist所在的坐标系上.
+        默认为None, 表示PlateCarree().
     '''
     polygon = unary_union(polygons)
     clip_by_polygon(artist, polygon, crs)
@@ -242,14 +272,14 @@ def clip_by_polygons(artist, polygons, crs=None):
 # 缓存常用数据.
 _data_cache = {}
 
-def _set_add_cn_kwargs(kwargs):
+def _set_add_cn_kwargs(kwargs: dict) -> None:
     '''初始化add_cn_xxx函数的参数.'''
     if not any(kw in kwargs for kw in ['facecolor', 'facecolors', 'fc']):
         kwargs['facecolors'] = 'none'
     if not any(kw in kwargs for kw in ['edgecolor', 'edgecolors', 'ec']):
         kwargs['edgecolors'] = 'black'
 
-def _get_cn_border():
+def _get_cn_border() -> fshp.PolygonType:
     '''获取中国国界并缓存结果.'''
     country = _data_cache.get('country')
     if country is None:
@@ -258,7 +288,7 @@ def _get_cn_border():
 
     return country
 
-def _get_cn_province():
+def _get_cn_province() -> dict[str, fshp.PolygonType]:
     '''获取中国省界并缓存结果.'''
     mapping = _data_cache.get('province')
     if mapping is None:
@@ -269,7 +299,7 @@ def _get_cn_province():
 
     return mapping
 
-def _get_nine_line():
+def _get_nine_line() -> fshp.PolygonType:
     '''获取九段线并缓存结果.'''
     nine_line = _data_cache.get('nine_line')
     if nine_line is None:
@@ -278,7 +308,7 @@ def _get_nine_line():
 
     return nine_line
 
-def _get_land(resolution):
+def _get_land(resolution: Literal['10m', '50m', '110m']) -> fshp.PolygonType:
     '''获取全球陆地并缓存结果.'''
     mapping = _data_cache.setdefault('land', {})
     land = mapping.get(resolution)
@@ -288,7 +318,7 @@ def _get_land(resolution):
 
     return land
 
-def _get_ocean(resolution):
+def _get_ocean(resolution: Literal['10m', '50m', '110m']) -> fshp.PolygonType:
     '''获取全球海洋并缓存结果.'''
     mapping = _data_cache.setdefault('ocean', {})
     ocean = mapping.get(resolution)
@@ -298,13 +328,13 @@ def _get_ocean(resolution):
 
     return ocean
 
-def add_cn_border(ax, **kwargs):
+def add_cn_border(ax: Axes, **kwargs: Any) -> PathCollection:
     '''
     将中国国界添加到ax上.
 
     Parameters
     ----------
-    ax : Axes or GeoAxes
+    ax : Axes
         目标Axes.
 
     **kwargs
@@ -322,18 +352,21 @@ def add_cn_border(ax, **kwargs):
 
     return pc
 
-def add_cn_province(ax, name=None, **kwargs):
+def add_cn_province(
+    ax: Axes,
+    name: Optional[Union[str, Sequence[str]]] = None,
+    **kwargs: Any
+) -> PathCollection:
     '''
     将中国省界添加到ax上.
 
     Parameters
     ----------
-    ax : Axes or GeoAxes
+    ax : Axes
         目标Axes.
 
-    name : str or list of str, optional
-        省名, 可以是字符串或字符串构成的列表.
-        默认为None, 表示添加所有省份.
+    name : str or sequence of str, optional
+        省名, 可以是字符串或一组字符串. 默认为None, 表示添加所有省份.
 
     **kwargs
         创建PathCollection时的关键字参数.
@@ -356,13 +389,13 @@ def add_cn_province(ax, name=None, **kwargs):
 
     return pc
 
-def add_nine_line(ax, **kwargs):
+def add_nine_line(ax: Axes, **kwargs: Any) -> PathCollection:
     '''
     将九段线添加到ax上.
 
     Parameters
     ----------
-    ax : Axes or GeoAxes
+    ax : Axes
         目标Axes.
 
     **kwargs
@@ -380,7 +413,7 @@ def add_nine_line(ax, **kwargs):
 
     return pc
 
-def clip_by_cn_border(artist):
+def clip_by_cn_border(artist: Union[Artist, list[Artist]]) -> None:
     '''
     利用中国国界裁剪Artist.
 
@@ -388,7 +421,7 @@ def clip_by_cn_border(artist):
 
     Parameters
     ----------
-    artist : Artist
+    artist : Artist or list of Artist
         被裁剪的Artist对象. 可以返回自以下方法:
         - plot, scatter
         - contour, contourf, clabel
@@ -399,7 +432,7 @@ def clip_by_cn_border(artist):
     country = _get_cn_border()
     clip_by_polygon(artist, country)
 
-def clip_by_cn_province(artist, name):
+def clip_by_cn_province(artist: Union[Artist, list[Artist]], name: str) -> None:
     '''
     利用中国省界裁剪Artist.
 
@@ -407,7 +440,7 @@ def clip_by_cn_province(artist, name):
 
     Parameters
     ----------
-    artist : Artist
+    artist : Artist or list of Artist
         被裁剪的Artist对象. 可以返回自以下方法:
         - plot, scatter
         - contour, contourf, clabel
@@ -416,7 +449,7 @@ def clip_by_cn_province(artist, name):
         - quiver
 
     name : str
-        省名. 与add_cn_province不同, 只能为单个字符串.
+        省名. 与add_cn_province不同, 只能指定单个省.
     '''
     mapping = _get_cn_province()
     if not isinstance(name, str):
@@ -424,7 +457,10 @@ def clip_by_cn_province(artist, name):
     province = mapping[name]
     clip_by_polygon(artist, province)
 
-def clip_by_land(artist, resolution='110m'):
+def clip_by_land(
+    artist: Union[Artist, list[Artist]],
+    resolution: Literal['10m', '50m', '110m'] = '110m'
+) -> None:
     '''
     利用陆地边界裁剪Artist.
 
@@ -434,7 +470,7 @@ def clip_by_land(artist, resolution='110m'):
 
     Parameters
     ----------
-    artist : Artist
+    artist : Artist or list of Artist
         被裁剪的Artist对象. 可以返回自以下方法:
         - plot, scatter
         - contour, contourf, clabel
@@ -448,7 +484,10 @@ def clip_by_land(artist, resolution='110m'):
     land = _get_land(resolution)
     clip_by_polygon(artist, land)
 
-def clip_by_ocean(artist, resolution='110m'):
+def clip_by_ocean(
+    artist: Union[Artist, list[Artist]],
+    resolution: Literal['10m', '50m', '110m'] = '110m'
+) -> None:
     '''
     利用海洋边界裁剪Artist.
 
@@ -458,7 +497,7 @@ def clip_by_ocean(artist, resolution='110m'):
 
     Parameters
     ----------
-    artist : Artist
+    artist : Artist or list of Artist
         被裁剪的Artist对象. 可以返回自以下方法:
         - plot, scatter
         - contour, contourf, clabel
@@ -473,15 +512,15 @@ def clip_by_ocean(artist, resolution='110m'):
     clip_by_polygon(artist, ocean)
 
 def _set_rectangular(
-    ax,
-    extents=None,
-    xticks=None,
-    yticks=None,
-    nx=0,
-    ny=0,
-    xformatter=None,
-    yformatter=None
-):
+    ax: GeoAxes,
+    extents: Optional[Any] = None,
+    xticks: Optional[Any] = None,
+    yticks: Optional[Any] = None,
+    nx: int = 0,
+    ny: int = 0,
+    xformatter: Optional[Formatter] = None,
+    yformatter: Optional[Formatter] = None
+) -> None:
     '''设置矩形投影的GeoAxes的范围和刻度.'''
     # 默认formatter.
     if xformatter is None:
@@ -490,7 +529,7 @@ def _set_rectangular(
         yformatter = LatitudeFormatter()
 
     # 设置x轴主次刻度.
-    crs = ccrs.PlateCarree()
+    crs = PlateCarree()
     if xticks is not None:
         ax.set_xticks(xticks, crs=crs)
         if nx > 0:
@@ -511,15 +550,15 @@ def _set_rectangular(
         ax.set_extent(extents, crs)
 
 def _set_non_rectangular(
-    ax,
-    extents=None,
-    xticks=None,
-    yticks=None,
-    nx=0,
-    ny=0,
-    xformatter=None,
-    yformatter=None
-):
+    ax: GeoAxes,
+    extents: Optional[Any] = None,
+    xticks: Optional[Any] = None,
+    yticks: Optional[Any] = None,
+    nx: int = 0,
+    ny: int = 0,
+    xformatter: Optional[Formatter] = None,
+    yformatter: Optional[Formatter] = None
+) -> None:
     '''设置非矩形投影的GeoAxes的范围和刻度.'''
     # 默认formatter.
     if xformatter is None:
@@ -528,7 +567,7 @@ def _set_non_rectangular(
         yformatter = LatitudeFormatter()
 
     # 先设置范围, 使地图边框呈矩形.
-    crs = ccrs.PlateCarree()
+    crs = PlateCarree()
     ax.set_extent(extents, crs)
 
     # 获取ax的经纬度范围.
@@ -613,15 +652,15 @@ def _set_non_rectangular(
             tick.label1.set_alpha(False)
 
 def set_extent_and_ticks(
-    ax,
-    extents=None,
-    xticks=None,
-    yticks=None,
-    nx=0,
-    ny=0,
-    xformatter=None,
-    yformatter=None
-):
+    ax: GeoAxes,
+    extents: Optional[Any] = None,
+    xticks: Optional[Any] = None,
+    yticks: Optional[Any] = None,
+    nx: int = 0,
+    ny: int = 0,
+    xformatter: Optional[Formatter] = None,
+    yformatter: Optional[Formatter] = None
+) -> None:
     '''
     设置GeoAxes的范围和刻度.
 
@@ -635,9 +674,8 @@ def set_extent_and_ticks(
     ax : GeoAxes
         目标GeoAxes.
 
-    extents : 4-tuple of float, optional
-        经纬度范围[lonmin, lonmax, latmin, latmax].
-        默认为None, 表示全球范围.
+    extents : (4,) array_like, optional
+        经纬度范围[lonmin, lonmax, latmin, latmax]. 默认为None, 表示全球范围.
 
     xticks : array_like, optional
         经度主刻度的坐标. 默认为None, 表示不设置.
@@ -661,25 +699,28 @@ def set_extent_and_ticks(
     '''
     if not isinstance(ax, GeoAxes):
         raise ValueError('ax必须是GeoAxes')
-    if isinstance(ax.projection, (ccrs._RectangularProjection, ccrs.Mercator)):
+    if isinstance(ax.projection, (_RectangularProjection, Mercator)):
         func = _set_rectangular
     else:
         func = _set_non_rectangular
     func(ax, extents, xticks, yticks, nx, ny, xformatter, yformatter)
 
-def _create_kwargs(kwargs):
+def _create_kwargs(kwargs: Optional[dict]) -> dict:
     '''创建参数字典.'''
     return {} if kwargs is None else kwargs.copy()
 
 def add_quiver_legend(
-    Q, U,
-    units='m/s',
-    width=0.15,
-    height=0.15,
-    loc='bottom right',
-    rect_kwargs=None,
-    key_kwargs=None
-):
+    Q: Quiver,
+    U: float,
+    units: str = 'm/s',
+    width: float = 0.15,
+    height: float = 0.15,
+    loc: Literal[
+        'bottom left', 'bottom right', 'top left', 'top right'
+    ] = 'bottom right',
+    rect_kwargs: Optional[dict] = None,
+    key_kwargs: Optional[dict] = None
+) -> tuple[Rectangle, QuiverKey]:
     '''
     为Axes.quiver的结果添加图例.
 
@@ -751,14 +792,17 @@ def add_quiver_legend(
     ax = Q.axes
     rect = Rectangle(
         (x - width / 2, y - height / 2), width, height,
-        transform=ax.transAxes, **rect_kwargs
+        transform=ax.transAxes,
+        **rect_kwargs
     )
     ax.add_patch(rect)
 
     # 先创建QuiverKey对象.
     qk = ax.quiverkey(
-        Q, X=x, Y=y, U=U, label=f'{U} {units}',
-        labelpos='S', **key_kwargs
+        Q, x, y, U,
+        label=f'{U} {units}',
+        labelpos='S',
+        **key_kwargs
     )
     # 在参数中设置zorder无效.
     zorder = key_kwargs.get('zorder', 3)
@@ -767,37 +811,39 @@ def add_quiver_legend(
     # 再将qk调整至patch的中心.
     fontsize = qk.text.get_fontsize() / 72
     dy = (qk._labelsep_inches + fontsize) / 2
-    trans = mtransforms.offset_copy(ax.transAxes, ax.figure, 0, dy)
+    trans = offset_copy(ax.transAxes, ax.figure, 0, dy)
     qk._set_transform = lambda: None  # 无效类方法.
     qk.set_transform(trans)
 
     return rect, qk
 
 def add_compass(
-    ax, x, y,
-    angle=None,
-    size=20,
-    style='arrow',
-    path_kwargs=None,
-    text_kwargs=None
-):
+    ax: Axes,
+    x: float,
+    y: float,
+    angle: Optional[float] = None,
+    size: float = 20,
+    style: Literal['arrow', 'star'] = 'arrow',
+    path_kwargs: Optional[dict] = None,
+    text_kwargs: Optional[dict] = None
+) -> tuple[PathCollection, Text]:
     '''
     向Axes添加指北针.
 
     Parameters
     ----------
-    ax : Axes or GeoAxes
+    ax : Axes
         目标Axes.
 
     x, y : float
         指北针的横纵坐标. 基于axes坐标系.
 
     angle : float
-        指北针的方向, 从x轴逆时针方向算起, 单位为度.
-        默认为None, 当ax是Axes时取angle=90, 当ax是GeoAxes时会自动计算角度.
+        指北针的方向, 从x轴逆时针方向算起, 单位为度. 默认为None.
+        当ax是GeoAxes时默认自动计算角度, 否则默认表示90度.
 
     size : float, optional
-        指北针的大小, 单位为点. 默认为20.
+        指北针的大小, 单位为点(point). 默认为20.
 
     style : {'arrow', 'star'}, optional
         指北针的造型. 默认为'arrow'.
@@ -840,19 +886,19 @@ def add_compass(
     # 当(x, y)超出Axes范围时会计算出无意义的角度.
     if angle is None:
         if isinstance(ax, GeoAxes):
-            crs = ccrs.PlateCarree()
+            crs = PlateCarree()
             axes_to_data = ax.transAxes - ax.transData
             x0, y0 = axes_to_data.transform((x, y))
             lon0, lat0 = crs.transform_point(x0, y0, ax.projection)
             lon1, lat1 = lon0, min(lat0 + 1, 90)
             x1, y1 = ax.projection.transform_point(lon1, lat1, crs)
-            angle = np.rad2deg(np.arctan2(y1 - y0, x1 - x0))
+            angle = math.degrees(math.atan2(y1 - y0, x1 - x0))
         else:
             angle = 90
 
     # 指北针的大小基于物理坐标系, 旋转基于data坐标系, 平移基于axes坐标系.
-    rotation = mtransforms.Affine2D().rotate_deg(angle)
-    translation = mtransforms.ScaledTranslation(x, y, ax.transAxes)
+    rotation = Affine2D().rotate_deg(angle)
+    translation = ScaledTranslation(x, y, ax.transAxes)
     trans = ax.figure.dpi_scale_trans + rotation + translation
 
     # 用Path画出指北针箭头.
@@ -861,17 +907,17 @@ def add_compass(
         width = axis = head * 2 / 3
         verts1 = [(0, 0), (axis, 0), (axis - head, width / 2), (0, 0)]
         verts2 = [(0, 0), (axis - head, -width / 2), (axis, 0), (0, 0)]
-        paths = [mPath(verts1), mPath(verts2)]
+        paths = [Path(verts1), Path(verts2)]
     elif style == 'star':
         width = head / 3
         axis = head + width / 2
         verts1 = [(0, 0), (axis, 0), (axis - head, width / 2), (0, 0)]
         verts2 = [(0, 0), (axis - head, -width / 2), (axis, 0), (0, 0)]
-        path1 = mPath(verts1)
-        path2 = mPath(verts2)
+        path1 = Path(verts1)
+        path2 = Path(verts2)
         paths = []
         for deg in range(0, 360, 90):
-            rotation = mtransforms.Affine2D().rotate_deg(deg)
+            rotation = Affine2D().rotate_deg(deg)
             paths.append(path1.transformed(rotation))
             paths.append(path2.transformed(rotation))
     else:
@@ -893,7 +939,13 @@ def add_compass(
 
     return pc, text
 
-def add_map_scale(ax, x, y, length=1000, units='km'):
+def add_map_scale(
+    ax: GeoAxes,
+    x: float,
+    y: float,
+    length: float = 1000,
+    units: Literal['m', 'km'] = 'km'
+) -> Axes:
     '''
     向GeoAxes添加地图比例尺.
 
@@ -910,7 +962,7 @@ def add_map_scale(ax, x, y, length=1000, units='km'):
     length : float, optional
         比例尺的长度. 默认为1000.
 
-    units : {'km', 'm'}, optional
+    units : {'m', 'km'}, optional
         比例尺长度的单位. 默认为'km'.
 
     Returns
@@ -929,7 +981,7 @@ def add_map_scale(ax, x, y, length=1000, units='km'):
         raise ValueError('units参数错误')
 
     # 取地图中心一小段水平线计算单位投影坐标的长度.
-    crs = ccrs.PlateCarree()
+    crs = PlateCarree()
     xmin, xmax = ax.get_xlim()
     ymin, ymax = ax.get_ylim()
     xmid = (xmin + xmax) / 2
@@ -963,7 +1015,7 @@ def add_map_scale(ax, x, y, length=1000, units='km'):
 
     return scale
 
-def add_box(ax, extents, **kwargs):
+def add_box(ax: Axes, extents: Any, **kwargs: Any) -> Rectangle:
     '''
     在Axes上添加一个方框.
 
@@ -972,7 +1024,7 @@ def add_box(ax, extents, **kwargs):
     ax : Axes
         目标Axes.
 
-    extents : 4-tuple of float
+    extents : (4,) array_like
         方框范围[xmin, xmax, ymin, ymax].
 
     **kwargs
@@ -993,14 +1045,21 @@ def add_box(ax, extents, **kwargs):
     return rect
 
 # TODO: inset_axes实现.
-def move_axes_to_corner(ax, ref_ax, shrink=0.4, loc='bottom right'):
+def move_axes_to_corner(
+    ax: Axes,
+    ref_ax: Axes,
+    shrink: float = 0.4,
+    loc: Literal[
+        'bottom left', 'bottom right', 'top left', 'top right'
+    ] = 'bottom right'
+) -> None:
     '''
     讲ax等比例缩小并放置在ref_ax的角落位置.
 
     Parameters
     ----------
     ax : Axes
-        目标Axes. 若为GeoAxes, 需要提前调用ax.set_extent.
+        目标Axes. 若为GeoAxes, 需要提前调用ax.set_extent确定大小.
 
     ref_ax : Axes
         作为参考的Axes.
@@ -1044,10 +1103,15 @@ def move_axes_to_corner(ax, ref_ax, shrink=0.4, loc='bottom right'):
         y1 = ref_bbox.y1
     else:
         raise ValueError('loc参数错误')
-    new_bbox = mtransforms.Bbox.from_extents(x0, y0, x1, y1)
+    new_bbox = Bbox.from_extents(x0, y0, x1, y1)
     ax.set_position(new_bbox)
 
-def add_side_axes(ax, loc, pad, depth):
+def add_side_axes(
+    ax: Any,
+    loc: Literal['left', 'right', 'bottom', 'top'],
+    pad : float,
+    depth: float
+) -> Axes:
     '''
     在原有的Axes旁边新添一个等高或等宽的Axes并返回该对象.
 
@@ -1060,10 +1124,10 @@ def add_side_axes(ax, loc, pad, depth):
         新Axes相对于旧Axes的位置.
 
     pad : float
-        新旧Axes的间距.
+        新旧Axes的间距. 基于Figure坐标系.
 
     depth : float
-        新Axes的宽度或高度.
+        新Axes的宽度或高度. 基于Figure坐标系.
 
     Returns
     -------
@@ -1072,7 +1136,7 @@ def add_side_axes(ax, loc, pad, depth):
     '''
     # 获取一组Axes的位置.
     axs = np.atleast_1d(ax).ravel()
-    bbox = mtransforms.Bbox.union([ax.get_position() for ax in axs])
+    bbox = Bbox.union([ax.get_position() for ax in axs])
 
     # 可选四个方向.
     if loc == 'left':
@@ -1097,15 +1161,18 @@ def add_side_axes(ax, loc, pad, depth):
         y1 = y0 + depth
     else:
         raise ValueError('loc参数错误')
-    side_bbox = mtransforms.Bbox.from_extents(x0, y0, x1, y1)
+    side_bbox = Bbox.from_extents(x0, y0, x1, y1)
     side_ax = axs[0].figure.add_axes(side_bbox)
 
     return side_ax
 
 def get_cross_section_xticks(
-    lon, lat, ntick=6,
-    lon_formatter=None, lat_formatter=None
-):
+    lon: Any,
+    lat: Any,
+    ntick: int = 6,
+    lon_formatter: Optional[Formatter] = None,
+    lat_formatter: Optional[Formatter] = None
+) -> tuple[np.ndarray, np.ndarray, list[str]]:
     '''
     返回垂直截面图所需的横坐标, 刻度位置和刻度标签.
 
@@ -1166,7 +1233,9 @@ def get_cross_section_xticks(
 
     return x, xticks, xticklabels
 
-def make_qualitative_cmap(colors):
+def make_qualitative_cmap(colors: Any) -> tuple[
+    ListedColormap, Normalize, np.ndarray
+]:
     '''
     创建一组定性的colormap和norm, 同时返回刻度位置.
 
@@ -1187,23 +1256,28 @@ def make_qualitative_cmap(colors):
         colorbar刻度的坐标.
     '''
     N = len(colors)
-    cmap = mcolors.ListedColormap(colors)
-    norm = mcolors.Normalize(vmin=-0.5, vmax=N-0.5)
+    cmap = ListedColormap(colors)
+    norm = Normalize(vmin=-0.5, vmax=N-0.5)
     ticks = np.arange(N)
 
     return cmap, norm, ticks
 
-def get_aod_cmap():
+def get_aod_cmap() -> ListedColormap:
     '''返回适用于AOD的cmap.'''
     filepath = DATA_DIRPATH / 'NEO_modis_aer_od.csv'
     rgb = np.loadtxt(str(filepath), delimiter=',') / 256
-    cmap = mcolors.ListedColormap(rgb)
+    cmap = ListedColormap(rgb)
 
     return cmap
 
-class CenteredBoundaryNorm(mcolors.BoundaryNorm):
+class CenteredBoundaryNorm(BoundaryNorm):
     '''将vcenter所在的bin映射到cmap中间的BoundaryNorm.'''
-    def __init__(self, boundaries, vcenter=0, clip=None):
+    def __init__(
+        self,
+        boundaries: Any,
+        vcenter: float = 0,
+        clip: bool = False
+    ) -> None:
         super().__init__(boundaries, len(boundaries) - 1, clip)
         boundaries = np.asarray(boundaries)
         self.N1 = np.count_nonzero(boundaries < vcenter)
@@ -1211,7 +1285,11 @@ class CenteredBoundaryNorm(mcolors.BoundaryNorm):
         if self.N1 < 1 or self.N2 < 1:
             raise ValueError('vcenter两侧至少各有一条边界')
 
-    def __call__(self, value, clip=None):
+    def __call__(
+        self,
+        value: Any,
+        clip: Optional[bool] = None
+    ) -> np.ma.MaskedArray:
         # 将BoundaryNorm的[0, N-1]又映射到[0.0, 1.0]内.
         result = super().__call__(value, clip)
         if self.N1 + self.N2 == self.N - 1:
@@ -1230,7 +1308,11 @@ class CenteredBoundaryNorm(mcolors.BoundaryNorm):
 
         return result
 
-def plot_colormap(cmap, norm=None, ax=None):
+def plot_colormap(
+    cmap: Colormap,
+    norm: Optional[Normalize] = None,
+    ax: Optional[Axes] = None
+) -> Colorbar:
     '''快速展示一条colormap.'''
     if ax is None:
         fig, ax = plt.subplots(figsize=(8, 1))
@@ -1240,7 +1322,7 @@ def plot_colormap(cmap, norm=None, ax=None):
 
     return cbar
 
-def letter_axes(axes, x, y, **kwargs):
+def letter_axes(axes: Any, x: float, y: float, **kwargs: Any) -> None:
     '''
     给一组Axes按顺序标注字母.
 
@@ -1270,23 +1352,29 @@ def letter_axes(axes, x, y, **kwargs):
     for i, (ax, xi, yi) in enumerate(zip(axes.flat, x.flat, y.flat)):
         letter = chr(97 + i)
         ax.text(
-            xi, yi, f'({letter})', ha='center', va='center',
-            transform=ax.transAxes, **kwargs
+            xi, yi, f'({letter})',
+            ha='center',
+            va='center',
+            transform=ax.transAxes,
+            **kwargs
         )
 
 def make_gif(
-    img_filepaths, gif_filepath,
-    duration=500, loop=0, optimize=False
-):
+    img_filepaths: Union[Sequence[str], Sequence[PurePath]],
+    gif_filepath: Union[str, PurePath],
+    duration: int = 500,
+    loop: int = 0,
+    optimize: bool = False
+) -> None:
     '''
     制作GIF图.
 
     Parameters
     ----------
-    img_filepaths : list of str or Path
+    img_filepaths : sequence of str or sequence of PurePath
         图片路径的列表. 要求至少含两个元素.
 
-    gif_filepath : str or Path
+    gif_filepath : str or PurePath
         输出GIF图片的路径.
 
     duration : int or list or tuple, optional
@@ -1304,6 +1392,10 @@ def make_gif(
 
     images = [Image.open(str(filepath)) for filepath in img_filepaths]
     images[0].save(
-        str(gif_filepath), save_all=True, append_images=images[1:],
-        duration=duration, loop=loop, optimize=optimize
+        str(gif_filepath),
+        save_all=True,
+        append_images=images[1:],
+        duration=duration,
+        loop=loop,
+        optimize=optimize
     )

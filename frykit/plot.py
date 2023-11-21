@@ -14,7 +14,7 @@ from matplotlib.axes import Axes
 from matplotlib.artist import Artist
 from matplotlib.path import Path as Path
 from matplotlib.collections import PathCollection
-from matplotlib.patches import Rectangle
+from matplotlib.patches import Rectangle, PathPatch
 from matplotlib.transforms import Bbox, Affine2D, ScaledTranslation, offset_copy
 from matplotlib.cm import ScalarMappable
 from matplotlib.colorbar import Colorbar
@@ -177,7 +177,7 @@ def _get_boundary(ax: GeoAxes) -> sgeom.Polygon:
     return boundary
 
 def clip_by_polygon(
-    artist: Union[Artist, list[Artist]],
+    artist: Union[Artist, Sequence[Artist]],
     polygon: fshp.PolygonType,
     crs: Optional[CRS] = None
 ) -> None:
@@ -188,7 +188,7 @@ def clip_by_polygon(
 
     Parameters
     ----------
-    artist : Artist or list of Artist
+    artist : Artist or sequence of Artist
         被裁剪的Artist对象. 可以返回自以下方法:
         - plot, scatter
         - contour, contourf, clabel
@@ -203,8 +203,11 @@ def clip_by_polygon(
         当Artist在GeoAxes里时会将多边形从crs表示的坐标系变换到Artist所在的坐标系上.
         默认为None, 表示PlateCarree().
     '''
-    is_list = isinstance(artist, list)
-    ax = artist[0].axes if is_list else artist.axes
+    artists = artist if isinstance(artist, Sequence) else [artist]
+    ax = artists[0].axes
+    for i in range(1, len(artists)):
+        if artists[i].axes is not ax:
+            raise ValueError('一组Artist必须属于同一个Axes')
 
     # Axes会自动给Artist设置clipbox, 所以不会出界.
     # GeoAxes需要在data坐标系里求polygon和patch的交集.
@@ -221,22 +224,21 @@ def clip_by_polygon(
             raise ValueError('ax不是GeoAxes时crs只能为None')
         trans = ax.transData
 
-
     path = fshp.polygon_to_path(polygon)
 
     # TODO:
     # - Text.clipbox的范围可能比_clippath小.
     # - 改变显示范围, 拖拽或缩放都会影响效果.
-    if is_list:
-        for text in artist:
-            point = sgeom.Point(text.get_position())
+    for artist in artists:
+        if isinstance(artist, Text):
+            point = sgeom.Point(artist.get_position())
             if not polygon.contains(point):
-                text.set_visible(False)
-    elif hasattr(artist, 'collections'):
-        for collection in artist.collections:
-            collection.set_clip_path(path, trans)
-    else:
-        artist.set_clip_path(path, trans)
+                artist.set_visible(False)
+        elif hasattr(artist, 'collections'):
+            for collection in artist.collections:
+                collection.set_clip_path(path, trans)
+        else:
+            artist.set_clip_path(path, trans)
 
 def clip_by_polygons(
     artist: Union[Artist, list[Artist]],
@@ -675,7 +677,7 @@ def set_extent_and_ticks(
         目标GeoAxes.
 
     extents : (4,) array_like, optional
-        经纬度范围[lonmin, lonmax, latmin, latmax]. 默认为None, 表示全球范围.
+        经纬度范围[lon0, lon1, lat0, lat1]. 默认为None, 表示全球范围.
 
     xticks : array_like, optional
         经度主刻度的坐标. 默认为None, 表示不设置.
@@ -1015,7 +1017,12 @@ def add_map_scale(
 
     return scale
 
-def add_box(ax: Axes, extents: Any, **kwargs: Any) -> Rectangle:
+def add_box(
+    ax: Axes,
+    extents: Any,
+    steps: int = 100,
+    **kwargs: Any
+) -> PathPatch:
     '''
     在Axes上添加一个方框.
 
@@ -1025,24 +1032,43 @@ def add_box(ax: Axes, extents: Any, **kwargs: Any) -> Rectangle:
         目标Axes.
 
     extents : (4,) array_like
-        方框范围[xmin, xmax, ymin, ymax].
+        方框范围[x0, x1, y0, y1].
+
+    steps: int
+        在方框上重采样出N*steps个点. 默认为 100.
+        当ax是GeoAxes且指定transform关键字时能保证方框的平滑.
 
     **kwargs
-        创建Rectangle对象的关键字参数.
+        创建PathPatch对象的关键字参数.
         例如linewidth, edgecolor, facecolor和transform等.
 
     Returns
     -------
-    rect : Rectangle
+    patch : PathPatch
         方框对象.
     '''
-    xmin, xmax, ymin, ymax = extents
-    dx = xmax - xmin
-    dy = ymax - ymin
-    rect = Rectangle((xmin, ymin), dx, dy, **kwargs)
-    ax.add_patch(rect)
+    # 初始化参数.
+    if 'facecolor' not in kwargs or 'fc' not in kwargs:
+        kwargs['facecolor'] = 'none'
+    if 'edgecolor' not in kwargs or 'ec' not in kwargs:
+        kwargs['edgecolor'] = 'r'
 
-    return rect
+    # 添加Patch.
+    x0, x1, y0, y1 = extents
+    verts = [(x0, y0), (x1, y0), (x1, y1), (x0, y1), (x0, y0)]
+    path = Path(verts).interpolated(steps)
+    patch = PathPatch(path, **kwargs)
+    ax.add_patch(patch)
+
+    return patch
+
+def load_test_nc():
+    '''读取测试用的nc文件. 需要安装xarray和NetCDF4.'''
+    import xarray as xr
+    filepath = DATA_DIRPATH / 'test.nc'
+    ds = xr.load_dataset(str(filepath))
+
+    return ds
 
 # TODO: inset_axes实现.
 def move_axes_to_corner(

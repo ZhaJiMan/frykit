@@ -18,5 +18,5 @@ ax.yaxis.set_major_formatter('{x:.0f}' + degree + 'N')
 
 # 保存图片.
 ax.set_title('Use Matplotlib Axes')
-fig.savefig('../image/axes.png', dpi=300, bbox_inches='tight')
+fig.savefig('../image/axes.png', dpi=200, bbox_inches='tight')
 plt.close(fig)

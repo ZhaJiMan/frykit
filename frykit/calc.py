@@ -88,7 +88,7 @@ def region_ind(
         纬度. 若form='mask'则要求形状与lon一致.
 
     extents : (4,) array_like
-        经纬度方框的范围[lonmin, lonmax, latmin, latmax].
+        经纬度方框的范围[lon0, lon1, lat0, lat1].
 
     form : {'mask', 'ix'}
         索引的形式.
@@ -111,15 +111,15 @@ def region_ind(
     '''
     lon = np.asarray(lon)
     lat = np.asarray(lat)
-    lonmin, lonmax, latmin, latmax = extents
-    mask_lon = (lon >= lonmin) & (lon <= lonmax)
-    mask_lat = (lat >= latmin) & (lat <= latmax)
+    lon0, lon1, lat0, lat1 = extents
+    lon_mask = (lon >= lon0) & (lon <= lon1)
+    lat_mask = (lat >= lat0) & (lat <= lat1)
     if form == 'mask':
         if lon.shape != lat.shape:
             raise ValueError('lon和lat的形状不匹配.')
-        ind = mask_lon & mask_lat
+        ind = lon_mask & lat_mask
     elif form == 'ix':
-        ind = np.ix_(mask_lon, mask_lat)
+        ind = np.ix_(lon_mask, lat_mask)
     else:
         raise ValueError('form不支持')
 

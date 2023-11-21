@@ -86,5 +86,5 @@ for name, province in zip(names, provinces):
     )
 
 # 保存图片.
-fig.savefig('../image/fill.png', dpi=300, bbox_inches='tight')
+fig.savefig('../image/fill.png', dpi=200, bbox_inches='tight')
 plt.close(fig)

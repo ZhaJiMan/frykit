@@ -215,12 +215,13 @@ def polygon_to_mask(polygon: PolygonType, x: Any, y: Any) -> np.ndarray:
     mask : ndarray
         布尔类型的掩膜数组, 真值表示数据点落入多边形内部. 形状与x和y相同.
     '''
-    x = np.atleast_1d(x)
-    y = np.atleast_1d(y)
-    if x.shape != y.shape:
-        raise ValueError('x和y的形状不匹配')
     if not isinstance(polygon, (sgeom.Polygon, sgeom.MultiPolygon)):
         raise TypeError('polygon不是多边形对象')
+    x, y = np.asarray(x), np.asarray(y)
+    if x.shape != y.shape:
+        raise ValueError('x和y的形状不匹配')
+    if x.ndim == 0 and y.ndim == 0:
+        return polygon.contains(sgeom.Point(x, y))
     prepared = prep(polygon)
 
     def recursion(x, y):

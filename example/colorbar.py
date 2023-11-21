@@ -26,5 +26,5 @@ fig.subplots_adjust(hspace=0.8)
 plot_qualitative_cbar(axes[0])
 plot_centered_discrete_cbar(axes[1])
 
-fig.savefig('../image/colorbar.png', dpi=300, bbox_inches='tight')
+fig.savefig('../image/colorbar.png', dpi=200, bbox_inches='tight')
 plt.close(fig)

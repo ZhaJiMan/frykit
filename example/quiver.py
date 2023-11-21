@@ -1,13 +1,11 @@
 import numpy as np
-import xarray as xr
 from scipy.ndimage import gaussian_filter
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import frykit.plot as fplt
-from frykit import DATA_DIRPATH
 
 # 读取数据.
-ds = xr.load_dataset(str(DATA_DIRPATH / 'test.nc'))
+ds = fplt.load_test_nc()
 X, Y = np.meshgrid(ds['longitude'], ds['latitude'])
 t2m = gaussian_filter(ds['t2m'] - 273.15, sigma=1)
 u10 = gaussian_filter(ds['u10'], sigma=1)
@@ -43,7 +41,7 @@ fig.colorbar(cf, ax=ax, label='Temperature (℃)')
 # 绘制风场.
 Q = ax.quiver(
     X, Y, u10, v10,
-    scale=0.15,
+    scale=0.2,
     scale_units='dots',
     regrid_shape=35,
     transform=data_crs
@@ -55,5 +53,5 @@ fplt.clip_by_cn_border(cf)
 fplt.clip_by_cn_border(Q)
 
 # 保存图片.
-fig.savefig('../image/quiver.png', dpi=300, bbox_inches='tight')
+fig.savefig('../image/quiver.png', dpi=200, bbox_inches='tight')
 plt.close(fig)

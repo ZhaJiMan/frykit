@@ -1,17 +1,14 @@
 import numpy as np
-import xarray as xr
 from scipy.ndimage import gaussian_filter
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 from cartopy.feature import LAND
 import frykit.plot as fplt
-from frykit import DATA_DIRPATH
 
 # 读取数据.
-ds = xr.load_dataset(str(DATA_DIRPATH / 'test.nc'))
-t2m = ds['t2m'] - 273.15
-X, Y = np.meshgrid(t2m.longitude, t2m.latitude)
-Z = gaussian_filter(t2m, sigma=1)
+ds = fplt.load_test_nc()
+X, Y = np.meshgrid(ds['longitude'], ds['latitude'])
+Z = gaussian_filter(ds['t2m'] - 273.15, sigma=1)
 
 # 设置地图范围和刻度.
 extents1 = [74, 136, 13, 57]

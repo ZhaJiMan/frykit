@@ -31,7 +31,7 @@ pip install frykit
 
 依赖为 `cartopy>=0.20.0`。
 
-`frykit>=0.3.0` 时额外需要 `python>=3.9.0`。
+`python<3.9.0` 时请指定 `pip install frykit==0.2.5`。
 
 ## 示例
 
@@ -141,6 +141,14 @@ fplt.add_quiver_legend(Q, U=10, width=0.15, height=0.12)
 
 在 `Axes` 的角落添加一个白色矩形背景的风矢量图例。可以通过 `rect_kwargs` 字典控制矩形的样式，通过 `key_kwargs` 字典控制 `quiverkey` 的样式。
 
+### 添加经纬度方框
+
+```Python
+fplt.add_box(ax, [lon0, lon1, lat0, lat1], transform=ccrs.PlateCarree())
+```
+
+当 `ax` 是 `GeoAxes` 时会对方框上的点插值，以保证方框在 `ax` 的坐标系里足够平滑。
+
 ### 离散 colorbar
 
 ```Python
@@ -182,6 +190,8 @@ cbar.set_ticks(boundaries)
 ![fill](image/fill.png)
 
 ![quiver](image/quiver.png)
+
+![add_box](image/add_box.png)
 
 ![contourf](image/contourf.png)
 

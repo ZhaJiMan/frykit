@@ -1,6 +1,5 @@
 import math
 from weakref import WeakValueDictionary, WeakKeyDictionary
-from pathlib import PurePath
 from collections.abc import Sequence
 from typing import Any, Optional, Union, Literal
 
@@ -22,7 +21,6 @@ from matplotlib.colors import Normalize, Colormap, ListedColormap, BoundaryNorm
 from matplotlib.quiver import Quiver, QuiverKey
 from matplotlib.text import Text
 from matplotlib.ticker import Formatter, AutoMinorLocator
-from PIL import Image
 
 import cartopy
 if cartopy.__version__ < '0.20.0':
@@ -90,7 +88,7 @@ def add_polygons(
         目标Axes.
 
     polygons : sequence of PolygonType
-        多边形构成的列表.
+        多边形构成的序列.
 
     crs : CRS, optional
         当ax是GeoAxes时会将多边形从crs表示的坐标系变换到ax所在的坐标系上.
@@ -1267,8 +1265,8 @@ def make_qualitative_cmap(colors: Any) -> tuple[
 
     Parameters
     ----------
-    colors : (N,) list or (N, 3) or (N, 4) array_like
-        colormap所含的颜色. 可以为含有颜色的列表或RGB(A)数组.
+    colors : (N,) sequence or (N, 3) or (N, 4) array_like
+        colormap所含的颜色. 可以为含有颜色的序列或RGB(A)数组.
 
     Returns
     -------
@@ -1384,44 +1382,3 @@ def letter_axes(axes: Any, x: float, y: float, **kwargs: Any) -> None:
             transform=ax.transAxes,
             **kwargs
         )
-
-def make_gif(
-    img_filepaths: Union[Sequence[str], Sequence[PurePath]],
-    gif_filepath: Union[str, PurePath],
-    duration: int = 500,
-    loop: int = 0,
-    optimize: bool = False
-) -> None:
-    '''
-    制作GIF图.
-
-    Parameters
-    ----------
-    img_filepaths : sequence of str or sequence of PurePath
-        图片路径的列表. 要求至少含两个元素.
-
-    gif_filepath : str or PurePath
-        输出GIF图片的路径.
-
-    duration : int or list or tuple, optional
-        每一帧的持续时间, 以毫秒为单位. 也可以用列表或元组分别指定每一帧的持续时间.
-        默认为500ms=0.5s.
-
-    loop : int, optional
-        GIF图片循环播放的次数. 默认无限循环.
-
-    optimize : bool, optional
-        尝试压缩GIF图片的调色板.
-    '''
-    if len(img_filepaths) < 2:
-        raise ValueError('至少需要两张图片')
-
-    images = [Image.open(str(filepath)) for filepath in img_filepaths]
-    images[0].save(
-        str(gif_filepath),
-        save_all=True,
-        append_images=images[1:],
-        duration=duration,
-        loop=loop,
-        optimize=optimize
-    )

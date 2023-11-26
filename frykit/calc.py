@@ -116,7 +116,7 @@ def region_ind(
     lat_mask = (lat >= lat0) & (lat <= lat1)
     if form == 'mask':
         if lon.shape != lat.shape:
-            raise ValueError('lon和lat的形状不匹配.')
+            raise ValueError('lon和lat的形状应该一样')
         ind = lon_mask & lat_mask
     elif form == 'ix':
         ind = np.ix_(lon_mask, lat_mask)
@@ -125,7 +125,7 @@ def region_ind(
 
     return ind
 
-def interp_nearest(
+def interp_nearest_dd(
     points: Any,
     values: Any,
     xi: Any,
@@ -133,15 +133,15 @@ def interp_nearest(
     fill_value: float = np.nan
 ) -> np.ndarray:
     '''
-    可以限制搜索半径的最近邻插值.
+    可以限制搜索半径的多维最近邻插值.
 
     Parameters
     ----------
     points : (n, d) array_like
         n个数据点的坐标, 每个点有d个坐标分量.
 
-    values : (n,) or (k, n) array_like
-        n个数据点的变量值, 可以有k个变量.
+    values : (n, ...) array_like
+        n个数据点的变量值, 可以有多个波段.
 
     xi: (m, d) array_like
         m个插值点的坐标. 每个点有d个坐标分量.
@@ -154,41 +154,112 @@ def interp_nearest(
 
     Returns
     -------
-    result : (m,) or (k, m) ndarray
-        插值点处变量值的数组.
+    result : (m, ...) ndarray
+        插值点处变量值的数组(浮点型).
     '''
     points = np.asarray(points)
-    xi = np.asarray(xi)
     values = np.asarray(values, dtype=float)
+    xi = np.asarray(xi)
+    if points.ndim != 2:
+        raise ValueError('points的维度应该为2')
+    if xi.ndim != 2:
+        raise ValueError('xi的维度应该为2')
+    if values.shape[0] != points.shape[0]:
+        raise ValueError('values和points的形状不匹配')
 
-    # 利用KDTree搜索最邻近的值.
+    # 利用KDTree搜索最近点.
     tree = KDTree(points)
     dd, ii = tree.query(xi)
-    result = values[..., ii]
-    result[..., dd > radius] = fill_value
+    result = values[ii]
+    result[dd > radius] = fill_value
 
     return result
 
-def bin_avg(
+def interp_nearest_2d(
     x: Any,
     y: Any,
-    data: Any,
+    values: Any,
+    xi: Any,
+    yi: Any,
+    radius: float = np.inf,
+    fill_value: float = np.nan
+) -> np.ndarray:
+    '''
+    可以限制搜索半径的二维最近邻插值.
+
+    Parameters
+    ----------
+    x : array_like
+        数据点的横坐标. 要求形状与y相同.
+
+    y : array_like
+        数据点的纵坐标. 要求形状与x相同.
+
+    values : array_like
+        数据点的变量值, 可以有多个波段. 要求前面维度的形状与x相同.
+
+    xi: array_like
+        插值点的横坐标. 要求维数与x相同, 形状与yi相同.
+
+    yi: array_like
+        插值点的纵坐标. 要求维数与y相同, 形状与xi相同.
+
+    radius : float, optional
+        插值点能匹配到数据点的最大距离(半径). 默认为Inf.
+
+    fill_value : float, optional
+        距离超出radius的插值点用fill_value填充. 默认为NaN.
+
+    Returns
+    -------
+    result : ndarray
+        插值点处变量值的数组(浮点型).
+    '''
+    x = np.asarray(x)
+    y = np.asarray(y)
+    values = np.asarray(values)
+    xi = np.asarray(xi)
+    yi = np.asarray(yi)
+
+    if x.shape != y.shape:
+        raise ValueError('x和y的形状应该一样')
+    if xi.shape != yi.shape:
+        raise ValueError('xi和yi的形状应该一样')
+    if x.ndim != xi.ndim:
+        raise ValueError('x和xi的维数应该一样')
+    if values.shape[:x.ndim] != x.shape:
+        raise ValueError('values和x的形状不匹配')
+
+    # 元组解包能避免出现多余的维度.
+    band_shape = values.shape[x.ndim:]
+    return interp_nearest_dd(
+        points=np.column_stack((x.ravel(), y.ravel())),
+        values=values.reshape(-1, *band_shape),
+        xi=np.column_stack((xi.ravel(), yi.ravel())),
+        radius=radius,
+        fill_value=fill_value
+    ).reshape(*xi.shape, *band_shape)
+
+def binned_average_2d(
+    x: Any,
+    y: Any,
+    values: Any,
     xbins: Any,
     ybins: Any
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     '''
-    利用平均的方式对散点数据进行二维binning.
+    用平均的方式对数据做二维binning.
 
     Parameters
     ----------
     x : (n,) array_like
-        n个数据点的横坐标.
+        数据点的横坐标.
 
     y : (n,) array_like
-        n个数据点的纵坐标.
+        数据点的纵坐标.
 
-    data : (n,) or (m, n) array_like
-        n个数据点的变量值, 可以有m个变量.
+    values : (n,) array_like or (m,) sequence of array_like
+        数据点的变量值, 也可以是一组变量.
 
     xbins : (nx + 1,) array_like
         用于划分横坐标的bins.
@@ -213,9 +284,10 @@ def bin_avg(
         arr = arr[~np.isnan(arr)]
         return np.nan if arr.size == 0 else arr.mean()
 
+    # 参数检查由scipy的函数负责.
     avg, xbins, ybins, _ = binned_statistic_2d(
-        x, y, data,
-        bins=[xbins, ybins],
+        x, y, values,
+        bins=[ybins, xbins],
         statistic=nanmean
     )
     xc = (xbins[1:] + xbins[:-1]) / 2

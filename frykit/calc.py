@@ -284,9 +284,9 @@ def binned_average_2d(
         arr = arr[~np.isnan(arr)]
         return np.nan if arr.size == 0 else arr.mean()
 
-    # 参数检查由scipy的函数负责.
-    avg, xbins, ybins, _ = binned_statistic_2d(
-        x, y, values,
+    # 参数检查由scipy的函数负责. 注意x和y的顺序.
+    avg, ybins, xbins, _ = binned_statistic_2d(
+        y, x, values,
         bins=[ybins, xbins],
         statistic=nanmean
     )

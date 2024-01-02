@@ -8,7 +8,7 @@ import frykit.shp as fshp
 
 # 读取shp文件记录.
 names = fshp.get_cn_province_names()
-provinces = fshp.get_cn_shp(level='省')
+provinces = fshp.get_cn_province()
 data = np.linspace(0, 100, len(names))
 
 # 设置地图范围.
@@ -63,9 +63,10 @@ ax1.legend(
 )
 
 # 添加指北针和比例尺.
-fplt.add_compass(ax1, 0.5, 0.85, size=15, style='star')
-scale = fplt.add_map_scale(ax1, 0.22, 0.1, length=1000)
-scale.set_xticks([0, 500, 1000])
+fplt.add_compass(ax1, 0.5, 0.85, size=20, style='circle')
+map_scale = fplt.add_map_scale(ax1, 0.22, 0.1, length=1000)
+map_scale.set_xticks([0, 500, 1000])
+map_scale.set_xticks([250, 750], minor=True)
 
 # 简化名称.
 for i, name in enumerate(names):

@@ -5,9 +5,6 @@ from typing import Any, Union, Optional, Literal
 import numpy as np
 import pandas as pd
 
-import shapefile
-from shapefile import ShapeRecord
-
 import shapely.geometry as sgeom
 from shapely.geometry.base import BaseGeometry, CoordinateSequence
 from shapely.prepared import prep
@@ -17,41 +14,173 @@ from matplotlib.path import Path
 from cartopy.crs import CRS
 
 from frykit import DATA_DIRPATH
-dirpath = DATA_DIRPATH / 'shp'
+from frykit._shp import BinaryReader
 
 PolygonType = Union[sgeom.Polygon, sgeom.MultiPolygon]
+GetCNResult = Union[PolygonType, dict]
 
-# 中国行政区划的目录和表格.
-table = pd.read_csv(
-    str(dirpath / 'table.csv'),
-    index_col=['level', 'province', 'city']
-)
+# 省界和市界的表格.
+shp_dirpath = DATA_DIRPATH / 'shp'
+PROVINCE_TABLE = pd.read_csv(str(shp_dirpath / 'province.csv'))
+CITY_TABLE = pd.read_csv(str(shp_dirpath / 'city.csv'))
 
-def get_cn_province_names() -> list[str]:
-    '''获取中国省名.'''
-    return table.index.levels[1].to_list()
+def get_cn_border(as_dict: bool = False) -> GetCNResult:
+    '''
+    获取中国国界的多边形.
 
-def get_cn_city_names() -> list[str]:
-    '''获取中国市名.'''
-    return table.index.levels[2].to_list()
+    Parameters
+    ----------
+    ad_dict : bool, optional
+        是否以字典形式返回结果. 默认为False.
+        多边形在字典中的键为'geometry'.
 
-def _to_geom(shapeRec: ShapeRecord) -> BaseGeometry:
-    '''将shapeRecord转为几何对象.'''
-    return sgeom.shape(shapeRec.shape)
+    Returns
+    -------
+    result : GetCNResult
+        表示国界的多边形或字典.
+    '''
+    with BinaryReader(shp_dirpath / 'country.bin') as reader:
+        geom = reader.shape(0)
+    if as_dict:
+        return {
+            'cn_name': '中华人民共和国',
+            'cn_adcode': 100000,
+            'geometry': geom
+        }
+    else:
+        return geom
 
-def _to_dict(shapeRec: ShapeRecord) -> dict:
-    '''将shapeRecord转为字典.'''
-    d = shapeRec.record.as_dict()
-    d['geometry'] = _to_geom(shapeRec)
+def get_nine_line(as_dict: bool = False) -> GetCNResult:
+    '''
+    获取九段线的多边形.
 
-    return d
+    Parameters
+    ----------
+    ad_dict : bool, optional
+        是否以字典形式返回结果. 默认为False.
+        多边形在字典中的键为'geometry'.
+
+    Returns
+    -------
+    result : GetCNResult
+        表示九段线的多边形或字典.
+    '''
+    with BinaryReader(shp_dirpath / 'nine_line.bin') as reader:
+        geom = reader.shape(0)
+    if as_dict:
+        return {
+            'cn_name': '九段线',
+            'cn_adcode': 100000,
+            'geometry': geom
+        }
+    else:
+        return geom
+
+def get_cn_province(
+    name: Optional[Union[str, Sequence[str]]] = None,
+    as_dict: bool = False
+) -> Union[GetCNResult, list[GetCNResult]]:
+    '''
+    获取中国省界的多边形.
+
+    Parameters
+    ----------
+    name: str or sequence of str, optional
+        单个省名或一组省名. 默认为None, 表示获取所有省份.
+
+    ad_dict : bool, optional
+        是否以字典形式返回结果. 默认为False.
+        多边形在字典中的键为'geometry'.
+
+    Returns
+    -------
+    result : GetCNResult or list of GetCNResult
+        表示省界的多边形或字典.
+        当name表示多个省时result是列表.
+    '''
+    if name is None:
+        indexer = slice(None)
+    elif isinstance(name, str):
+        indexer = PROVINCE_TABLE['pr_name'] == name
+    else:
+        indexer = PROVINCE_TABLE['pr_name'].isin(name)
+
+    result = []
+    with BinaryReader(shp_dirpath / 'province.bin') as reader:
+        for i, row in PROVINCE_TABLE.loc[indexer].iterrows():
+            geom = reader.shape(i)
+            if as_dict:
+                result.append({**row, 'geometry': geom})
+            else:
+                result.append(geom)
+
+    # 只含一条结果时返回标量.
+    return result if len(result) > 1 else result[0]
+
+def get_cn_city(
+    name: Optional[Union[str, Sequence[str]]] = None,
+    province: Optional[Union[str, Sequence[str]]] = None,
+    as_dict: bool = False
+) -> Union[GetCNResult, list[GetCNResult]]:
+    '''
+    获取中国市界的多边形.
+
+    Parameters
+    ----------
+    name: str or sequence of str, optional
+        单个市名或一组市名. 默认为None, 表示获取所有市.
+
+    province: str or sequence of str, optional
+        单个省名或一组省名, 搜索属于某个省的所有市.
+        默认为None, 表示不使用省名搜索.
+        不能同时指定name和province.
+
+    ad_dict : bool, optional
+        是否以字典形式返回结果. 默认为False.
+        多边形在字典中的键为'geometry'.
+
+    Returns
+    -------
+    result : GetCNResult or list of GetCNResult
+        表示市界的多边形或字典.
+        当name表示多个市或province不为None时result是列表.
+    '''
+    if name is not None and province is not None:
+        raise ValueError('不能同时指定name和province')
+    elif name is None and province is None:
+        indexer = slice(None)
+    elif name is not None:
+        if isinstance(name, str):
+            indexer = CITY_TABLE['ct_name'] == name
+        else:
+            indexer = CITY_TABLE['ct_name'].isin(name)
+    else:
+        if isinstance(province, str):
+            indexer = CITY_TABLE['pr_name'] == province
+        else:
+            indexer = CITY_TABLE['pr_name'].isin(province)
+
+    result = []
+    with BinaryReader(shp_dirpath / 'city.bin') as reader:
+        for i, row in CITY_TABLE.loc[indexer].iterrows():
+            geom = reader.shape(i)
+            if as_dict:
+                result.append({**row, 'geometry': geom})
+            else:
+                result.append(geom)
+
+    # 只含一条结果时返回标量.
+    if len(result) > 1 or province is not None:
+        return result
+    else:
+        return result[0]
 
 def get_cn_shp(
     level: Literal['国', '省', '市'] = '国',
     province: Optional[Union[str, Sequence[str]]] = None,
     city: Optional[Union[str, Sequence[str]]] = None,
     as_dict: bool = False
-) -> Union[PolygonType, dict, list[PolygonType], list[dict]]:
+) -> Union[GetCNResult, list[GetCNResult]]:
     '''
     获取中国行政区划的多边形. 支持国界, 省界和市界.
 
@@ -59,7 +188,8 @@ def get_cn_shp(
     数据源: https://github.com/GaryBikini/ChinaAdminDivisonSHP
     使用了PRCoords库从GCJ-02坐标变换到了WGS-84坐标.
 
-    用法:
+    Examples
+    --------
     - 获取国界: get_cn_shp(level='国')
     - 获取所有省: get_cn_shp(level='省')
     - 获取某个省: get_cn_shp(level='省', province='河北省')
@@ -87,60 +217,32 @@ def get_cn_shp(
 
     Returns
     -------
-    shps : PolygonType or list of PolygonType, dict or list of dict
+    result : GetCNResult or list of GetCNResult
         行政区划的多边形或多边形构成的列表.
         as_dict为True时则是字典或字典构成的列表.
     '''
-    to = _to_dict if as_dict else _to_geom
     if level == '国':
-        filepath = dirpath / 'country.shp'
         if province is not None or city is not None:
             raise ValueError("level='国'时不能指定province或city")
+        return get_cn_border(as_dict)
     elif level == '省':
-        filepath = dirpath / 'province.shp'
         if city is not None:
             raise ValueError("level='省'时不能指定city")
+        return get_cn_province(province, as_dict)
     elif level == '市':
-        filepath = dirpath / 'city.shp'
         if province is not None and city is not None:
             raise ValueError("level='市'时不能同时指定province和city")
+        return get_cn_city(city, province, as_dict)
     else:
         raise ValueError("level只能为{'国', '省', '市'}中的一种")
 
-    # 因为索引含有slice(None), 所以inds总为Series.
-    if province is None:
-        province = slice(None)
-    if city is None:
-        city = slice(None)
-    inds = table.loc[(level, province, city), 'index']
+def get_cn_province_names() -> list[str]:
+    '''获取中国省名.'''
+    return PROVINCE_TABLE['pr_name'].to_list()
 
-    with shapefile.Reader(str(filepath)) as reader:
-        shps = [to(reader.shapeRecord(i)) for i in inds]
-
-    # 只含一条记录时返回标量.
-    return shps if len(shps) > 1 else shps[0]
-
-def get_nine_line(as_dict: bool = False) -> Union[PolygonType, dict]:
-    '''
-    获取九段线的多边形.
-
-    数据源: http://datav.aliyun.com/portal/school/atlas/area_selector
-    使用了PRCoords库从GCJ-02坐标变换到了WGS-84坐标.
-
-    Parameters
-    ----------
-    as_dict : bool, optional
-        是否以字典形式返回结果. 默认为False.
-
-    Returns
-    -------
-    nine_line : PolygonType or dict
-        用十个多边形表示的九段线.
-    '''
-    to = _to_dict if as_dict else _to_geom
-    filepath = dirpath / 'nine_line.shp'
-    with shapefile.Reader(str(filepath)) as reader:
-        return to(reader.shapeRecord(0))
+def get_cn_city_names() -> list[str]:
+    '''获取中国市名.'''
+    return CITY_TABLE['ct_name'].to_list()
 
 def simplify_province_name(name: str) -> str:
     '''简化省名到2或3个字.'''

@@ -9,8 +9,8 @@ def plot_qualitative_cbar(ax):
         'orangered', 'orange', 'yellow',
         'limegreen', 'royalblue', 'darkviolet'
     ]
-    cmap, norm, ticks = fplt.make_qualitative_cmap(colors)
-    cbar = fplt.plot_colormap(cmap, norm, ax)
+    cmap, norm, ticks = fplt.get_qualitative_palette(colors)
+    cbar = fplt.plot_colormap(cmap, norm, ax=ax)
     cbar.set_ticks(ticks)
     cbar.set_ticklabels(colors)
 
@@ -18,7 +18,7 @@ def plot_centered_discrete_cbar(ax):
     '''画出CenteredBoundaryNorm的效果.'''
     boundaries = [-10, -5, -2, -1, 1, 2, 5, 10, 20, 50, 100]
     norm = fplt.CenteredBoundaryNorm(boundaries)
-    cbar = fplt.plot_colormap(cmaps.BlueWhiteOrangeRed, norm, ax)
+    cbar = fplt.plot_colormap(cmaps.BlueWhiteOrangeRed, norm, ax=ax)
     cbar.set_ticks(boundaries)
 
 fig, axes = plt.subplots(2, 1, figsize=(8, 2))

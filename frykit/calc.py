@@ -49,6 +49,10 @@ def uv_to_wswd(u: Any, v: Any) -> tuple[Any, Any]:
 
     return ws, wd
 
+def hms_to_degree(hour: Any, minute: Any, second: Any) -> Any:
+    '''时分秒转为度数.'''
+    return hour + minute / 60 + second / 3600
+
 def haversine(
     lon1: Any,
     lat1: Any,
@@ -199,10 +203,10 @@ def interp_nearest_2d(
         数据点的变量值, 可以有多个波段. 要求前面维度的形状与x相同.
 
     xi: array_like
-        插值点的横坐标. 要求维数与x相同, 形状与yi相同.
+        插值点的横坐标. 要求形状与yi相同.
 
     yi: array_like
-        插值点的纵坐标. 要求维数与y相同, 形状与xi相同.
+        插值点的纵坐标. 要求形状与xi相同.
 
     radius : float, optional
         插值点能匹配到数据点的最大距离(半径). 默认为Inf.
@@ -223,12 +227,10 @@ def interp_nearest_2d(
 
     if x.shape != y.shape:
         raise ValueError('x和y的形状应该一样')
-    if xi.shape != yi.shape:
-        raise ValueError('xi和yi的形状应该一样')
-    if x.ndim != xi.ndim:
-        raise ValueError('x和xi的维数应该一样')
     if values.shape[:x.ndim] != x.shape:
         raise ValueError('values和x的形状不匹配')
+    if xi.shape != yi.shape:
+        raise ValueError('xi和yi的形状应该一样')
 
     # 元组解包能避免出现多余的维度.
     band_shape = values.shape[x.ndim:]

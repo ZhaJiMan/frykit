@@ -19,7 +19,7 @@
 - 添加地图比例尺
 - 制作离散色表
 
-没有文档，但是每个函数都有详细的 docstring，可以在 Python命令行中通过 `help` 函数查看，或者在 IDE 中查看。
+暂无文档，但是每个函数都有详细的 docstring，可以在 Python 命令行中通过 `help` 函数查看，或者在 IDE 中查看。
 
 这个包只是作者自用的小工具集，函数编写粗糙，可能存在不少 bug，还请多多交流指正。类似的更完备的包还请移步 [gma](https://gma.luosgeo.com/) 或 [EOmaps](https://github.com/raphaelquast/EOmaps)。
 
@@ -29,9 +29,13 @@
 pip install frykit
 ```
 
-依赖为 `cartopy>=0.20.0`。
+依赖为 `cartopy>=0.20.0` 和 `pandas>=1.2.0`。
 
 `python<3.9.0` 时请指定 `pip install frykit==0.2.5`。
+
+## 更新记录
+
+[CHANGELOG.md](https://github.com/ZhaJiMan/frykit/blob/main/README.md)
 
 ## 示例
 
@@ -41,21 +45,21 @@ pip install frykit
 import frykit.shp as fshp
 
 # 读取国界.
-country = fshp.get_cn_shp(level='国')
+border = fshp.get_cn_border()
 
 # 读取省界.
-provinces = fshp.get_cn_shp(level='省')
-anhui = fshp.get_cn_shp(level='省', province='安徽省')
+provinces = fshp.get_cn_province()
+anhui = fshp.get_cn_province(name='安徽省')
 
 # 读取市界.
-cities = fshp.get_cn_shp(level='市')
-hefei = fshp.get_cn_shp(level='市', city='合肥市')
-cities_of_anhui = fshp.get_cn_shp(level='市', province='安徽省')
+cities = fshp.get_cn_city()
+hefei = fshp.get_cn_city(name='合肥市')
+cities_of_anhui = fshp.get_cn_city(province='安徽省')
 ```
 
-返回结果为 Shapely 的多边形对象，可以进行交并等几何运算。
+返回结果是 Shapely 的多边形对象，可以进行交并等几何运算。
 
-行政区划的 shapefile 文件来自 [ChinaAdminDivisonSHP](https://github.com/GaryBikini/ChinaAdminDivisonSHP) 项目，已从 GCJ-02 坐标系处理到了 WGS84 坐标系上。文件都在 `frykit.DATA_DIRPATH` 指向的目录里。
+行政区划源数据来自 [ChinaAdminDivisonSHP](https://github.com/GaryBikini/ChinaAdminDivisonSHP) 项目，已从 GCJ-02 坐标系处理到了 WGS84 坐标系上。文件都在 `frykit.DATA_DIRPATH` 指向的目录里。
 
 ### 绘制中国国界和省界
 
@@ -84,7 +88,7 @@ pc = fplt.add_polygons(ax, polygons, array=data, cmap=cmap, norm=norm)
 cbar = fig.colorbar(pc, ax=ax)
 ```
 
-Cartopy 的 `GeoAxes.add_geometries` 会自动去除 `polygons` 中不在 `GeoAxes` 显示范围内的多边形，破坏 `polygons` 和 `array` 的一一对应关系，打乱填色的结果。工具箱中的 `add_polygons` 函数不会进行这一操作，能够产生正确的填色结果。
+Cartopy 的 `GeoAxes.add_geometries` 会自动去除不在 `GeoAxes` 显示范围内的 `polygons`，破坏 `polygons` 和 `array` 的一一对应关系，打乱填色的结果。工具箱中的 `add_polygons` 函数不会进行这一操作，能够产生正确的填色结果。
 
 ### 裁剪填色图
 
@@ -149,6 +153,14 @@ fplt.add_box(ax, [lon0, lon1, lat0, lat1], transform=ccrs.PlateCarree())
 
 当 `ax` 是 `GeoAxes` 时会对方框上的点插值，以保证方框在 `ax` 的坐标系里足够平滑。
 
+### GMT 风格边框
+
+```Python
+fplt.gmt_style_frame(ax, width=5)
+```
+
+使用类似 [GMT](https://www.generic-mapping-tools.org/) 黑白相间格子的边框。目前仅支持 `Axes` 和矩形投影的 `GeoAxes`。
+
 ### 离散 colorbar
 
 ```Python
@@ -190,8 +202,6 @@ cbar.set_ticks(boundaries)
 ![fill](image/fill.png)
 
 ![quiver](image/quiver.png)
-
-![add_box](image/add_box.png)
 
 ![contourf](image/contourf.png)
 

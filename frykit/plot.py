@@ -8,6 +8,7 @@ import shapely.geometry as sgeom
 from shapely.ops import unary_union
 from pyproj import Geod
 
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.artist import Artist
@@ -33,6 +34,7 @@ from cartopy.feature import LAND, OCEAN
 
 import frykit.shp as fshp
 from frykit import DATA_DIRPATH
+from frykit.help import deprecator
 
 # 当polygon的引用计数为零时, 弱引用会自动清理缓存.
 _key_to_polygon = WeakValueDictionary()
@@ -127,6 +129,7 @@ def add_polygons(
     paths = [func(polygon) for polygon in polygons]
     pc = PathCollection(paths, transform=trans, **kwargs)
     ax.add_collection(pc)
+    ax._request_autoscale_view()
 
     return pc
 
@@ -162,6 +165,7 @@ def add_polygon(
     '''
     return add_polygons(ax, [polygon], crs, **kwargs)
 
+# TODO: ax.draw, patch.draw, 还是其它?
 def _get_boundary(ax: GeoAxes) -> sgeom.Polygon:
     '''将GeoAxes.patch转为data坐标系下的多边形.'''
     patch = ax.patch
@@ -232,11 +236,12 @@ def clip_by_polygon(
             point = sgeom.Point(artist.get_position())
             if not polygon.contains(point):
                 artist.set_visible(False)
-        elif hasattr(artist, 'collections'):
+        # 3.8.0之后QuadContourSet直接就是Artist.
+        if mpl.__version__ >= '3.8.0' or not hasattr(artist, 'collections'):
+            artist.set_clip_path(path, trans)
+        else:
             for collection in artist.collections:
                 collection.set_clip_path(path, trans)
-        else:
-            artist.set_clip_path(path, trans)
 
 def clip_by_polygons(
     artist: Union[Artist, list[Artist]],
@@ -274,26 +279,28 @@ _data_cache = {}
 
 def _set_add_cn_kwargs(kwargs: dict) -> None:
     '''初始化add_cn_xxx函数的参数.'''
-    if not any(kw in kwargs for kw in ['facecolor', 'facecolors', 'fc']):
+    if not any(kw in kwargs for kw in ['fc', 'facecolor', 'facecolors']):
         kwargs['facecolors'] = 'none'
-    if not any(kw in kwargs for kw in ['edgecolor', 'edgecolors', 'ec']):
+    if not any(kw in kwargs for kw in ['ec', 'edgecolor', 'edgecolors']):
         kwargs['edgecolors'] = 'black'
+    if not any(kw in kwargs for kw in ['lw', 'linewidth', 'linewidths']):
+        kwargs['linewidths'] = 0.5
 
 def _get_cn_border() -> fshp.PolygonType:
     '''获取中国国界并缓存结果.'''
-    country = _data_cache.get('country')
-    if country is None:
-        country = fshp.get_cn_shp(level='国')
-        _data_cache['country'] = country
+    border = _data_cache.get('border')
+    if border is None:
+        border = fshp.get_cn_border()
+        _data_cache['border'] = border
 
-    return country
+    return border
 
 def _get_cn_province() -> dict[str, fshp.PolygonType]:
     '''获取中国省界并缓存结果.'''
     mapping = _data_cache.get('province')
     if mapping is None:
         names = fshp.get_cn_province_names()
-        provinces = fshp.get_cn_shp(level='省')
+        provinces = fshp.get_cn_province()
         mapping = dict(zip(names, provinces))
         _data_cache['province'] = mapping
 
@@ -346,9 +353,9 @@ def add_cn_border(ax: Axes, **kwargs: Any) -> PathCollection:
     pc : PathCollection
         只含国界的集合对象.
     '''
-    country = _get_cn_border()
+    border = _get_cn_border()
     _set_add_cn_kwargs(kwargs)
-    pc = add_polygon(ax, country, **kwargs)
+    pc = add_polygon(ax, border, **kwargs)
 
     return pc
 
@@ -429,8 +436,8 @@ def clip_by_cn_border(artist: Union[Artist, list[Artist]]) -> None:
         - imshow
         - quiver
     '''
-    country = _get_cn_border()
-    clip_by_polygon(artist, country)
+    border = _get_cn_border()
+    clip_by_polygon(artist, border)
 
 def clip_by_cn_province(artist: Union[Artist, list[Artist]], name: str) -> None:
     '''
@@ -705,8 +712,8 @@ def set_extent_and_ticks(
         func = _set_non_rectangular
     func(ax, extents, xticks, yticks, nx, ny, xformatter, yformatter)
 
-def _create_kwargs(kwargs: Optional[dict]) -> dict:
-    '''创建参数字典.'''
+def _create_kwargs(kwargs: Optional[dict] = None) -> dict:
+    '''参数为None时创建新字典, 否则复制参数字典.'''
     return {} if kwargs is None else kwargs.copy()
 
 def add_quiver_legend(
@@ -779,11 +786,11 @@ def add_quiver_legend(
 
     # 初始化参数.
     rect_kwargs = _create_kwargs(rect_kwargs)
-    if 'facecolor' not in rect_kwargs and 'fc' not in rect_kwargs:
+    if 'fc' not in rect_kwargs and 'facecolor' not in rect_kwargs:
         rect_kwargs['facecolor'] = 'white'
-    if 'edgecolor' not in rect_kwargs and 'ec' not in rect_kwargs:
+    if 'ec' not in rect_kwargs and 'edgecolor' not in rect_kwargs:
         rect_kwargs['edgecolor'] = 'black'
-    if 'linewidth' not in rect_kwargs and 'lw' not in rect_kwargs:
+    if 'lw' not in rect_kwargs and 'linewidth' not in rect_kwargs:
         rect_kwargs['linewidth'] = 0.8
     rect_kwargs.setdefault('zorder', 3)
     key_kwargs = _create_kwargs(key_kwargs)
@@ -823,7 +830,7 @@ def add_compass(
     y: float,
     angle: Optional[float] = None,
     size: float = 20,
-    style: Literal['arrow', 'star'] = 'arrow',
+    style: Literal['arrow', 'star', 'circle'] = 'arrow',
     path_kwargs: Optional[dict] = None,
     text_kwargs: Optional[dict] = None
 ) -> tuple[PathCollection, Text]:
@@ -838,19 +845,19 @@ def add_compass(
     x, y : float
         指北针的横纵坐标. 基于axes坐标系.
 
-    angle : float
+    angle : float, optional
         指北针的方向, 从x轴逆时针方向算起, 单位为度. 默认为None.
         当ax是GeoAxes时默认自动计算角度, 否则默认表示90度.
 
     size : float, optional
         指北针的大小, 单位为点(point). 默认为20.
 
-    style : {'arrow', 'star'}, optional
+    style : {'arrow', 'star', 'circle'}, optional
         指北针的造型. 默认为'arrow'.
 
     path_kwargs : dict, optional
         指北针的PathCollection的关键字参数.
-        例如facecolors, edgecolors, linewidth等.
+        例如facecolors, edgecolors, linewidths等.
         默认为None, 表示使用默认参数.
 
     text_kwargs : dict, optional
@@ -868,18 +875,21 @@ def add_compass(
     '''
     # 初始化箭头参数.
     path_kwargs = _create_kwargs(path_kwargs)
-    if not any(kw in path_kwargs for kw in ['facecolor', 'facecolors', 'fc']):
-        path_kwargs['facecolors'] = ['black', 'white']
-    if not any(kw in path_kwargs for kw in ['edgecolor', 'edgecolors', 'ec']):
+    if not any(kw in path_kwargs for kw in ['fc', 'facecolor', 'facecolors']):
+        if style == 'circle':
+            path_kwargs['facecolors'] = ['none', 'black', 'white']
+        else:
+            path_kwargs['facecolors'] = ['black', 'white']
+    if not any(kw in path_kwargs for kw in ['ec', 'edgecolor', 'edgecolors']):
         path_kwargs['edgecolors'] = 'black'
-    if not any(kw in path_kwargs for kw in ['linewidth', 'linewidths', 'lw']):
+    if not any(kw in path_kwargs for kw in ['lw', 'linewidth', 'linewidths']):
         path_kwargs['linewidths'] = 1
     path_kwargs.setdefault('zorder', 3)
     path_kwargs.setdefault('clip_on', False)
 
     # 初始化文字参数.
     text_kwargs = _create_kwargs(text_kwargs)
-    if 'fontsize' not in text_kwargs and 'size' not in text_kwargs:
+    if 'size' not in text_kwargs and 'fontsize' not in text_kwargs:
         text_kwargs['fontsize'] = size / 1.5
 
     # 计算(lon, lat)到(lon, lat + 1)的角度.
@@ -920,6 +930,16 @@ def add_compass(
             rotation = Affine2D().rotate_deg(deg)
             paths.append(path1.transformed(rotation))
             paths.append(path2.transformed(rotation))
+    elif style == 'circle':
+        width = axis = head * 2 / 3
+        radius = head * 2 / 5
+        theta = np.linspace(0, 2 * np.pi, 100)
+        rx = radius * np.cos(theta) + head / 9
+        ry = radius * np.sin(theta)
+        verts1 = np.column_stack((rx, ry))
+        verts2 = [(0, 0), (axis, 0), (axis - head, width / 2), (0, 0)]
+        verts3 = [(0, 0), (axis - head, -width / 2), (axis, 0), (0, 0)]
+        paths = [Path(verts1), Path(verts2), Path(verts3)]
     else:
         raise ValueError('style参数错误')
 
@@ -1003,17 +1023,169 @@ def add_map_scale(
     # 避免全局的rc设置影响刻度的样式.
     bounds = [x, y, width, 1e-4 * width]
     with plt.style.context('default'):
-        scale = ax.inset_axes(bounds, transform=ax.transData)
-    scale.tick_params(
+        map_scale = ax.inset_axes(bounds, transform=ax.transData)
+    map_scale._map_scale = None  # 标识符.
+    map_scale.tick_params(
+        which='both',
         left=False, labelleft=False,
         bottom=False, labelbottom=False,
         top=True, labeltop=True,
         labelsize='small'
     )
-    scale.set_xlabel(units, fontsize='medium')
-    scale.set_xlim(0, length)
+    map_scale.set_xlabel(units, fontsize='medium')
+    map_scale.set_xlim(0, length)
 
-    return scale
+    return map_scale
+
+def _path_from_extents(x0, x1, y0, y1, ccw=True):
+    '''根据方框范围构造Path对象. ccw表示逆时针.'''
+    verts = [(x0, y0), (x1, y0), (x1, y1), (x0, y1), (x0, y0)]
+    if not ccw:
+        verts.reverse()
+    path = Path(verts)
+
+    return path
+
+# TODO: 非矩形投影
+def gmt_style_frame(ax: Axes, width: float = 5, **kwargs: Any) -> None:
+    '''
+    为Axes设置GMT风格的边框.
+
+    Parameters
+    ----------
+    ax : Axes
+        目标Axes. 当ax是add_map_scale的返回值时只设置上边框.
+
+    width : float, optional
+        边框的宽度. 单位为点(point), 默认为5.
+
+    **kwargs
+        边框的PathCollection的关键字参数.
+        例如facecolors, edgecolors, linewidths等.
+    '''
+    is_geoaxes = isinstance(ax, GeoAxes)
+    if is_geoaxes and not isinstance(
+        ax.projection, (_RectangularProjection, Mercator)
+    ):
+        raise ValueError('只支持矩形投影的GeoAxes')
+
+    # 初始化条纹参数.
+    if not any(kw in kwargs for kw in ['fc', 'facecolor', 'facecolors']):
+        kwargs['facecolors'] = ['black', 'white']
+    if not any(kw in kwargs for kw in ['ec', 'edgecolor', 'edgecolors']):
+        kwargs['edgecolors'] = 'black'
+    if not any(kw in kwargs for kw in ['lw', 'linewidth', 'linewidths']):
+        kwargs['linewidths'] = 1
+    kwargs.setdefault('zorder', 3)
+    kwargs.setdefault('clip_on', False)
+
+    # width单位转为英寸.
+    if not hasattr(ax, '_map_scale'):
+        ax.tick_params(
+            which='both',
+            left=True,
+            right=True,
+            top=True,
+            bottom=True,
+        )
+    ax.tick_params(which='major', length=width + 3.5)
+    ax.tick_params(which='minor', length=0)
+    width = width / 72
+
+    # 确定物理坐标系和axes坐标系在xy方向上的缩放值.
+    if is_geoaxes:
+        ax.apply_aspect()  # 确定GeoAxes的transAxes.
+    inches_to_axes = ax.figure.dpi_scale_trans - ax.transAxes
+    matrix = inches_to_axes.get_matrix()
+    dx = width * matrix[0, 0]
+    dy = width * matrix[1, 1]
+
+    # 条纹的transform: transData + transAxes
+    xtrans = ax.get_xaxis_transform()
+    ytrans = ax.get_yaxis_transform()
+
+    # 收集[xmin, xmax]范围内所有刻度, 去重并排序.
+    xticks = np.concatenate((
+        ax.xaxis.get_majorticklocs(),
+        ax.xaxis.get_minorticklocs()
+    ))
+    yticks = np.concatenate((
+        ax.yaxis.get_majorticklocs(),
+        ax.yaxis.get_minorticklocs()
+    ))
+    xmin, xmax = sorted(ax.get_xlim())
+    ymin, ymax = sorted(ax.get_ylim())
+    # xmin到xticks[0]之间也要填充条纹.
+    xticks = np.append(xticks, (xmin, xmax))
+    yticks = np.append(yticks, (ymin, ymax))
+    xticks = xticks[(xticks >= xmin) & (xticks <= xmax)]
+    yticks = yticks[(yticks >= ymin) & (yticks <= ymax)]
+    # 通过round抵消GeoAxes投影变换的误差.
+    if is_geoaxes:
+        decimals = 6
+        xticks = xticks.round(decimals)
+        yticks = yticks.round(decimals)
+    xticks = np.unique(xticks)
+    yticks = np.unique(yticks)
+    nx = len(xticks)
+    ny = len(yticks)
+
+    # 条纹从xmin开始黑白相间排列.
+    top_paths = []
+    for i in range(nx - 1):
+        path = _path_from_extents(xticks[i], xticks[i + 1], 1, 1 + dy)
+        top_paths.append(path)
+    # axis倒转不影响条纹颜色顺序.
+    if ax.xaxis.get_inverted():
+        top_paths.reverse()
+    top_pc = PathCollection(top_paths, transform=xtrans, **kwargs)
+    ax.add_collection(top_pc)
+
+    # 地图比例尺只画上边框.
+    if hasattr(ax, '_map_scale'):
+        return None
+
+    bottom_paths = []
+    for i in range(nx - 1):
+        path = _path_from_extents(xticks[i], xticks[i + 1], -dy, 0)
+        bottom_paths.append(path)
+    if ax.xaxis.get_inverted():
+        bottom_paths.reverse()
+    bottom_pc = PathCollection(bottom_paths, transform=xtrans, **kwargs)
+    ax.add_collection(bottom_pc)
+
+    left_paths = []
+    for i in range(ny - 1):
+        path = _path_from_extents(-dx, 0, yticks[i], yticks[i + 1])
+        left_paths.append(path)
+    if ax.yaxis.get_inverted():
+        left_paths.reverse()
+    left_pc = PathCollection(left_paths, transform=ytrans, **kwargs)
+    ax.add_collection(left_pc)
+
+    right_paths = []
+    for i in range(ny - 1):
+        path = _path_from_extents(1, 1 + dx, yticks[i], yticks[i + 1])
+        right_paths.append(path)
+    if ax.yaxis.get_inverted():
+        right_paths.reverse()
+    right_pc = PathCollection(right_paths, transform=ytrans, **kwargs)
+    ax.add_collection(right_pc)
+
+    # 四个角落的方块单独用白色画出.
+    corner_fc = top_pc.get_facecolor()[-1]
+    for kw in ['fc', 'facecolor', 'facecolors']:
+        if kw in kwargs:
+            break
+    kwargs[kw] = corner_fc
+    corner_paths = [
+        _path_from_extents(-dx, 0, -dy, 0),
+        _path_from_extents(1, 1 + dx, -dy, 0),
+        _path_from_extents(-dx, 0, 1, 1 + dy),
+        _path_from_extents(1, 1 + dx, 1, 1 + dy)
+    ]
+    corner_pc = PathCollection(corner_paths, transform=ax.transAxes, **kwargs)
+    ax.add_collection(corner_pc)
 
 def add_box(
     ax: Axes,
@@ -1032,7 +1204,7 @@ def add_box(
     extents : (4,) array_like
         方框范围[x0, x1, y0, y1].
 
-    steps: int
+    steps: int, optional
         在方框上重采样出N*steps个点. 默认为 100.
         当ax是GeoAxes且指定transform关键字时能保证方框的平滑.
 
@@ -1052,9 +1224,7 @@ def add_box(
         kwargs['edgecolor'] = 'r'
 
     # 添加Patch.
-    x0, x1, y0, y1 = extents
-    verts = [(x0, y0), (x1, y0), (x1, y1), (x0, y1), (x0, y0)]
-    path = Path(verts).interpolated(steps)
+    path = _path_from_extents(*extents).interpolated(steps)
     patch = PathPatch(path, **kwargs)
     ax.add_patch(patch)
 
@@ -1130,6 +1300,7 @@ def move_axes_to_corner(
     new_bbox = Bbox.from_extents(x0, y0, x1, y1)
     ax.set_position(new_bbox)
 
+# TODO: mpl_toolkits.axes_grid1实现.
 def add_side_axes(
     ax: Any,
     loc: Literal['left', 'right', 'bottom', 'top'],
@@ -1257,7 +1428,7 @@ def get_cross_section_xticks(
 
     return x, xticks, xticklabels
 
-def make_qualitative_cmap(colors: Any) -> tuple[
+def get_qualitative_palette(colors: Any) -> tuple[
     ListedColormap, Normalize, np.ndarray
 ]:
     '''
@@ -1285,6 +1456,72 @@ def make_qualitative_cmap(colors: Any) -> tuple[
     ticks = np.arange(N)
 
     return cmap, norm, ticks
+
+@deprecator(get_qualitative_palette)
+def make_qualitative_cmap(colors):
+    '''
+    创建一组定性的colormap和norm, 同时返回刻度位置.
+
+    Parameters
+    ----------
+    colors : (N,) sequence or (N, 3) or (N, 4) array_like
+        colormap所含的颜色. 可以为含有颜色的序列或RGB(A)数组.
+
+    Returns
+    -------
+    cmap : ListedColormap
+        创建的colormap.
+
+    norm : Normalize
+        创建的norm. N个颜色对应于0~N-1范围的数据.
+
+    ticks : (N,) ndarray
+        colorbar刻度的坐标.
+    '''
+    return get_qualitative_palette(colors)
+
+def get_dBZ_palette(zero_threshold: float = 1e-3) -> tuple[
+    ListedColormap, BoundaryNorm, np.ndarray
+]:
+    '''
+    参考中央气象台的雷达图创建适用于dBZ的colormap和norm, 同时返回分档数值.
+
+    Examples
+    --------
+    ```
+    cmap, norm, boundaries = get_dBZ_palette()
+    plt.contourf(X, Y, Z, boundaries, cmap=cmap, norm=norm, extend='max')
+    cbar = plt.colorbar(extendrect=True, extendfrac='auto')
+    ```
+
+    Parameters
+    ----------
+    zero_threshold : float, optional
+        当dBZ小于zero_threshold时认为dBZ为零. 默认为0.001.
+
+    Returns
+    -------
+    cmap : ListedColormap
+        创建的colormap.
+
+    norm : BoundaryNorm
+        创建的norm.
+
+    boundaries : ndarray
+        用于划分颜色的数值. 范围为[zero_threshold, 70].
+    '''
+    cmap = ListedColormap([
+        '#0000ef', '#419df1', '#64e7eb', '#6dfa3d', '#00d800',
+        '#019000', '#ffff00', '#e7c000', '#ff9000', '#ff0000',
+        '#d60000', '#c00000', '#ff00f0', '#9600b4'
+    ])
+    cmap.set_over('#ad90f0')
+    cmap.set_under('none')
+    boundaries = np.linspace(0, 70, 15)
+    boundaries[0] = zero_threshold
+    norm = BoundaryNorm(boundaries, cmap.N)
+
+    return cmap, norm, boundaries
 
 def get_aod_cmap() -> ListedColormap:
     '''返回适用于AOD的cmap.'''
@@ -1335,6 +1572,7 @@ class CenteredBoundaryNorm(BoundaryNorm):
 def plot_colormap(
     cmap: Colormap,
     norm: Optional[Normalize] = None,
+    extend: Optional[Literal['neither', 'both', 'min', 'max']] = None,
     ax: Optional[Axes] = None
 ) -> Colorbar:
     '''快速展示一条colormap.'''
@@ -1342,7 +1580,12 @@ def plot_colormap(
         fig, ax = plt.subplots(figsize=(8, 1))
         fig.subplots_adjust(bottom=0.5)
     mappable = ScalarMappable(norm=norm, cmap=cmap)
-    cbar = plt.colorbar(mappable, cax=ax, orientation='horizontal')
+    cbar = plt.colorbar(
+        mappable,
+        cax=ax,
+        orientation='horizontal',
+        extend=extend
+    )
 
     return cbar
 

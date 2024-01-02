@@ -33,7 +33,7 @@ plt.rc('ytick', labelsize=8, right=True, labelright=True)
 fig = plt.figure(figsize=(10, 6))
 ax1 = fig.add_subplot(projection=map_crs)
 fplt.set_extent_and_ticks(
-    ax1,
+    ax=ax1,
     extents=extents1,
     xticks=xticks,
     yticks=yticks
@@ -79,8 +79,9 @@ cbar.ax.tick_params(length=4, labelsize=8)
 
 # 添加指北针和比例尺.
 fplt.add_compass(ax1, 0.92, 0.85, size=15, style='star')
-scale = fplt.add_map_scale(ax1, 0.05, 0.1, length=1000)
-scale.set_xticks([0, 500, 1000])
+map_scale = fplt.add_map_scale(ax1, 0.05, 0.1, length=1000)
+map_scale.set_xticks([0, 500, 1000])
+map_scale.xaxis.get_label().set_fontsize('small')
 
 # 设置标题.
 ax1.set_title(
@@ -107,7 +108,9 @@ ax2.set_facecolor('skyblue')
 ax2.add_feature(LAND.with_scale('50m'), fc='floralwhite')
 fplt.add_nine_line(ax2, lw=0.5)
 fplt.add_cn_province(ax2, lw=0.3)
-fplt.add_map_scale(ax2, 0.4, 0.15, length=500)
+map_scale = fplt.add_map_scale(ax2, 0.4, 0.15, length=500)
+map_scale.set_xticks([0, 500])
+map_scale.xaxis.get_label().set_fontsize('small')
 
 # 绘制填色图.
 cf = ax2.contourf(

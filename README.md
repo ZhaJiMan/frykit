@@ -119,8 +119,8 @@ disable_fast_transform()
 
 ```Python
 fplt.add_compass(ax1, 0.95, 0.8, size=15, style='star')
-scale = fplt.add_map_scale(ax1, 0.36, 0.8, length=1000)
-scale.set_xticks([0, 500, 1000])
+map_scale = fplt.add_map_scale(ax1, 0.36, 0.8, length=1000)
+map_scale.set_xticks([0, 500, 1000])
 ```
 
 指北针会自动指向所在位置处的北向，也可以通过 `angle` 参数手动指定角度。
@@ -197,12 +197,22 @@ cbar.set_ticks(boundaries)
 
 `cd` 到包的 `example` 目录里可以执行示例脚本：
 
+- [在普通 `Axes` 上画地图](example/axes.py)
+
 ![axes](image/axes.png)
+
+- [分省填色](example/fill.py)
 
 ![fill](image/fill.png)
 
+- [剪裁 `contourf` 和 `quiver`](example/quiver.py)
+
 ![quiver](image/quiver.png)
 
+- [剪裁主图和南海小图的 `contourf`](example/contourf.py)
+
 ![contourf](image/contourf.png)
+
+- [模仿 NERV 风格的地图](example/nerv_style.py)
 
 ![nerv_style](image/nerv_style.png)

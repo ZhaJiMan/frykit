@@ -518,7 +518,7 @@ def clip_by_ocean(
     ocean = _get_ocean(resolution)
     clip_by_polygon(artist, ocean)
 
-def _set_rectangular(
+def _set_rectangular_geoaxes(
     ax: GeoAxes,
     extents: Optional[Any] = None,
     xticks: Optional[Any] = None,
@@ -550,13 +550,13 @@ def _set_rectangular(
             ax.yaxis.set_minor_locator(AutoMinorLocator(ny + 1))
         ax.yaxis.set_major_formatter(yformatter)
 
-    # 后调用set_extent, 防止刻度拓宽显示范围.
+    # 最后调用set_extent, 防止刻度拓宽显示范围.
     if extents is None:
         ax.set_global()
     else:
         ax.set_extent(extents, crs)
 
-def _set_non_rectangular(
+def _set_non_rectangular_geoaxes(
     ax: GeoAxes,
     extents: Optional[Any] = None,
     xticks: Optional[Any] = None,
@@ -658,8 +658,47 @@ def _set_non_rectangular(
             tick.tick1line.set_alpha(False)
             tick.label1.set_alpha(False)
 
+def _set_PlateCarree_axes(
+    ax: Axes,
+    extents: Optional[Any] = None,
+    xticks: Optional[Any] = None,
+    yticks: Optional[Any] = None,
+    nx: int = 0,
+    ny: int = 0,
+    xformatter: Optional[Formatter] = None,
+    yformatter: Optional[Formatter] = None
+) -> None:
+    # 默认formatter.
+    if xformatter is None:
+        xformatter = LongitudeFormatter()
+    if yformatter is None:
+        yformatter = LatitudeFormatter()
+
+    # 设置x轴主次刻度.
+    if xticks is not None:
+        ax.set_xticks(xticks)
+        if nx > 0:
+            ax.xaxis.set_minor_locator(AutoMinorLocator(nx + 1))
+        ax.xaxis.set_major_formatter(xformatter)
+
+    # 设置y轴主次刻度.
+    if yticks is not None:
+        ax.set_yticks(yticks)
+        if ny > 0:
+            ax.yaxis.set_minor_locator(AutoMinorLocator(ny + 1))
+        ax.yaxis.set_major_formatter(yformatter)
+
+    # 最后调用set_xlim和set_ylim, 防止刻度拓宽显示范围.
+    if extents is None:
+        ax.set_xlim(-180, 180)
+        ax.set_ylim(-90, 90)
+    else:
+        x0, x1, y0, y1 = extents
+        ax.set_xlim(x0, x1)
+        ax.set_ylim(y0, y1)
+
 def set_extent_and_ticks(
-    ax: GeoAxes,
+    ax: Axes,
     extents: Optional[Any] = None,
     xticks: Optional[Any] = None,
     yticks: Optional[Any] = None,
@@ -669,17 +708,16 @@ def set_extent_and_ticks(
     yformatter: Optional[Formatter] = None
 ) -> None:
     '''
-    设置GeoAxes的范围和刻度.
+    设置Axes的范围和刻度.
 
-    支持矩形投影和显示范围为矩形的非矩形投影.
+    当ax是普通Axes时, 认为其投影为PlateCarree().
+    当ax是GeoAxes时, 支持矩形投影和显示范围为矩形的非矩形投影.
     如果在非矩形投影上的效果存在问题, 建议换用GeoAxes.gridlines.
-
-    建议在设置刻度属性(例如tick_params)之后再调用该函数.
 
     Parameters
     ----------
-    ax : GeoAxes
-        目标GeoAxes.
+    ax : Axes
+        目标Axes.
 
     extents : (4,) array_like, optional
         经纬度范围[lon0, lon1, lat0, lat1]. 默认为None, 表示全球范围.
@@ -704,12 +742,13 @@ def set_extent_and_ticks(
     yformatter : Formatter, optional
         纬度刻度标签的Formatter. 默认为None, 表示无参数的LatitudeFormatter.
     '''
-    if not isinstance(ax, GeoAxes):
-        raise ValueError('ax必须是GeoAxes')
-    if isinstance(ax.projection, (_RectangularProjection, Mercator)):
-        func = _set_rectangular
+    if isinstance(ax, GeoAxes):
+        if isinstance(ax.projection, (_RectangularProjection, Mercator)):
+            func = _set_rectangular_geoaxes
+        else:
+            func = _set_non_rectangular_geoaxes
     else:
-        func = _set_non_rectangular
+        func = _set_PlateCarree_axes
     func(ax, extents, xticks, yticks, nx, ny, xformatter, yformatter)
 
 def _create_kwargs(kwargs: Optional[dict] = None) -> dict:
@@ -960,21 +999,22 @@ def add_compass(
     return pc, text
 
 def add_map_scale(
-    ax: GeoAxes,
+    ax: Axes,
     x: float,
     y: float,
     length: float = 1000,
     units: Literal['m', 'km'] = 'km'
 ) -> Axes:
     '''
-    向GeoAxes添加地图比例尺.
+    向Axes添加地图比例尺.
 
-    用Axes模拟比例尺, 刻度可以直接通过scale.set_xticks进行修改.
+    当ax是普通Axes时, 认为其投影为PlateCarree(), 然后计算比例尺长度.
+    当ax是GeoAxes时, 根据ax.projection计算比例尺长度.
 
     Parameters
     ----------
-    ax : GeoAxes
-        目标GeoAxes.
+    ax : Axes
+        目标Axes.
 
     x, y : float
         比例尺左端的横纵坐标. 基于axes坐标系.
@@ -987,12 +1027,9 @@ def add_map_scale(
 
     Returns
     -------
-    scale : Axes
-        表示比例尺的Axes对象.
+    map_scale : Axes
+        表示比例尺的Axes对象. 刻度可以直接通过scale.set_xticks进行修改.
     '''
-    if not isinstance(ax, GeoAxes):
-        raise ValueError("ax只能是GeoAxes")
-
     if units == 'km':
         unit = 1000
     elif units == 'm':
@@ -1000,20 +1037,29 @@ def add_map_scale(
     else:
         raise ValueError('units参数错误')
 
-    # 取地图中心一小段水平线计算单位投影坐标的长度.
-    crs = PlateCarree()
-    xmin, xmax = ax.get_xlim()
-    ymin, ymax = ax.get_ylim()
-    xmid = (xmin + xmax) / 2
-    ymid = (ymin + ymax) / 2
-    dx = (xmax - xmin) / 10
-    x0 = xmid - dx / 2
-    x1 = xmid + dx / 2
-    lon0, lat0 = crs.transform_point(x0, ymid, ax.projection)
-    lon1, lat1 = crs.transform_point(x1, ymid, ax.projection)
-    geod = Geod(ellps='WGS84')
-    dr = geod.inv(lon0, lat0, lon1, lat1)[2] / unit
-    dxdr = dx / dr
+    if isinstance(ax, GeoAxes):
+        # 取地图中心一小段水平线计算单位投影坐标的长度.
+        crs = PlateCarree()
+        xmin, xmax = ax.get_xlim()
+        ymin, ymax = ax.get_ylim()
+        xmid = (xmin + xmax) / 2
+        ymid = (ymin + ymax) / 2
+        dx = (xmax - xmin) / 10
+        x0 = xmid - dx / 2
+        x1 = xmid + dx / 2
+        lon0, lat0 = crs.transform_point(x0, ymid, ax.projection)
+        lon1, lat1 = crs.transform_point(x1, ymid, ax.projection)
+        geod = Geod(ellps='WGS84')
+        dr = geod.inv(lon0, lat0, lon1, lat1)[2] / unit
+        dxdr = dx / dr
+    else:
+        # 取地图中心的纬度计算单位经度的长度.
+        Re = 6371e3
+        L = 2 * math.pi * Re / 360
+        lat0, lat1 = ax.get_ylim()
+        lat = (lat0 + lat1) / 2
+        drdx = L * math.cos(math.radians(lat))
+        dxdr = unit / drdx
 
     # axes坐标转为data坐标.
     axes_to_data = ax.transAxes - ax.transData

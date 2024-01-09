@@ -59,7 +59,7 @@ cities_of_anhui = fshp.get_cn_city(province='安徽省')
 
 返回结果是 Shapely 的多边形对象，可以进行交并等几何运算。
 
-行政区划源数据来自 [ChinaAdminDivisonSHP](https://github.com/GaryBikini/ChinaAdminDivisonSHP) 项目，已从 GCJ-02 坐标系处理到了 WGS84 坐标系上。文件都在 `frykit.DATA_DIRPATH` 指向的目录里。
+行政区划源数据来自 [高德地图行政区域查询接口](https://lbs.amap.com/api/webservice/guide/api/district)，含国界、省界和市界三套数据，已从 GCJ-02 坐标系处理到了 WGS84 坐标系上。文件都在 `frykit.DATA_DIRPATH` 指向的目录里。`script/download_amap_data.ipynb` 是手把手的下载教程。
 
 ### 绘制中国国界和省界
 
@@ -125,7 +125,7 @@ map_scale.set_xticks([0, 500, 1000])
 
 指北针会自动指向所在位置处的北向，也可以通过 `angle` 参数手动指定角度。
 
-比例尺的长度通过 `GeoAxes` 中心处单位长度和实际距离的比值计算得到。比例尺本身由一个压扁了的 `Axes` 模拟，所以可通过 `set_xticks` 等方法修改样式。
+比例尺的长度通过 `Axes` 中心处单位长度和实际距离的比值计算得到。比例尺本身由一个压扁了的 `Axes` 模拟，所以可通过 `set_xticks` 等方法修改样式。
 
 ### 定位南海小地图
 

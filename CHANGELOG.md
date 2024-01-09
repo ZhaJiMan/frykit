@@ -1,3 +1,9 @@
+## `0.3.4`
+
+- 以高德地图行政区域查询为数据源更新了 `data/shp` 目录里的矢量数据。
+- `set_extent_and_ticks` 和 `add_map_scale` 函数现已支持普通 `Axes`。
+- 改进 `get_cn_province` 和 `get_cn_city` 函数参数错误时的提示。
+
 ## `0.3.3`
 
 - 新增 `_shp` 模块，改用自定义的二进制格式存储 shapefile 文件，减半数据文件体积的同时加快读取速度。

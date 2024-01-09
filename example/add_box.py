@@ -30,6 +30,8 @@ ax1.set_extent(extents1, crs=data_crs)
 ax2.set_extent(extents2, crs=data_crs)
 fplt.add_cn_province(ax1, lw=0.3, fc='floralwhite')
 fplt.add_cn_province(ax2, lw=0.3, fc='floralwhite')
+fplt.add_nine_line(ax1, lw=0.5)
+fplt.add_nine_line(ax2, lw=0.5)
 ax1.set_title('PlateCarree')
 ax2.set_title('AzimuthalEquidistant')
 

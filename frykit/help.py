@@ -3,7 +3,7 @@ import warnings
 from pathlib import PurePath, Path
 from functools import wraps
 from collections.abc import Sequence, Iterator
-from typing import Any, Union, Callable
+from typing import Any, Union, Optional, Callable
 
 def new_dir(dirpath: Union[str, Path]) -> None:
     '''新建目录.'''
@@ -33,16 +33,15 @@ def split_list(lst: Sequence, n: int) -> Iterator[Sequence]:
         yield lst[start:stop]
         start = stop
 
-def deprecator(new_func: Callable) -> Callable:
+def deprecator(new_func: Optional[Callable]) -> Callable:
     '''提示弃用的装饰器.'''
     def decorator(old_func: Callable) -> Callable:
+        info = f'{old_func.__name__} is deprecated'
+        if new_func is not None:
+            info += f', use {new_func.__name__} instead'
         @wraps(old_func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            warnings.warn(
-                f'Use {new_func.__name__} instead',
-                category=DeprecationWarning,
-                stacklevel=2
-            )
+            warnings.warn(info, DeprecationWarning, stacklevel=2)
             result = old_func(*args, **kwargs)
             return result
         return wrapper

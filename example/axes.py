@@ -1,3 +1,4 @@
+import numpy as np
 import matplotlib.pyplot as plt
 import frykit.plot as fplt
 
@@ -8,13 +9,14 @@ ax.set_aspect('equal')
 # 添加要素和修饰.
 fplt.add_cn_province(ax, lw=0.5, fc='lightgray')
 fplt.add_nine_line(ax, lw=0.5)
+fplt.set_extent_and_ticks(
+    ax=ax,
+    extents=[70, 140, 0, 60],
+    xticks=np.arange(-180, 181, 10),
+    yticks=np.arange(-90, 91, 10)
+)
 fplt.gmt_style_frame(ax)
 ax.grid(ls='--')
-
-# 手动添加刻度标签的度数符号.
-degree = '\N{DEGREE SIGN}'
-ax.xaxis.set_major_formatter('{x:.0f}' + degree + 'E')
-ax.yaxis.set_major_formatter('{x:.0f}' + degree + 'N')
 
 # 保存图片.
 ax.set_title('Use Matplotlib Axes', pad=15)

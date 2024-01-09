@@ -1,3 +1,4 @@
+'''运行example目录下的所有脚本.'''
 import subprocess
 from pathlib import Path
 

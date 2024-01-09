@@ -4,8 +4,9 @@ from typing import Any, Optional, Union
 
 from PIL import Image
 
+# TODO: 支持输入为Image的序列.
 def make_gif(
-    img_filepaths: Union[Sequence[str], Sequence[PurePath]],
+    img_filepaths: Sequence[Union[str, PurePath]],
     gif_filepath: Union[str, PurePath],
     duration: int = 500,
     loop: int = 0,

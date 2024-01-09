@@ -100,10 +100,13 @@ def get_cn_province(
     '''
     if name is None:
         indexer = slice(None)
-    elif isinstance(name, str):
-        indexer = PROVINCE_TABLE['pr_name'] == name
     else:
-        indexer = PROVINCE_TABLE['pr_name'].isin(name)
+        if isinstance(name, str):
+            indexer = PROVINCE_TABLE['pr_name'] == name
+        else:
+            indexer = PROVINCE_TABLE['pr_name'].isin(name)
+        if not indexer.any():
+            raise ValueError('name错误')
 
     result = []
     with BinaryReader(shp_dirpath / 'province.bin') as reader:
@@ -154,11 +157,15 @@ def get_cn_city(
             indexer = CITY_TABLE['ct_name'] == name
         else:
             indexer = CITY_TABLE['ct_name'].isin(name)
+        if not indexer.any():
+            raise ValueError('name错误')
     else:
         if isinstance(province, str):
             indexer = CITY_TABLE['pr_name'] == province
         else:
             indexer = CITY_TABLE['pr_name'].isin(province)
+        if not indexer.any():
+            raise ValueError('province错误')
 
     result = []
     with BinaryReader(shp_dirpath / 'city.bin') as reader:

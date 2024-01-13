@@ -35,7 +35,7 @@ pip install frykit
 
 ## 更新记录
 
-[CHANGELOG.md](https://github.com/ZhaJiMan/frykit/blob/main/README.md)
+[CHANGELOG.md](https://github.com/ZhaJiMan/frykit/blob/main/CHANGELOG.md)
 
 ## 示例
 

@@ -21,8 +21,8 @@ GetCNResult = Union[PolygonType, dict]
 
 # 省界和市界的表格.
 shp_dirpath = DATA_DIRPATH / 'shp'
-PROVINCE_TABLE = pd.read_csv(str(shp_dirpath / 'province.csv'))
-CITY_TABLE = pd.read_csv(str(shp_dirpath / 'city.csv'))
+PROVINCE_TABLE = pd.read_csv(str(shp_dirpath / 'cn_province.csv'))
+CITY_TABLE = pd.read_csv(str(shp_dirpath / 'cn_city.csv'))
 
 def get_cn_border(as_dict: bool = False) -> GetCNResult:
     '''
@@ -39,7 +39,7 @@ def get_cn_border(as_dict: bool = False) -> GetCNResult:
     result : GetCNResult
         表示国界的多边形或字典.
     '''
-    with BinaryReader(shp_dirpath / 'country.bin') as reader:
+    with BinaryReader(shp_dirpath / 'cn_border.bin') as reader:
         geom = reader.shape(0)
     if as_dict:
         return {
@@ -109,7 +109,7 @@ def get_cn_province(
             raise ValueError('name错误')
 
     result = []
-    with BinaryReader(shp_dirpath / 'province.bin') as reader:
+    with BinaryReader(shp_dirpath / 'cn_province.bin') as reader:
         for i, row in PROVINCE_TABLE.loc[indexer].iterrows():
             geom = reader.shape(i)
             if as_dict:
@@ -168,7 +168,7 @@ def get_cn_city(
             raise ValueError('province错误')
 
     result = []
-    with BinaryReader(shp_dirpath / 'city.bin') as reader:
+    with BinaryReader(shp_dirpath / 'cn_city.bin') as reader:
         for i, row in CITY_TABLE.loc[indexer].iterrows():
             geom = reader.shape(i)
             if as_dict:

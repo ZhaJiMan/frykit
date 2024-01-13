@@ -4,6 +4,7 @@ from pathlib import PurePath
 from typing import Any, Union
 
 import numpy as np
+import pandas as pd
 import shapefile
 import shapely.geometry as sgeom
 from shapely.geometry.base import BaseGeometry
@@ -187,6 +188,15 @@ class BinaryReader:
 
         return multi_polygon
 
+def extract_records(shp_filepath, csv_filepath):
+    '''提取shapefile文件中的记录, 存为CSV表格.'''
+    records = []
+    with shapefile.Reader(str(shp_filepath)) as reader:
+        for record in reader.iterRecords():
+            records.append(record.as_dict())
+    df = pd.DataFrame.from_records(records)
+    df.to_csv(str(csv_filepath), index=False)
+
 def convert_gcj_to_wgs(
     gcj_filepath: Union[str, PurePath],
     wgs_filepath: Union[str, PurePath],
@@ -208,19 +218,3 @@ def convert_gcj_to_wgs(
                 if validation and not sgeom.shape(shape).is_valid:
                     raise ValueError('转换导致几何错误')
                 writer.shape(shape)
-
-def make_nine_line_file() -> None:
-    '''根据阿里云的geojson制作九段线的shapefile.'''
-    import json
-    from frykit import DATA_DIRPATH
-    geoj_filepath = DATA_DIRPATH / 'shp' / '100000_full.json'
-    shp_filepath = DATA_DIRPATH / 'shp' / 'nine_line.shp'
-
-    with open(str(geoj_filepath), encoding='utf-8') as f:
-        geoj = json.load(f)
-    geometry = geoj['features'][-1]['geometry']
-
-    with shapefile.Writer(str(shp_filepath)) as writer:
-        writer.fields = [['cn_adcode', 'C', 80, 0], ['cn_name', 'C', 80, 0]]
-        writer.record(cn_adcode='100000', cn_name='九段线')
-        writer.shape(geometry)

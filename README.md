@@ -59,7 +59,7 @@ cities_of_anhui = fshp.get_cn_city(province='安徽省')
 
 返回结果是 Shapely 的多边形对象，可以进行交并等几何运算。
 
-行政区划源数据来自 [高德地图行政区域查询接口](https://lbs.amap.com/api/webservice/guide/api/district)，含国界、省界和市界三套数据，已从 GCJ-02 坐标系处理到了 WGS84 坐标系上。文件都在 `frykit.DATA_DIRPATH` 指向的目录里。`script/download_amap_data.ipynb` 是手把手的下载教程。
+行政区划源数据来自 [高德地图行政区域查询接口](https://lbs.amap.com/api/webservice/guide/api/district)，含国界、省界和市界三套数据，已从 GCJ-02 坐标系处理到了 WGS84 坐标系上。文件都在 `frykit.DATA_DIRPATH` 指向的目录里。
 
 ### 绘制中国国界和省界
 
@@ -70,6 +70,9 @@ fplt.add_cn_border(ax)
 # 绘制省界.
 fplt.add_cn_province(ax)
 fplt.add_cn_province(ax, name=['安徽省', '江苏省'])
+
+# 绘制九段线
+fplt.add_nine_line(ax)
 ```
 
 `ax` 可以是 `Axes` 或 `GeoAxes`。

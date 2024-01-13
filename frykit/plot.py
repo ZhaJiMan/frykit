@@ -668,6 +668,7 @@ def _set_PlateCarree_axes(
     xformatter: Optional[Formatter] = None,
     yformatter: Optional[Formatter] = None
 ) -> None:
+    '''设置PlateCarree投影的Axes的范围和刻度.'''
     # 默认formatter.
     if xformatter is None:
         xformatter = LongitudeFormatter()
@@ -1525,49 +1526,6 @@ def make_qualitative_cmap(colors):
         colorbar刻度的坐标.
     '''
     return get_qualitative_palette(colors)
-
-def get_dBZ_palette(zero_threshold: float = 1e-3) -> tuple[
-    ListedColormap, BoundaryNorm, np.ndarray
-]:
-    '''
-    参考中央气象台的雷达图创建适用于dBZ的colormap和norm, 同时返回分档数值.
-
-    Examples
-    --------
-    ```
-    cmap, norm, boundaries = get_dBZ_palette()
-    plt.contourf(X, Y, Z, boundaries, cmap=cmap, norm=norm, extend='max')
-    cbar = plt.colorbar(extendrect=True, extendfrac='auto')
-    ```
-
-    Parameters
-    ----------
-    zero_threshold : float, optional
-        当dBZ小于zero_threshold时认为dBZ为零. 默认为0.001.
-
-    Returns
-    -------
-    cmap : ListedColormap
-        创建的colormap.
-
-    norm : BoundaryNorm
-        创建的norm.
-
-    boundaries : ndarray
-        用于划分颜色的数值. 范围为[zero_threshold, 70].
-    '''
-    cmap = ListedColormap([
-        '#0000ef', '#419df1', '#64e7eb', '#6dfa3d', '#00d800',
-        '#019000', '#ffff00', '#e7c000', '#ff9000', '#ff0000',
-        '#d60000', '#c00000', '#ff00f0', '#9600b4'
-    ])
-    cmap.set_over('#ad90f0')
-    cmap.set_under('none')
-    boundaries = np.linspace(0, 70, 15)
-    boundaries[0] = zero_threshold
-    norm = BoundaryNorm(boundaries, cmap.N)
-
-    return cmap, norm, boundaries
 
 def get_aod_cmap() -> ListedColormap:
     '''返回适用于AOD的cmap.'''

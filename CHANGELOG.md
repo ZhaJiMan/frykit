@@ -1,3 +1,8 @@
+## `0.3.6`
+
+- 修改 `BinaryConverter` 的用法。
+- 修改 `MANIFEST.in` 文件，纳入 `README.md` 文件。
+
 ## `0.3.5`
 
 - 移除 `make_nine_line_file` 函数。

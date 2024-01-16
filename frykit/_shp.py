@@ -17,7 +17,7 @@ MULTI_POLYGON_TYPE = 1
 DTYPE = '<I'
 DTYPE_SIZE = 4
 
-# 压缩参数.
+# 压缩参数. TODO: 需要放宽精度要求吗?
 LON0, LON1 = 70, 140
 LAT0, LAT1 = 0, 60
 N = DTYPE_SIZE * 8
@@ -25,33 +25,21 @@ ADD_OFFSETS = np.array([LON0, LAT0])
 SCALE_FACTORS = np.array([LON1 - LON0, LAT1 - LAT0]) / (2**N - 1)
 
 class BinaryConverter:
-    '''将shapefile文件转为二进制文件的类.'''
-    def __init__(self, filepath: Union[str, PurePath]) -> None:
-        self.file = open(str(filepath), 'wb')
-
-    def close(self) -> None:
-        self.file.close()
-
-    def __enter__(self) -> None:
-        return self
-
-    def __exit__(self, *args: Any) -> None:
-        self.close()
-
+    '''将shapefile文件转为二进制的类.'''
     def convert(self, filepath: Union[str, PurePath]) -> None:
         '''转换filepath指向的文件.'''
         with shapefile.Reader(str(filepath)) as reader:
             if reader.shapeType != 5:
                 raise ValueError('shp文件必须是Polygon类型')
-            geoj = reader.__geo_interface__
-        content = self.pack_geoj(geoj)
-        self.file.write(content)
+            geojson = reader.__geo_interface__
 
-    def pack_geoj(self, geoj: dict) -> bytes:
-        '''将geojson对象打包成二进制.'''
+        return self.pack_geojson(geojson)
+
+    def pack_geojson(self, geojson: dict) -> bytes:
+        '''将GeoJSON对象打包成二进制.'''
         shapes = []
         shape_sizes = []
-        for feature in geoj['features']:
+        for feature in geojson['features']:
             geometry = feature['geometry']
             if geometry['type'] == 'Polygon':
                 shape = self.pack_polygon(geometry['coordinates'])

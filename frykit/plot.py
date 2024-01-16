@@ -37,6 +37,7 @@ from frykit import DATA_DIRPATH
 from frykit.help import deprecator
 
 # 当polygon的引用计数为零时, 弱引用会自动清理缓存.
+# cartopy是直接缓存Path, 但测试后发现差距不大.
 _key_to_polygon = WeakValueDictionary()
 _key_to_transformed_polygon = WeakKeyDictionary()
 _transform_func = None

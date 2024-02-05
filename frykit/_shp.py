@@ -4,10 +4,10 @@ from pathlib import PurePath
 from typing import Any, Union
 
 import numpy as np
-import pandas as pd
 import shapefile
 import shapely.geometry as sgeom
-from shapely.geometry.base import BaseGeometry
+
+PolygonType = Union[sgeom.Polygon, sgeom.MultiPolygon]
 
 # 几何类型.
 POLYGON_TYPE = 0
@@ -48,7 +48,7 @@ class BinaryConverter:
                 shape = self.pack_multi_polygon(geometry['coordinates'])
                 shape_type = struct.pack(DTYPE, MULTI_POLYGON_TYPE)
             else:
-                raise NotImplementedError('不支持的几何类型')
+                raise ValueError('不支持的几何类型')
             shape = shape_type + shape
             shape_sizes.append(len(shape))
             shapes.append(shape)
@@ -114,7 +114,7 @@ class BinaryReader:
     def __exit__(self, *args: Any) -> None:
         self.close()
 
-    def shape(self, i: int = 0) -> BaseGeometry:
+    def shape(self, i: int = 0) -> PolygonType:
         '''读取第i个几何对象.'''
         if i >= self.num_shapes:
             raise ValueError(f'i应该小于{self.num_shapes}')
@@ -127,9 +127,9 @@ class BinaryReader:
         elif shape_type == MULTI_POLYGON_TYPE:
             return self.unpack_multi_polygon(buffer)
         else:
-            raise NotImplementedError('不支持的几何类型')
+            raise RuntimeError('不支持的几何类型')
 
-    def shapes(self) -> list[BaseGeometry]:
+    def shapes(self) -> list[PolygonType]:
         '''读取所有几何对象.'''
         shapes = []
         self.file.seek(self.header_size)
@@ -141,7 +141,7 @@ class BinaryReader:
             elif shape_type == MULTI_POLYGON_TYPE:
                 shape = self.unpack_multi_polygon(buffer)
             else:
-                raise NotImplementedError('不支持的几何类型')
+                raise RuntimeError('不支持的几何类型')
             shapes.append(shape)
 
         return shapes
@@ -175,34 +175,3 @@ class BinaryReader:
         multi_polygon = sgeom.MultiPolygon(polygons)
 
         return multi_polygon
-
-def extract_records(shp_filepath, csv_filepath):
-    '''提取shapefile文件中的记录, 存为CSV表格.'''
-    records = []
-    with shapefile.Reader(str(shp_filepath)) as reader:
-        for record in reader.iterRecords():
-            records.append(record.as_dict())
-    df = pd.DataFrame.from_records(records)
-    df.to_csv(str(csv_filepath), index=False)
-
-def convert_gcj_to_wgs(
-    gcj_filepath: Union[str, PurePath],
-    wgs_filepath: Union[str, PurePath],
-    encoding: str = 'utf-8',
-    validation: bool = True
-) -> None:
-    '''将GCJ-02坐标系的shapefile文件转为WGS84坐标系.'''
-    from prcoords import gcj_wgs_bored
-    with shapefile.Reader(str(gcj_filepath), encoding=encoding) as reader:
-        with shapefile.Writer(str(wgs_filepath), encoding=encoding) as writer:
-            writer.fields = reader.fields[1:]
-            for shapeRec in reader.iterShapeRecords():
-                writer.record(*shapeRec.record)
-                shape = shapeRec.shape
-                for i in range(len(shape.points)):
-                    lon, lat = shape.points[i]
-                    lat, lon = gcj_wgs_bored((lat, lon))
-                    shape.points[i] = [lon, lat]
-                if validation and not sgeom.shape(shape).is_valid:
-                    raise ValueError('转换导致几何错误')
-                writer.shape(shape)

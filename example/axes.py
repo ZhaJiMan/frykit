@@ -20,5 +20,5 @@ ax.grid(ls='--')
 
 # 保存图片.
 ax.set_title('Use Matplotlib Axes', pad=15)
-fig.savefig('../image/axes.png', dpi=200, bbox_inches='tight')
+fig.savefig('../image/axes.png', dpi=300, bbox_inches='tight')
 plt.close(fig)

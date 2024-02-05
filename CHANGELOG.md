@@ -1,3 +1,17 @@
+## `0.4.0`
+
+- 通过 `mapshaper` 简化 shapefile 文件，安装包体积减小到 `0.3.0` 的三分之一。
+- Shapefile 文件属性中加入省名市名的简写和用来标注名称的经纬度。
+- 新增返回经纬度的 `get_cn_province_lonlats` 和 `get_cn_city_lonlats()` 函数。
+- 新增绘制中国市界的 `add_cn_city` 函数。
+- 新增标注省名和市名的 `label_cn_province` 和 `label_cn_city` 函数。
+- `get_cn_province_names` 和 `get_cn_city_names` 函数新增 `short` 参数。
+- 修改 `get_cn_province` 和 `get_cn_city` 是否返回列表的逻辑。
+- `clip_by_polygon` 函数现在默认使用 `set_clip_box` 防止裁剪出界，新增 `strict` 参数决定是否进行更严格的裁剪。
+- 新增 x 轴夹角和方位角互相转换的 `t_to_az` 和 `az_to_t` 函数。
+- `xy_to_polar` 和 `polar_to_xy` 函数改名为 `xy_to_rt` 和 `rt_to_xy`，并将 `radians` 参数修改为 `degrees`。
+- 移除 `_shp` 模块里与二进制文件无关的函数。
+
 ## `0.3.6`
 
 - 修改 `BinaryConverter` 的用法。
@@ -18,7 +32,7 @@
 
 ## `0.3.3`
 
-- 新增 `_shp` 模块，改用自定义的二进制格式存储 shapefile 文件，减半数据文件体积的同时加快读取速度。
+- 新增 `_shp` 模块，改用自定义的二进制格式存储 shapefile 文件，减半文件体积的同时加快读取速度。
 - 将 `get_cn_shp` 函数拆分为三个函数：
   - `get_cn_border`
   - `get_cn_province`

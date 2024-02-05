@@ -16,23 +16,46 @@ def month_to_season(month: Any) -> Any:
     '''将月份换算为季节. 月份用[1, 12]表示, 季节用[1, 4]表示.'''
     return (month - 3) % 12 // 3 + 1
 
-def polar_to_xy(r: Any, phi: Any, radians: bool = True) -> tuple[Any, Any]:
-    '''极坐标转直角坐标.'''
-    if not radians:
-        phi = np.deg2rad(phi)
-    x = r * np.cos(phi)
-    y = r * np.sin(phi)
+def rt_to_xy(r: Any, t: Any, degrees: bool = False) -> tuple[Any, Any]:
+    '''极坐标转直角坐标. 默认使用弧度.'''
+    if degrees:
+        t = np.deg2rad(t)
+    x = r * np.cos(t)
+    y = r * np.sin(t)
 
     return x, y
 
-def xy_to_polar(x: Any, y: Any, radians: bool = True) -> tuple[Any, Any]:
-    '''直角坐标转极坐标. 角度范围[-pi, pi].'''
+def xy_to_rt(x: Any, y: Any, degrees: bool = False) -> tuple[Any, Any]:
+    '''直角坐标转极坐标. 默认使用弧度, 角度范围[-pi, pi].'''
     r = np.hypot(x, y)
-    phi = np.arctan2(y, x)
-    if not radians:
-        phi = np.rad2deg(phi)
+    t = np.arctan2(y, x)
+    if degrees:
+        t = np.rad2deg(t)
 
-    return r, phi
+    return r, t
+
+def t_to_az(t: Any, degrees: bool = False) -> Any:
+    '''x轴夹角转方位角. 默认使用弧度.'''
+    if degrees:
+        az = (90 - t) % 360
+    else:
+        _90 = np.pi / 2
+        _360 = 2 * np.pi
+        az = (_90 - t) % _360
+
+    return az
+
+def az_to_t(az: Any, degrees: bool = False) -> Any:
+    '''方位角转x轴夹角. 默认使用弧度, 夹角范围[-pi, pi].'''
+    if degrees:
+        t = np.where(az >= 270, 450 - az, 90 - az)
+    else:
+        _90 = np.pi / 2
+        _270 = 3 * _90
+        _450 = 5 * _90
+        t = np.where(az >= _270, _450 - az, _90 - az)
+
+    return t
 
 def wswd_to_uv(ws: Any, wd: Any) -> tuple[Any, Any]:
     '''风向风速转为uv.'''

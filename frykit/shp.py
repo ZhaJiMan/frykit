@@ -14,10 +14,10 @@ from matplotlib.path import Path
 from cartopy.crs import CRS
 
 from frykit import DATA_DIRPATH
-from frykit._shp import BinaryReader
+from frykit._shp import BinaryReader, PolygonType
 
-PolygonType = Union[sgeom.Polygon, sgeom.MultiPolygon]
-GetCNResult = Union[PolygonType, dict]
+GetCNResult = Union[PolygonType, dict[str, Any]]
+GetCNKeyword = Union[str, Sequence[str]]
 
 # 省界和市界的表格.
 shp_dirpath = DATA_DIRPATH / 'shp'
@@ -30,7 +30,7 @@ def get_cn_border(as_dict: bool = False) -> GetCNResult:
 
     Parameters
     ----------
-    ad_dict : bool, optional
+    as_dict : bool, optional
         是否以字典形式返回结果. 默认为False.
         多边形在字典中的键为'geometry'.
 
@@ -56,7 +56,7 @@ def get_nine_line(as_dict: bool = False) -> GetCNResult:
 
     Parameters
     ----------
-    ad_dict : bool, optional
+    as_dict : bool, optional
         是否以字典形式返回结果. 默认为False.
         多边形在字典中的键为'geometry'.
 
@@ -76,8 +76,23 @@ def get_nine_line(as_dict: bool = False) -> GetCNResult:
     else:
         return geom
 
+def _get_pr_mask(name: Optional[GetCNKeyword] = None) -> np.ndarray:
+    '''查询PROVINCE_TABLE时的布尔索引.'''
+    if name is None:
+        return np.full(PROVINCE_TABLE.shape[0], True)
+
+    pr_names = PROVINCE_TABLE['pr_name']
+    if isinstance(name, str):
+        mask = pr_names == name
+    else:
+        mask = pr_names.isin(name)
+    if not mask.any():
+        raise ValueError('name错误')
+
+    return mask.to_numpy()
+
 def get_cn_province(
-    name: Optional[Union[str, Sequence[str]]] = None,
+    name: Optional[GetCNKeyword] = None,
     as_dict: bool = False
 ) -> Union[GetCNResult, list[GetCNResult]]:
     '''
@@ -85,10 +100,10 @@ def get_cn_province(
 
     Parameters
     ----------
-    name: str or sequence of str, optional
-        单个省名或一组省名. 默认为None, 表示获取所有省份.
+    name: GetCNKeyword, optional
+        单个省名或一组省名. 默认为None, 表示获取所有省.
 
-    ad_dict : bool, optional
+    as_dict : bool, optional
         是否以字典形式返回结果. 默认为False.
         多边形在字典中的键为'geometry'.
 
@@ -96,33 +111,57 @@ def get_cn_province(
     -------
     result : GetCNResult or list of GetCNResult
         表示省界的多边形或字典.
-        当name表示多个省时result是列表.
+        name不是字符串时result是列表.
     '''
-    if name is None:
-        indexer = slice(None)
-    else:
-        if isinstance(name, str):
-            indexer = PROVINCE_TABLE['pr_name'] == name
-        else:
-            indexer = PROVINCE_TABLE['pr_name'].isin(name)
-        if not indexer.any():
-            raise ValueError('name错误')
-
     result = []
+    mask = _get_pr_mask(name)
+    table = PROVINCE_TABLE.loc[mask]
     with BinaryReader(shp_dirpath / 'cn_province.bin') as reader:
-        for i, row in PROVINCE_TABLE.loc[indexer].iterrows():
-            geom = reader.shape(i)
+        for row in table.itertuples():
+            geom = reader.shape(row.Index)
             if as_dict:
-                result.append({**row, 'geometry': geom})
+                record = row._asdict()
+                del record['Index']
+                result.append({**record, 'geometry': geom})
             else:
                 result.append(geom)
+    if isinstance(name, str):
+        result = result[0]
 
-    # 只含一条结果时返回标量.
-    return result if len(result) > 1 else result[0]
+    return result
+
+def _get_ct_mask(
+    name: Optional[GetCNKeyword] = None,
+    province: Optional[GetCNKeyword] = None
+) -> np.ndarray:
+    '''查询CITY_TABLE时的布尔索引.'''
+    if name is not None and province is not None:
+        raise ValueError('不能同时指定name和province')
+    if name is None and province is None:
+        return np.full(CITY_TABLE.shape[0], True)
+
+    ct_names = CITY_TABLE['ct_name']
+    pr_names = CITY_TABLE['pr_name']
+    if name is not None:
+        if isinstance(name, str):
+            mask = ct_names == name
+        else:
+            mask = ct_names.isin(name)
+        if not mask.any():
+            raise ValueError('name错误')
+    else:
+        if isinstance(province, str):
+            mask = pr_names == province
+        else:
+            mask = pr_names.isin(province)
+        if not mask.any():
+            raise ValueError('province错误')
+
+    return mask.to_numpy()
 
 def get_cn_city(
-    name: Optional[Union[str, Sequence[str]]] = None,
-    province: Optional[Union[str, Sequence[str]]] = None,
+    name: Optional[GetCNKeyword] = None,
+    province: Optional[GetCNKeyword] = None,
     as_dict: bool = False
 ) -> Union[GetCNResult, list[GetCNResult]]:
     '''
@@ -130,15 +169,15 @@ def get_cn_city(
 
     Parameters
     ----------
-    name: str or sequence of str, optional
+    name: GetCNKeyword, optional
         单个市名或一组市名. 默认为None, 表示获取所有市.
 
-    province: str or sequence of str, optional
-        单个省名或一组省名, 搜索属于某个省的所有市.
-        默认为None, 表示不使用省名搜索.
+    province: GetCNKeyword, optional
+        单个省名或一组省名, 获取属于某个省的所有市.
+        默认为None, 表示不使用省名获取.
         不能同时指定name和province.
 
-    ad_dict : bool, optional
+    as_dict : bool, optional
         是否以字典形式返回结果. 默认为False.
         多边形在字典中的键为'geometry'.
 
@@ -146,54 +185,36 @@ def get_cn_city(
     -------
     result : GetCNResult or list of GetCNResult
         表示市界的多边形或字典.
-        当name表示多个市或province不为None时result是列表.
+        name不是字符串时result是列表.
     '''
-    if name is not None and province is not None:
-        raise ValueError('不能同时指定name和province')
-    elif name is None and province is None:
-        indexer = slice(None)
-    elif name is not None:
-        if isinstance(name, str):
-            indexer = CITY_TABLE['ct_name'] == name
-        else:
-            indexer = CITY_TABLE['ct_name'].isin(name)
-        if not indexer.any():
-            raise ValueError('name错误')
-    else:
-        if isinstance(province, str):
-            indexer = CITY_TABLE['pr_name'] == province
-        else:
-            indexer = CITY_TABLE['pr_name'].isin(province)
-        if not indexer.any():
-            raise ValueError('province错误')
-
     result = []
+    mask = _get_ct_mask(name, province)
+    table = CITY_TABLE.loc[mask]
     with BinaryReader(shp_dirpath / 'cn_city.bin') as reader:
-        for i, row in CITY_TABLE.loc[indexer].iterrows():
-            geom = reader.shape(i)
+        for row in table.itertuples():
+            geom = reader.shape(row.Index)
             if as_dict:
-                result.append({**row, 'geometry': geom})
+                record = row._asdict()
+                del record['Index']
+                result.append({**record, 'geometry': geom})
             else:
                 result.append(geom)
+    if isinstance(name, str):
+        result = result[0]
 
-    # 只含一条结果时返回标量.
-    if len(result) > 1 or province is not None:
-        return result
-    else:
-        return result[0]
+    return result
 
 def get_cn_shp(
     level: Literal['国', '省', '市'] = '国',
-    province: Optional[Union[str, Sequence[str]]] = None,
-    city: Optional[Union[str, Sequence[str]]] = None,
+    province: Optional[GetCNKeyword] = None,
+    city: Optional[GetCNKeyword] = None,
     as_dict: bool = False
 ) -> Union[GetCNResult, list[GetCNResult]]:
     '''
     获取中国行政区划的多边形. 支持国界, 省界和市界.
 
     接口仿照cnmaps.maps.get_adm_maps
-    数据源: https://github.com/GaryBikini/ChinaAdminDivisonSHP
-    使用了PRCoords库从GCJ-02坐标变换到了WGS-84坐标.
+    数据源: https://lbs.amap.com/api/webservice/guide/api/district
 
     Examples
     --------
@@ -209,24 +230,21 @@ def get_cn_shp(
     level : {'国', '省', '市'}, optional
         边界等级. 默认为'国'.
 
-    province : str or sequence of str, optional
-        省名. 可以是字符串或一组字符串, 默认为None.
+    province : GetCNKeyword, optional
+        省名. 可以是字符串或一组字符串. 默认为None.
 
-    city : str or sequence of str, optional
-        市名. 可以是字符串或一组字符串, 默认为None.
+    city : GetCNKeyword, optional
+        市名. 可以是字符串或一组字符串. 默认为None.
 
     as_dict : bool, optional
         是否以字典形式返回结果. 默认为False.
-        字典的键大致包括:
-        - cn_name, pr_name, ct_name: 国省市名
-        - cn_adcode, pr_adcode, ct_adcode: 国省市的区划代码
-        - geometry: 多边形对象
+        多边形在字典中的键为'geometry'.
 
     Returns
     -------
     result : GetCNResult or list of GetCNResult
-        行政区划的多边形或多边形构成的列表.
-        as_dict为True时则是字典或字典构成的列表.
+        表示行政区划的多边形或字典.
+        含有多个行政区划时result是列表.
     '''
     if level == '国':
         if province is not None or city is not None:
@@ -241,22 +259,25 @@ def get_cn_shp(
             raise ValueError("level='市'时不能同时指定province和city")
         return get_cn_city(city, province, as_dict)
     else:
-        raise ValueError("level只能为{'国', '省', '市'}中的一种")
+        raise ValueError("level只能是{'国', '省', '市'}中的一种")
 
-def get_cn_province_names() -> list[str]:
-    '''获取中国省名.'''
-    return PROVINCE_TABLE['pr_name'].to_list()
+def get_cn_province_names(short=False) -> list[str]:
+    '''获取所有中国省名.'''
+    key = 'short_name' if short else 'pr_name'
+    return PROVINCE_TABLE[key].to_list()
 
-def get_cn_city_names() -> list[str]:
-    '''获取中国市名.'''
-    return CITY_TABLE['ct_name'].to_list()
+def get_cn_city_names(short=False) -> list[str]:
+    '''获取所有中国市名.'''
+    key = 'short_name' if short else 'ct_name'
+    return CITY_TABLE[key].to_list()
 
-def simplify_province_name(name: str) -> str:
-    '''简化省名到2或3个字.'''
-    if name.startswith('内蒙古') or name.startswith('黑龙江'):
-        return name[:3]
-    else:
-        return name[:2]
+def get_cn_province_lonlats() -> np.ndarray:
+    '''获取所有中国省的经纬度.'''
+    return PROVINCE_TABLE[['lon', 'lat']].to_numpy()
+
+def get_cn_city_lonlats() -> np.ndarray:
+    '''获取所有中国市的经纬度.'''
+    return CITY_TABLE[['lon', 'lat']].to_numpy()
 
 def _ring_codes(n: int) -> list[np.uint8]:
     '''为长度为n的环生成codes.'''
@@ -297,12 +318,21 @@ def polygon_to_path(polygon: PolygonType, keep_empty: bool = True) -> Path:
     vertices, codes = [], []
     for polygon in getattr(polygon, 'geoms', [polygon]):
         for ring in [polygon.exterior, *polygon.interiors]:
-            vertices.append(np.asarray(ring.coords))
+            vertices.append(np.array(ring.coords))
             codes.extend(_ring_codes(len(ring.coords)))
     vertices = np.vstack(vertices)
     path = Path(vertices, codes)
 
     return path
+
+def polygon_to_polys(polygon: PolygonType) -> list[list[tuple[float, float]]]:
+    '''多边形对象转为适用于shapefile的坐标序列. 但不保证绕行方向.'''
+    polys = []
+    for polygon in getattr(polygon, 'geoms', [polygon]):
+        for ring in [polygon.exterior, *polygon.interiors]:
+            polys.append(ring.coords[:])
+
+    return polys
 
 def polygon_to_mask(polygon: PolygonType, x: Any, y: Any) -> np.ndarray:
     '''
@@ -463,7 +493,7 @@ def transform_geometries(
 
     transformer = Transformer.from_crs(crs_from, crs_to, always_xy=True)
     def func(coords: CoordinateSequence) -> np.ndarray:
-        coords = np.asarray(coords)
+        coords = np.array(coords)
         return np.column_stack(
             transformer.transform(coords[:, 0], coords[:, 1])
         ).squeeze()

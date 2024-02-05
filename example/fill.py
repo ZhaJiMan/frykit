@@ -2,14 +2,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import matplotlib.patches as mpatches
+from matplotlib import patheffects
 import cartopy.crs as ccrs
 import frykit.plot as fplt
 import frykit.shp as fshp
 
-# 读取shp文件记录.
-names = fshp.get_cn_province_names()
+# 虚构数据.
 provinces = fshp.get_cn_province()
-data = np.linspace(0, 100, len(names))
+data = np.linspace(0, 100, len(provinces))
 
 # 设置地图范围.
 extents1 = [78, 134, 14, 55]
@@ -44,12 +44,23 @@ labels = [f'{bins[i]} - {bins[i + 1]}' for i in range(nbin)]
 # 准备colormap和norm.
 norm = mcolors.BoundaryNorm(bins, nbin)
 cmap = mcolors.ListedColormap(colors)
-# 绘制填色的多边形
+
+# 字体描边.
+path_effects = [
+    patheffects.Stroke(linewidth=1.5, foreground='w'),
+    patheffects.Normal()
+]
+
+# 绘制填色多边形, 标注省名.
 for ax in [ax1, ax2]:
     fplt.add_polygons(
         ax, provinces, array=data,
         cmap=cmap, norm=norm, ec='k', lw=0.4
     )
+    for text in fplt.label_cn_province(ax):
+        text.set_path_effects(path_effects)
+        if text.get_text() in ['香港', '澳门']:
+            text.set_visible(False)
 
 # 添加图例.
 patches = []
@@ -68,24 +79,6 @@ map_scale = fplt.add_map_scale(ax1, 0.22, 0.1, length=1000)
 map_scale.set_xticks([0, 500, 1000])
 map_scale.set_xticks([250, 750], minor=True)
 
-# 简化名称.
-for i, name in enumerate(names):
-    name = fshp.simplify_province_name(name)
-    if name == '香港' or name == '澳门':
-        name = ''
-    names[i] = name
-
-# 添加省名.
-for name, province in zip(names, provinces):
-    point = province.representative_point()
-    ax1.text(
-        point.x, point.y, name,
-        ha='center', va='center',
-        fontsize='xx-small',
-        fontfamily='Source Han Sans SC',
-        transform=data_crs
-    )
-
 # 保存图片.
-fig.savefig('../image/fill.png', dpi=200, bbox_inches='tight')
+fig.savefig('../image/fill.png', dpi=300, bbox_inches='tight')
 plt.close(fig)

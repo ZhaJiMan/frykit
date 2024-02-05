@@ -11,8 +11,9 @@
 `plot` 模块的功能包括：
 
 - 读取中国行政区划数据
-- 向地图添加中国国界和省界
+- 向地图添加中国国界、省界和市界
 - 利用国界和省界对填色图做裁剪（白化）
+- 标注省名和市名
 - 设置地图刻度
 - 添加风矢量图的图例
 - 添加指北针
@@ -59,23 +60,35 @@ cities_of_anhui = fshp.get_cn_city(province='安徽省')
 
 返回结果是 Shapely 的多边形对象，可以进行交并等几何运算。
 
-行政区划源数据来自 [高德地图行政区域查询接口](https://lbs.amap.com/api/webservice/guide/api/district)，含国界、省界和市界三套数据，已从 GCJ-02 坐标系处理到了 WGS84 坐标系上。文件都在 `frykit.DATA_DIRPATH` 指向的目录里。
+行政区划源数据来自 [高德地图行政区域查询接口](https://lbs.amap.com/api/webservice/guide/api/district)，含国界、省界和市界三套数据，已从 GCJ-02 坐标系处理到了 WGS84 坐标系上。文件都在 `frykit.DATA_DIRPATH` 指向的目录里。制作方法见 [amap-shp](https://github.com/ZhaJiMan/amap-shp)。
 
-### 绘制中国国界和省界
+### 绘制中国国界、省界和市界
 
 ```Python
 # 绘制国界.
 fplt.add_cn_border(ax)
 
+# 绘制九段线
+fplt.add_nine_line(ax)
+
 # 绘制省界.
 fplt.add_cn_province(ax)
 fplt.add_cn_province(ax, name=['安徽省', '江苏省'])
 
-# 绘制九段线
-fplt.add_nine_line(ax)
+# 绘制市界
+fplt.add_cn_city(ax)
+fplt.add_cn_city(ax, name=['石家庄市', '保定市'])
+fplt.add_cn_city(ax, province='河南省')
 ```
 
 `ax` 可以是 `Axes` 或 `GeoAxes`。
+
+### 标注省名和市名
+
+```Python
+fplt.label_cn_province(ax)
+fplt.label_cn_city(ax, fontsize='xx-small')
+```
 
 ### 绘制任意多边形
 

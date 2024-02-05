@@ -10,16 +10,14 @@ boxcolor = '#f29305'
 fontcolor = '#ffc292'
 
 # 读取shp文件记录.
-names = []
 provinces = []
-names = fshp.get_cn_province_names()
+names = fshp.get_cn_province_names(short=True)
 provinces = fshp.get_cn_shp(level='省')
 cities = fshp.get_cn_shp(level='市')
 
-# 简化省名并繁体化.
+# 繁体化省名.
 converter = opencc.OpenCC('s2t.json')
 for i, name in enumerate(names):
-    name = fshp.simplify_province_name(name)
     if name == '香港' or name == '澳门':
         name = ''
     names[i] = converter.convert(name)
@@ -80,10 +78,10 @@ ax.text(
 )
 
 # 添加省名.
-for name, province in zip(names, provinces):
-    point = province.representative_point()
+lonlats = fshp.get_cn_province_lonlats()
+for name, (lon, lat) in zip(names, lonlats):
     ax.text(
-        point.x, point.y, name,
+        lon, lat, name,
         color=fontcolor,
         fontsize=4,
         fontfamily='FOT-Matisse Pro',

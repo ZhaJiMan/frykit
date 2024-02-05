@@ -41,7 +41,7 @@ fig.colorbar(cf, ax=ax, label='Temperature (℃)')
 # 绘制风场.
 Q = ax.quiver(
     X, Y, u10, v10,
-    scale=0.2,
+    scale=0.15,
     scale_units='dots',
     regrid_shape=35,
     transform=data_crs
@@ -53,5 +53,5 @@ fplt.clip_by_cn_border(cf)
 fplt.clip_by_cn_border(Q)
 
 # 保存图片.
-fig.savefig('../image/quiver.png', dpi=200, bbox_inches='tight')
+fig.savefig('../image/quiver.png', dpi=300, bbox_inches='tight')
 plt.close(fig)

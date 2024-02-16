@@ -24,9 +24,6 @@ from matplotlib.quiver import Quiver, QuiverKey
 from matplotlib.text import Text
 from matplotlib.ticker import Formatter, AutoMinorLocator
 
-import cartopy
-if cartopy.__version__ < '0.20.0':
-    raise RuntimeError('cartopy版本不低于0.20.0')
 from cartopy.mpl.geoaxes import GeoAxes
 from cartopy.mpl.feature_artist import _GeomKey
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
@@ -35,7 +32,6 @@ from cartopy.feature import LAND, OCEAN
 
 import frykit.shp as fshp
 from frykit import DATA_DIRPATH
-from frykit.help import deprecator
 
 # 当polygon的引用计数为零时, 弱引用会自动清理缓存.
 # cartopy是直接缓存Path, 但测试后发现差距不大.
@@ -1737,29 +1733,6 @@ def get_qualitative_palette(colors: Any) -> tuple[
     ticks = np.arange(N)
 
     return cmap, norm, ticks
-
-@deprecator(get_qualitative_palette)
-def make_qualitative_cmap(colors):
-    '''
-    创建一组定性的colormap和norm, 同时返回刻度位置.
-
-    Parameters
-    ----------
-    colors : (N,) sequence or (N, 3) or (N, 4) array_like
-        colormap所含的颜色. 可以为含有颜色的序列或RGB(A)数组.
-
-    Returns
-    -------
-    cmap : ListedColormap
-        创建的colormap.
-
-    norm : Normalize
-        创建的norm. N个颜色对应于0~N-1范围的数据.
-
-    ticks : (N,) ndarray
-        colorbar刻度的坐标.
-    '''
-    return get_qualitative_palette(colors)
 
 def get_aod_cmap() -> ListedColormap:
     '''返回适用于AOD的cmap.'''

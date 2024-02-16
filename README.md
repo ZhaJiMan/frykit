@@ -30,9 +30,13 @@
 pip install frykit
 ```
 
-依赖为 `cartopy>=0.20.0` 和 `pandas>=1.2.0`。
+`frykit>=0.3.0` 的依赖为：
 
-`python<3.9.0` 时请指定 `pip install frykit==0.2.5`。
+```
+python>=3.9.0
+cartopy>=0.20.0
+pandas>=1.2.0
+```
 
 ## 更新记录
 
@@ -89,6 +93,8 @@ fplt.add_cn_city(ax, province='河南省')
 fplt.label_cn_province(ax)
 fplt.label_cn_city(ax, fontsize='xx-small')
 ```
+
+默认采用 `Normal` 字重的思源黑体。
 
 ### 绘制任意多边形
 

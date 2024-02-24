@@ -4,17 +4,21 @@ import numpy as np
 from scipy.spatial import KDTree
 from scipy.stats import binned_statistic_2d
 
+
 def lon_to_180(lon: Any) -> Any:
     '''将经度换算到[-180, 180]范围内. 注意180会变成-180.'''
     return (lon + 180) % 360 - 180
+
 
 def lon_to_360(lon: Any) -> Any:
     '''将经度换算到[0, 360]范围内.'''
     return lon % 360
 
+
 def month_to_season(month: Any) -> Any:
     '''将月份换算为季节. 月份用[1, 12]表示, 季节用[1, 4]表示.'''
     return (month - 3) % 12 // 3 + 1
+
 
 def rt_to_xy(r: Any, t: Any, degrees: bool = False) -> tuple[Any, Any]:
     '''极坐标转直角坐标. 默认使用弧度.'''
@@ -25,6 +29,7 @@ def rt_to_xy(r: Any, t: Any, degrees: bool = False) -> tuple[Any, Any]:
 
     return x, y
 
+
 def xy_to_rt(x: Any, y: Any, degrees: bool = False) -> tuple[Any, Any]:
     '''直角坐标转极坐标. 默认使用弧度, 角度范围[-pi, pi].'''
     r = np.hypot(x, y)
@@ -34,16 +39,18 @@ def xy_to_rt(x: Any, y: Any, degrees: bool = False) -> tuple[Any, Any]:
 
     return r, t
 
+
 def t_to_az(t: Any, degrees: bool = False) -> Any:
     '''x轴夹角转方位角. 默认使用弧度.'''
     if degrees:
         az = (90 - t) % 360
     else:
         _90 = np.pi / 2
-        _360 = 2 * np.pi
+        _360 = 4 * _90
         az = (_90 - t) % _360
 
     return az
+
 
 def az_to_t(az: Any, degrees: bool = False) -> Any:
     '''方位角转x轴夹角. 默认使用弧度, 夹角范围[-pi, pi].'''
@@ -57,6 +64,7 @@ def az_to_t(az: Any, degrees: bool = False) -> Any:
 
     return t
 
+
 def wswd_to_uv(ws: Any, wd: Any) -> tuple[Any, Any]:
     '''风向风速转为uv.'''
     wd = np.deg2rad(wd)
@@ -65,6 +73,7 @@ def wswd_to_uv(ws: Any, wd: Any) -> tuple[Any, Any]:
 
     return u, v
 
+
 def uv_to_wswd(u: Any, v: Any) -> tuple[Any, Any]:
     '''uv转为风向风速.'''
     ws = np.hypot(u, v)
@@ -72,23 +81,21 @@ def uv_to_wswd(u: Any, v: Any) -> tuple[Any, Any]:
 
     return ws, wd
 
+
 def hms_to_degree(hour: Any, minute: Any, second: Any) -> Any:
     '''时分秒转为度数.'''
     return hour + minute / 60 + second / 3600
 
+
 def haversine(
-    lon1: Any,
-    lat1: Any,
-    lon2: Any,
-    lat2: Any,
-    as_degrees: bool = False
+    lon1: Any, lat1: Any, lon2: Any, lat2: Any, as_degrees: bool = False
 ) -> Any:
     '''利用haversine公式计算两点间的圆心角.'''
     lon1, lat1, lon2, lat2 = map(np.deg2rad, [lon1, lat1, lon2, lat2])
     dlon = lon2 - lon1
     dlat = lat2 - lat1
 
-    hav = lambda x: np.sin(x / 2)**2
+    hav = lambda x: np.sin(x / 2) ** 2
     a = hav(dlat)
     b = np.cos(lat1) * np.cos(lat2) * hav(dlon)
     dtheta = 2 * np.arcsin(np.sqrt(a + b))
@@ -97,11 +104,9 @@ def haversine(
 
     return dtheta
 
+
 def region_ind(
-    lon: Any,
-    lat: Any,
-    extents: Any,
-    form: Literal['mask', 'ix'] = 'mask'
+    lon: Any, lat: Any, extents: Any, form: Literal['mask', 'ix'] = 'mask'
 ) -> Union[np.ndarray, tuple[np.ndarray, np.ndarray]]:
     '''
     返回落入给定经纬度方框范围内的索引.
@@ -152,12 +157,13 @@ def region_ind(
 
     return ind
 
+
 def interp_nearest_dd(
     points: Any,
     values: Any,
     xi: Any,
     radius: float = np.inf,
-    fill_value: float = np.nan
+    fill_value: float = np.nan,
 ) -> np.ndarray:
     '''
     可以限制搜索半径的多维最近邻插值.
@@ -202,6 +208,7 @@ def interp_nearest_dd(
 
     return result
 
+
 def interp_nearest_2d(
     x: Any,
     y: Any,
@@ -209,7 +216,7 @@ def interp_nearest_2d(
     xi: Any,
     yi: Any,
     radius: float = np.inf,
-    fill_value: float = np.nan
+    fill_value: float = np.nan,
 ) -> np.ndarray:
     '''
     可以限制搜索半径的二维最近邻插值.
@@ -250,27 +257,24 @@ def interp_nearest_2d(
 
     if x.shape != y.shape:
         raise ValueError('x和y的形状应该一样')
-    if values.shape[:x.ndim] != x.shape:
+    if values.shape[: x.ndim] != x.shape:
         raise ValueError('values和x的形状不匹配')
     if xi.shape != yi.shape:
         raise ValueError('xi和yi的形状应该一样')
 
     # 元组解包能避免出现多余的维度.
-    band_shape = values.shape[x.ndim:]
+    band_shape = values.shape[x.ndim :]
     return interp_nearest_dd(
         points=np.column_stack((x.ravel(), y.ravel())),
         values=values.reshape(-1, *band_shape),
         xi=np.column_stack((xi.ravel(), yi.ravel())),
         radius=radius,
-        fill_value=fill_value
+        fill_value=fill_value,
     ).reshape(*xi.shape, *band_shape)
 
+
 def binned_average_2d(
-    x: Any,
-    y: Any,
-    values: Any,
-    xbins: Any,
-    ybins: Any
+    x: Any, y: Any, values: Any, xbins: Any, ybins: Any
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     '''
     用平均的方式对数据做二维binning.
@@ -304,6 +308,7 @@ def binned_average_2d(
         xbins和ybins构成的网格内的变量平均值.
         为了便于画图, 采取(ny, nx)的形状.
     '''
+
     def nanmean(arr):
         '''避免空切片警告的nanmean.'''
         arr = arr[~np.isnan(arr)]
@@ -311,9 +316,7 @@ def binned_average_2d(
 
     # 参数检查由scipy的函数负责. 注意x和y的顺序.
     avg, ybins, xbins, _ = binned_statistic_2d(
-        y, x, values,
-        bins=[ybins, xbins],
-        statistic=nanmean
+        y, x, values, bins=[ybins, xbins], statistic=nanmean
     )
     xc = (xbins[1:] + xbins[:-1]) / 2
     yc = (ybins[1:] + ybins[:-1]) / 2

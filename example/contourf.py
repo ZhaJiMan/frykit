@@ -2,7 +2,6 @@ import numpy as np
 from scipy.ndimage import gaussian_filter
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
-from cartopy.feature import LAND
 import frykit.plot as fplt
 
 # 读取数据.
@@ -17,10 +16,7 @@ xticks = np.arange(-180, 181, 10)
 yticks = np.arange(-90, 91, 10)
 
 # 设置投影.
-map_crs = ccrs.AzimuthalEquidistant(
-    central_longitude=105,
-    central_latitude=35
-)
+map_crs = fplt.CN_AZIMUTHAL_EQUIDISTANT
 data_crs = ccrs.PlateCarree()
 
 # 设置刻度风格.
@@ -33,22 +29,14 @@ plt.rc('ytick', labelsize=8, right=True, labelright=True)
 fig = plt.figure(figsize=(10, 6))
 ax1 = fig.add_subplot(projection=map_crs)
 fplt.set_extent_and_ticks(
-    ax=ax1,
-    extents=extents1,
-    xticks=xticks,
-    yticks=yticks
+    ax=ax1, extents=extents1, xticks=xticks, yticks=yticks
 )
-ax1.gridlines(
-    xlocs=xticks,
-    ylocs=yticks,
-    lw=0.5,
-    ls='--',
-    color='gray'
-)
+ax1.gridlines(xlocs=xticks, ylocs=yticks, lw=0.5, ls='--', color='gray')
 
 # 添加要素.
-ax1.set_facecolor('skyblue')  # 该投影中OCEAN的变换会出错.
-ax1.add_feature(LAND.with_scale('50m'), fc='floralwhite')
+ax1.set_facecolor('skyblue')  # 海洋直接投影会出错.
+fplt.add_land(ax1)
+fplt.add_countries(ax1, lw=0.3)
 fplt.add_cn_province(ax1, lw=0.3)
 fplt.add_nine_line(ax1, lw=0.5)
 
@@ -56,11 +44,14 @@ fplt.add_nine_line(ax1, lw=0.5)
 levels = np.linspace(0, 32, 50)
 cticks = np.linspace(0, 32, 9)
 cf = ax1.contourf(
-    X, Y, Z, levels,
+    X,
+    Y,
+    Z,
+    levels,
     cmap='turbo',
     extend='both',
     transform=data_crs,
-    transform_first=True
+    transform_first=True,
 )
 fplt.clip_by_cn_border(cf)
 
@@ -73,7 +64,7 @@ cbar = fig.colorbar(
     pad=0.1,
     aspect=30,
     ticks=cticks,
-    extendfrac=0
+    extendfrac=0,
 )
 cbar.ax.tick_params(length=4, labelsize=8)
 
@@ -88,39 +79,39 @@ ax1.set_title(
     '2m Temerparture (\N{DEGREE CELSIUS})',
     y=1.1,
     fontsize='large',
-    weight='bold'
+    weight='bold',
 )
 
 # 准备小地图.
 ax2 = fig.add_subplot(projection=map_crs)
 ax2.set_extent(extents2, crs=data_crs)
 fplt.move_axes_to_corner(ax2, ax1)
-ax2.gridlines(
-    xlocs=xticks,
-    ylocs=yticks,
-    lw=0.5,
-    ls='--',
-    color='gray'
-)
+ax2.gridlines(xlocs=xticks, ylocs=yticks, lw=0.5, ls='--', color='gray')
 
 # 添加要素.
 ax2.set_facecolor('skyblue')
-ax2.add_feature(LAND.with_scale('50m'), fc='floralwhite')
-fplt.add_nine_line(ax2, lw=0.5)
+fplt.add_land(ax2)
+fplt.add_countries(ax2, lw=0.3)
 fplt.add_cn_province(ax2, lw=0.3)
-map_scale = fplt.add_map_scale(ax2, 0.4, 0.15, length=500)
-map_scale.set_xticks([0, 500])
-map_scale.xaxis.get_label().set_fontsize('small')
+fplt.add_nine_line(ax2, lw=0.5)
 
 # 绘制填色图.
 cf = ax2.contourf(
-    X, Y, Z, levels,
+    X,
+    Y,
+    Z,
+    levels,
     cmap='turbo',
     extend='both',
     transform=data_crs,
-    transform_first=True
+    transform_first=True,
 )
 fplt.clip_by_cn_border(cf)
+
+# 添加比例尺.
+map_scale = fplt.add_map_scale(ax2, 0.4, 0.15, length=500)
+map_scale.set_xticks([0, 500])
+map_scale.xaxis.get_label().set_fontsize('small')
 
 # 保存图片.
 fig.savefig('../image/contourf.png', dpi=300, bbox_inches='tight')

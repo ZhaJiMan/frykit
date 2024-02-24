@@ -7,6 +7,11 @@ import numpy as np
 import shapefile
 import shapely.geometry as sgeom
 
+'''
+利用类似NetCDF的有损压缩方式, 将64-bit的shapefile转换成32-bit的整数.
+高德地图数据的精度为1e-6, 压缩参数能保证1e-7的精度. 应该够用了吧...?
+'''
+
 PolygonType = Union[sgeom.Polygon, sgeom.MultiPolygon]
 
 # 几何类型.
@@ -17,15 +22,17 @@ MULTI_POLYGON_TYPE = 1
 DTYPE = '<I'
 DTYPE_SIZE = 4
 
-# 压缩参数. TODO: 需要放宽精度要求吗?
-LON0, LON1 = 70, 140
-LAT0, LAT1 = 0, 60
+# 压缩参数.
+LON0, LON1 = -180, 180
+LAT0, LAT1 = -90, 90
 N = DTYPE_SIZE * 8
 ADD_OFFSETS = np.array([LON0, LAT0])
 SCALE_FACTORS = np.array([LON1 - LON0, LAT1 - LAT0]) / (2**N - 1)
 
+
 class BinaryConverter:
     '''将shapefile文件转为二进制的类.'''
+
     def convert(self, filepath: Union[str, PurePath]) -> None:
         '''转换filepath指向的文件.'''
         with shapefile.Reader(str(filepath)) as reader:
@@ -90,8 +97,10 @@ class BinaryConverter:
 
         return multi_polygon
 
+
 class BinaryReader:
     '''读取二进制文件的类.'''
+
     def __init__(self, filepath: Union[str, PurePath]) -> None:
         self.file = open(str(filepath), 'rb')
         self.num_shapes = struct.unpack(DTYPE, self.file.read(DTYPE_SIZE))[0]
@@ -100,9 +109,7 @@ class BinaryReader:
         )
         self.header_size = self.file.tell()
         self.shape_offsets = (
-            self.shape_sizes.cumsum()
-            - self.shape_sizes
-            + self.header_size
+            self.shape_sizes.cumsum() - self.shape_sizes + self.header_size
         )
 
     def close(self) -> None:

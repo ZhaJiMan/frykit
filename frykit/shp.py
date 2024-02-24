@@ -16,6 +16,15 @@ from cartopy.crs import CRS
 from frykit import DATA_DIRPATH
 from frykit._shp import BinaryReader, PolygonType
 
+'''
+数据源:
+
+- 中国国界, 省界和市界: https://lbs.amap.com/api/webservice/guide/api/district
+- 九段线: https://datav.aliyun.com/portal/school/atlas/area_selector
+- 所有国家: http://meteothink.org/downloads/index.html
+- 海陆: https://www.naturalearthdata.com/downloads/50m-physical-vectors/
+'''
+
 GetCNResult = Union[PolygonType, dict[str, Any]]
 GetCNKeyword = Union[str, Sequence[str]]
 
@@ -23,6 +32,7 @@ GetCNKeyword = Union[str, Sequence[str]]
 shp_dirpath = DATA_DIRPATH / 'shp'
 PROVINCE_TABLE = pd.read_csv(str(shp_dirpath / 'cn_province.csv'))
 CITY_TABLE = pd.read_csv(str(shp_dirpath / 'cn_city.csv'))
+
 
 def get_cn_border(as_dict: bool = False) -> GetCNResult:
     '''
@@ -45,10 +55,11 @@ def get_cn_border(as_dict: bool = False) -> GetCNResult:
         return {
             'cn_name': '中华人民共和国',
             'cn_adcode': 100000,
-            'geometry': geom
+            'geometry': geom,
         }
     else:
         return geom
+
 
 def get_nine_line(as_dict: bool = False) -> GetCNResult:
     '''
@@ -68,13 +79,10 @@ def get_nine_line(as_dict: bool = False) -> GetCNResult:
     with BinaryReader(shp_dirpath / 'nine_line.bin') as reader:
         geom = reader.shape(0)
     if as_dict:
-        return {
-            'cn_name': '九段线',
-            'cn_adcode': 100000,
-            'geometry': geom
-        }
+        return {'cn_name': '九段线', 'cn_adcode': 100000, 'geometry': geom}
     else:
         return geom
+
 
 def _get_pr_mask(name: Optional[GetCNKeyword] = None) -> np.ndarray:
     '''查询PROVINCE_TABLE时的布尔索引.'''
@@ -91,9 +99,9 @@ def _get_pr_mask(name: Optional[GetCNKeyword] = None) -> np.ndarray:
 
     return mask.to_numpy()
 
+
 def get_cn_province(
-    name: Optional[GetCNKeyword] = None,
-    as_dict: bool = False
+    name: Optional[GetCNKeyword] = None, as_dict: bool = False
 ) -> Union[GetCNResult, list[GetCNResult]]:
     '''
     获取中国省界的多边形.
@@ -130,9 +138,9 @@ def get_cn_province(
 
     return result
 
+
 def _get_ct_mask(
-    name: Optional[GetCNKeyword] = None,
-    province: Optional[GetCNKeyword] = None
+    name: Optional[GetCNKeyword] = None, province: Optional[GetCNKeyword] = None
 ) -> np.ndarray:
     '''查询CITY_TABLE时的布尔索引.'''
     if name is not None and province is not None:
@@ -159,10 +167,11 @@ def _get_ct_mask(
 
     return mask.to_numpy()
 
+
 def get_cn_city(
     name: Optional[GetCNKeyword] = None,
     province: Optional[GetCNKeyword] = None,
-    as_dict: bool = False
+    as_dict: bool = False,
 ) -> Union[GetCNResult, list[GetCNResult]]:
     '''
     获取中国市界的多边形.
@@ -204,11 +213,12 @@ def get_cn_city(
 
     return result
 
+
 def get_cn_shp(
     level: Literal['国', '省', '市'] = '国',
     province: Optional[GetCNKeyword] = None,
     city: Optional[GetCNKeyword] = None,
-    as_dict: bool = False
+    as_dict: bool = False,
 ) -> Union[GetCNResult, list[GetCNResult]]:
     '''
     获取中国行政区划的多边形. 支持国界, 省界和市界.
@@ -261,23 +271,46 @@ def get_cn_shp(
     else:
         raise ValueError("level只能是{'国', '省', '市'}中的一种")
 
+
 def get_cn_province_names(short=False) -> list[str]:
     '''获取所有中国省名.'''
     key = 'short_name' if short else 'pr_name'
     return PROVINCE_TABLE[key].to_list()
+
 
 def get_cn_city_names(short=False) -> list[str]:
     '''获取所有中国市名.'''
     key = 'short_name' if short else 'ct_name'
     return CITY_TABLE[key].to_list()
 
+
 def get_cn_province_lonlats() -> np.ndarray:
     '''获取所有中国省的经纬度.'''
     return PROVINCE_TABLE[['lon', 'lat']].to_numpy()
 
+
 def get_cn_city_lonlats() -> np.ndarray:
     '''获取所有中国市的经纬度.'''
     return CITY_TABLE[['lon', 'lat']].to_numpy()
+
+
+def get_countries() -> list[PolygonType]:
+    '''获取所有国家国界的多边形.'''
+    with BinaryReader(shp_dirpath / 'country.bin') as reader:
+        return reader.shapes()
+
+
+def get_land() -> PolygonType:
+    '''获取陆地多边形.'''
+    with BinaryReader(shp_dirpath / 'land.bin') as reader:
+        return reader.shape(0)
+
+
+def get_ocean() -> PolygonType:
+    '''获取海洋多边形.'''
+    with BinaryReader(shp_dirpath / 'ocean.bin') as reader:
+        return reader.shape(0)
+
 
 def _ring_codes(n: int) -> list[np.uint8]:
     '''为长度为n的环生成codes.'''
@@ -286,6 +319,7 @@ def _ring_codes(n: int) -> list[np.uint8]:
     codes[-1] = Path.CLOSEPOLY
 
     return codes
+
 
 def polygon_to_path(polygon: PolygonType, keep_empty: bool = True) -> Path:
     '''
@@ -325,6 +359,7 @@ def polygon_to_path(polygon: PolygonType, keep_empty: bool = True) -> Path:
 
     return path
 
+
 def polygon_to_polys(polygon: PolygonType) -> list[list[tuple[float, float]]]:
     '''多边形对象转为适用于shapefile的坐标序列. 但不保证绕行方向.'''
     polys = []
@@ -333,6 +368,7 @@ def polygon_to_polys(polygon: PolygonType) -> list[list[tuple[float, float]]]:
             polys.append(ring.coords[:])
 
     return polys
+
 
 def polygon_to_mask(polygon: PolygonType, x: Any, y: Any) -> np.ndarray:
     '''
@@ -395,8 +431,10 @@ def polygon_to_mask(polygon: PolygonType, x: Any, y: Any) -> np.ndarray:
                 if yflag:
                     m1 = (x >= xmin) & (x <= xmid)
                     m2 = (x >= xmid) & (x <= xmax)
-                if m1.any(): mask[m1] = recursion(x[m1], y[m1])
-                if m2.any(): mask[m2] = recursion(x[m2], y[m2])
+                if m1.any():
+                    mask[m1] = recursion(x[m1], y[m1])
+                if m2.any():
+                    mask[m2] = recursion(x[m2], y[m2])
             else:
                 mask[:] = False
             return mask
@@ -410,10 +448,14 @@ def polygon_to_mask(polygon: PolygonType, x: Any, y: Any) -> np.ndarray:
             m2 = (x >= xmin) & (x <= xmid) & (y >= ymid) & (y <= ymax)
             m3 = (x >= xmin) & (x <= xmid) & (y >= ymin) & (y <= ymid)
             m4 = (x >= xmid) & (x <= xmax) & (y >= ymin) & (y <= ymid)
-            if m1.any(): mask[m1] = recursion(x[m1], y[m1])
-            if m2.any(): mask[m2] = recursion(x[m2], y[m2])
-            if m3.any(): mask[m3] = recursion(x[m3], y[m3])
-            if m4.any(): mask[m4] = recursion(x[m4], y[m4])
+            if m1.any():
+                mask[m1] = recursion(x[m1], y[m1])
+            if m2.any():
+                mask[m2] = recursion(x[m2], y[m2])
+            if m3.any():
+                mask[m3] = recursion(x[m3], y[m3])
+            if m4.any():
+                mask[m4] = recursion(x[m4], y[m4])
         else:
             mask[:] = False
 
@@ -421,9 +463,9 @@ def polygon_to_mask(polygon: PolygonType, x: Any, y: Any) -> np.ndarray:
 
     return recursion(x, y)
 
+
 def _transform(
-    func: Callable[[CoordinateSequence], np.ndarray],
-    geom: BaseGeometry
+    func: Callable[[CoordinateSequence], np.ndarray], geom: BaseGeometry
 ) -> BaseGeometry:
     '''shapely.ops.transform的修改版, 会将坐标含无效值的对象设为空对象.'''
     if geom.is_empty:
@@ -460,16 +502,67 @@ def _transform(
     else:
         raise TypeError('geom不是几何对象')
 
+
+class GeometryTransformer:
+    '''
+    对几何对象做坐标变换的类.
+
+    基于pyproj.Transformer实现, 当几何对象跨越坐标系边界时可能产生错误的连线.
+    '''
+
+    def __init__(self, crs_from: CRS, crs_to: CRS) -> None:
+        '''
+        Parameters
+        ----------
+        crs_from : CRS
+            源坐标系.
+
+        crs_to : CRS
+            目标坐标系.
+        '''
+        self.crs_from = crs_from
+        self.crs_to = crs_to
+
+        # 坐标系相同时直接复制.
+        if crs_from == crs_to:
+            self._func = lambda x: type(x)(x)
+            return None
+
+        # 避免反复创建Transformer的开销.
+        transformer = Transformer.from_crs(crs_from, crs_to, always_xy=True)
+
+        def func(coords: CoordinateSequence) -> np.ndarray:
+            coords = np.array(coords)
+            return np.column_stack(
+                transformer.transform(coords[:, 0], coords[:, 1])
+            ).squeeze()
+
+        self._func = lambda x: _transform(func, x)
+
+    def __call__(self, geom: BaseGeometry) -> BaseGeometry:
+        '''
+        对几何对象做变换.
+
+        Parameters
+        ----------
+        geom : BaseGeometry
+            源坐标系上的几何对象.
+
+        Returns
+        -------
+        geom : BaseGeometry
+            目标坐标系上的几何对象.
+        '''
+        return self._func(geom)
+
+
 def transform_geometries(
-    geoms: Sequence[BaseGeometry],
-    crs_from: CRS,
-    crs_to: CRS
+    geoms: Sequence[BaseGeometry], crs_from: CRS, crs_to: CRS
 ) -> list[BaseGeometry]:
     '''
     将一组几何对象从crs_from坐标系变换到crs_to坐标系上.
 
-    基于pyproj.Transformer实现. 相比cartopy.crs.Projection.project_geometry
-    速度更快, 但当几何对象跨越坐标系边界时可能产生错误的连线.
+    基于pyproj.Transformer实现, 当几何对象跨越坐标系边界时可能产生错误的连线.
 
     Parameters
     ----------
@@ -487,28 +580,17 @@ def transform_geometries(
     geoms : list of BaseGeometry
         目标坐标系上的一组几何对象.
     '''
-    # 坐标系相同时直接复制.
-    if crs_from == crs_to:
-        return [type(geom)(geom) for geom in geoms]
+    transformer = GeometryTransformer(crs_from, crs_to)
+    return [transformer(geom) for geom in geoms]
 
-    transformer = Transformer.from_crs(crs_from, crs_to, always_xy=True)
-    def func(coords: CoordinateSequence) -> np.ndarray:
-        coords = np.array(coords)
-        return np.column_stack(
-            transformer.transform(coords[:, 0], coords[:, 1])
-        ).squeeze()
-    return [_transform(func, geom) for geom in geoms]
 
 def transform_geometry(
-    geom: BaseGeometry,
-    crs_from: CRS,
-    crs_to: CRS
+    geom: BaseGeometry, crs_from: CRS, crs_to: CRS
 ) -> BaseGeometry:
     '''
     将一个几何对象从crs_from坐标系变换到crs_to坐标系上.
 
-    基于pyproj.Transformer实现. 相比cartopy.crs.Projection.project_geometry
-    速度更快, 但当几何对象跨越坐标系边界时可能产生错误的连线.
+    基于pyproj.Transformer实现, 当几何对象跨越坐标系边界时可能产生错误的连线.
 
     Parameters
     ----------
@@ -526,4 +608,4 @@ def transform_geometry(
     geom : BaseGeometry
         目标坐标系上的几何对象.
     '''
-    return transform_geometries([geom], crs_from, crs_to)[0]
+    return GeometryTransformer(crs_from, crs_to)(geom)

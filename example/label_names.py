@@ -3,13 +3,11 @@ import cartopy.crs as ccrs
 import frykit.plot as fplt
 
 # 设置投影
-map_crs = ccrs.AzimuthalEquidistant(
-    central_longitude=105,
-    central_latitude=35
-)
+map_crs = ccrs.AzimuthalEquidistant(central_longitude=105, central_latitude=35)
 data_crs = ccrs.PlateCarree()
 
-def province_map():
+
+def plot_province_map():
     '''绘制省界地图.'''
     fig = plt.figure(figsize=(8, 8))
     ax = fig.add_subplot(projection=map_crs)
@@ -20,7 +18,8 @@ def province_map():
     fig.savefig('../image/province_map.png', dpi=300, bbox_inches='tight')
     plt.close(fig)
 
-def city_map():
+
+def plot_city_map():
     '''绘制市界地图.'''
     fig = plt.figure(figsize=(15, 15))
     ax = fig.add_subplot(projection=map_crs)
@@ -31,5 +30,6 @@ def city_map():
     fig.savefig('../image/city_map.png', dpi=300, bbox_inches='tight')
     plt.close(fig)
 
-province_map()
-city_map()
+
+plot_province_map()
+plot_city_map()

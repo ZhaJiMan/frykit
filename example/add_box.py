@@ -5,10 +5,7 @@ import frykit.plot as fplt
 
 # 设置地图投影.
 map_crs1 = ccrs.PlateCarree()
-map_crs2 = ccrs.AzimuthalEquidistant(
-    central_longitude=105,
-    central_latitude=35
-)
+map_crs2 = fplt.CN_AZIMUTHAL_EQUIDISTANT
 data_crs = ccrs.PlateCarree()
 
 # 设置地图范围.
@@ -45,13 +42,13 @@ for i in range(len(xlocs - 1)):
             y1 = y0 + dlat
             for ax in [ax1, ax2]:
                 fplt.add_box(
-                    ax,
+                    ax=ax,
                     extents=[x0, x1, y0, y1],
                     fc='royalblue',
                     ec='k',
                     zorder=2,
                     alpha=0.25,
-                    transform=data_crs
+                    transform=data_crs,
                 )
 
 # 保存图片.

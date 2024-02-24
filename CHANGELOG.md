@@ -1,3 +1,17 @@
+## `0.4.2`
+
+- 增加全球国家国界、50m 陆地和海洋的数据。相关函数：
+  - `get_countries`、`add_countries`
+  - `get_land`、`add_land`
+  - `get_ocean`、`add_ocean`
+- 为了加入全球数据，修改了 `_shp` 模块的压缩参数。
+- 取消 `clip_by_land` 和 `clip_by_ocean` 的 `resolution` 参数。
+- 移除 `enable_fast_transform` 和 `disable_fast_transform` 函数，用 `use_fast_transform` 函数替代。
+- 新增 `GeometryTransformer` 类，提高了 `plot` 模块中对大量多边形做变换的速度。
+- 修改 `cn_province.csv` 和 `cn_city.csv` 里标注用的经纬度。
+- 修改 `example` 中的例子。
+- 所有代码用 Black 做了格式化。
+
 ## `0.4.1`
 
 - 明确安装依赖。

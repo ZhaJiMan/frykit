@@ -96,6 +96,14 @@ fplt.label_cn_city(ax, fontsize='xx-small')
 
 默认采用 `Normal` 字重的思源黑体。
 
+### 绘制全球数据
+
+```Python
+fplt.add_land(ax)
+fplt.add_ocean(ax)
+fplt.add_countries(ax)
+```
+
 ### 绘制任意多边形
 
 ```Python
@@ -120,6 +128,9 @@ cf = ax.contourf(lon, lat, data, transform=data_crs)
 # 用国界或省界裁剪.
 fplt.clip_by_cn_border(cf)
 fplt.clip_by_cn_province(cf, '河北省')
+
+# 用陆地裁剪.
+fplt.clip_by_land(cf)
 ```
 
 被裁剪的对象还可以是 `contour`、`clabel`、`pcolormesh`、`quiver` 等方法的返回值。
@@ -131,11 +142,14 @@ fplt.clip_by_cn_province(cf, '河北省')
 绘制多边形和裁剪填色图过程中需要对多边形进行坐标变换，工具箱默认进行速度更快，但结果不够严格的变换方法。快速和严格两种变换方法间的切换为：
 
 ```Python
-enable_fast_transform()
-disable_fast_transform()
+use_fast_transform(True)
+fplt.add_cn_city(ax)  # 耗时1.6s
+
+use_fast_transform(False)
+fplt.add_cn_city(ax)  # 耗时31.6s
 ```
 
-`add_cn_xxx` 系列函数在多次调用时会通过缓存节省读取国界和省界数据的时间开销。如果能维持对多边形对象的引用，`add_polygon`、`add_polygons` 和 `clip_by_xxx` 系列函数在多次调用时会通过缓存节省多边形坐标变换的时间开销。
+`add_cn_xxx` 系列函数在多次调用时会通过缓存节省读取国界和省界数据的时间开销。如果能维持对多边形对象的引用，`add_polygon`、`add_polygons` 和 `clip_by_polygon` 函数在多次调用时会通过缓存节省多边形坐标变换的时间开销。
 
 ### 添加指北针和比例尺
 

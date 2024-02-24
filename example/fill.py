@@ -16,10 +16,7 @@ extents1 = [78, 134, 14, 55]
 extents2 = [105, 120, 2, 25]
 
 # 设置投影.
-map_crs = ccrs.AzimuthalEquidistant(
-    central_longitude=105,
-    central_latitude=35
-)
+map_crs = fplt.CN_AZIMUTHAL_EQUIDISTANT
 data_crs = ccrs.PlateCarree()
 
 # 准备主地图.
@@ -48,14 +45,13 @@ cmap = mcolors.ListedColormap(colors)
 # 字体描边.
 path_effects = [
     patheffects.Stroke(linewidth=1.5, foreground='w'),
-    patheffects.Normal()
+    patheffects.Normal(),
 ]
 
 # 绘制填色多边形, 标注省名.
 for ax in [ax1, ax2]:
     fplt.add_polygons(
-        ax, provinces, array=data,
-        cmap=cmap, norm=norm, ec='k', lw=0.4
+        ax, provinces, array=data, cmap=cmap, norm=norm, ec='k', lw=0.4
     )
     for text in fplt.label_cn_province(ax):
         text.set_path_effects(path_effects)
@@ -68,9 +64,12 @@ for color, label in zip(colors, labels):
     patch = mpatches.Patch(fc=color, ec='k', lw=0.5, label=label)
     patches.append(patch)
 ax1.legend(
-    handles=patches, loc=(0.05, 0.05),
-    frameon=False, handleheight=1.5, fontsize='small',
-    title='data (units)'
+    handles=patches,
+    loc=(0.05, 0.05),
+    frameon=False,
+    handleheight=1.5,
+    fontsize='small',
+    title='data (units)',
 )
 
 # 添加指北针和比例尺.

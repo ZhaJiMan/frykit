@@ -16,5 +16,5 @@ setuptools.setup(
     url='https://github.com/ZhaJiMan/frykit',
     include_package_data=True,
     packages=setuptools.find_packages(),
-    install_requires=['python>=3.9.0', 'cartopy>=0.20.0', 'pandas>=1.2.0']
+    install_requires=['python>=3.9.0', 'cartopy>=0.20.0', 'pandas>=1.2.0'],
 )

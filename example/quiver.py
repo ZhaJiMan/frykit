@@ -15,10 +15,7 @@ v10 = gaussian_filter(ds['v10'], sigma=1)
 extents = [78, 128, 15, 55]
 
 # 设置投影.
-map_crs = ccrs.AzimuthalEquidistant(
-    central_longitude=105,
-    central_latitude=35
-)
+map_crs = fplt.CN_AZIMUTHAL_EQUIDISTANT
 data_crs = ccrs.PlateCarree()
 
 # 准备地图.
@@ -29,22 +26,27 @@ fplt.add_cn_province(ax, lw=0.4)
 
 # 绘制气温.
 cf = ax.contourf(
-    X, Y, t2m,
+    X,
+    Y,
+    t2m,
     levels=np.linspace(-10, 35, 10),
     cmap=plt.cm.plasma,
     extend='both',
     transform=data_crs,
-    transform_first=True
+    transform_first=True,
 )
 fig.colorbar(cf, ax=ax, label='Temperature (℃)')
 
 # 绘制风场.
 Q = ax.quiver(
-    X, Y, u10, v10,
+    X,
+    Y,
+    u10,
+    v10,
     scale=0.15,
     scale_units='dots',
     regrid_shape=35,
-    transform=data_crs
+    transform=data_crs,
 )
 fplt.add_quiver_legend(Q, U=10, height=0.12)
 

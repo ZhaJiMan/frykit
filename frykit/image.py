@@ -4,13 +4,14 @@ from typing import Any, Optional, Union
 
 from PIL import Image
 
+
 # TODO: 支持输入为Image的序列.
 def make_gif(
     img_filepaths: Sequence[Union[str, PurePath]],
     gif_filepath: Union[str, PurePath],
     duration: int = 500,
     loop: int = 0,
-    optimize: bool = False
+    optimize: bool = False,
 ) -> None:
     '''
     制作GIF图. 结果的mode和尺寸由第一张图决定.
@@ -44,15 +45,16 @@ def make_gif(
         append_images=images[1:],
         duration=duration,
         loop=loop,
-        optimize=optimize
+        optimize=optimize,
     )
+
 
 # TODO: 加入从右往左的粘贴顺序?
 def merge_images(
     filepaths: Union[Sequence[str], Sequence[PurePath]],
     shape: Optional[tuple[int, int]] = None,
     mode: Optional[str] = None,
-    bgcolor: Any = 'white'
+    bgcolor: Any = 'white',
 ) -> Image.Image:
     '''
     合并一组图片.
@@ -112,7 +114,7 @@ def merge_images(
     merged = Image.new(
         mode=images[0].mode if mode is None else mode,
         size=(col * width, row * height),
-        color=bgcolor
+        color=bgcolor,
     )
     for k, image in enumerate(images):
         i, j = divmod(k, col)
@@ -122,9 +124,9 @@ def merge_images(
 
     return merged
 
+
 def split_image(
-    filepath: Union[str, PurePath],
-    shape: Union[int, tuple[int, int]],
+    filepath: Union[str, PurePath], shape: Union[int, tuple[int, int]]
 ) -> list[Image.Image]:
     '''
     分割一张图片.

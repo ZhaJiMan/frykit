@@ -27,10 +27,10 @@
 ## 安装
 
 ```
-pip install frykit
+pip install frykit==0.4.2post1
 ```
 
-`frykit>=0.3.0` 的依赖为：
+依赖为：
 
 ```
 python>=3.9.0

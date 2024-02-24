@@ -7,7 +7,7 @@ with open(str(readme_filepath), 'r', encoding='utf-8') as f:
 
 setuptools.setup(
     name='frykit',
-    version='0.4.1',
+    version='0.4.2post1',
     author='ZhaJiMan',
     author_email='915023793@qq.com',
     description='A simple toolbox for Matplotib and Cartopy',
@@ -16,5 +16,6 @@ setuptools.setup(
     url='https://github.com/ZhaJiMan/frykit',
     include_package_data=True,
     packages=setuptools.find_packages(),
-    install_requires=['python>=3.9.0', 'cartopy>=0.20.0', 'pandas>=1.2.0'],
+    install_requires=['cartopy>=0.20.0', 'pandas>=1.2.0'],
+    python_requires='>=3.9.0',
 )

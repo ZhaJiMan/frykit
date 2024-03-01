@@ -153,11 +153,11 @@ ax.contourf(lon, lat, data)
 绘制多边形和裁剪填色图过程中需要对多边形进行坐标变换，工具箱默认直接使用 pyproj 进行变换，速度快但可能在某些投影的边界产生错误的结果。为此可以手动切换回更正确的 Cartopy 的变换：
 
 ```Python
-use_fast_transform(True)
+fplt.use_fast_transform(True)
 fplt.add_cn_city(ax)  # 耗时1.6s
 
 # 相当于ax.add_geometries
-use_fast_transform(False)
+fplt.use_fast_transform(False)
 fplt.add_cn_city(ax)  # 耗时31.6s
 ```
 

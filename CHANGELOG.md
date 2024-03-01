@@ -1,3 +1,9 @@
+## `0.4.3`
+
+- 将影响坐标变换速度的 `Projection._as_mpl_transform` 修改成了 `Axes.transData`。
+- 新增时分秒转换度数的 `hms_to_degrees2` 函数。
+- 新增比较两张图片的 `compare_images` 函数。
+
 ## `0.4.2`
 
 - 增加全球国家国界、50m 陆地和海洋的数据。相关函数：

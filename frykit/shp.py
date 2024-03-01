@@ -348,11 +348,12 @@ def polygon_to_path(polygon: PolygonType, keep_empty: bool = True) -> Path:
         else:
             raise ValueError('polygon不能为空多边形')
 
+    # TODO: shapely=2.0提供更简单的写法.
     # 用多边形含有的所有环的顶点构造Path.
     vertices, codes = [], []
     for polygon in getattr(polygon, 'geoms', [polygon]):
         for ring in [polygon.exterior, *polygon.interiors]:
-            vertices.append(np.array(ring.coords))
+            vertices.append(np.asarray(ring.coords))
             codes.extend(_ring_codes(len(ring.coords)))
     vertices = np.vstack(vertices)
     path = Path(vertices, codes)
@@ -532,7 +533,7 @@ class GeometryTransformer:
         transformer = Transformer.from_crs(crs_from, crs_to, always_xy=True)
 
         def func(coords: CoordinateSequence) -> np.ndarray:
-            coords = np.array(coords)
+            coords = np.asarray(coords)
             return np.column_stack(
                 transformer.transform(coords[:, 0], coords[:, 1])
             ).squeeze()

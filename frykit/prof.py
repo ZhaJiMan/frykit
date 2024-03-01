@@ -1,11 +1,12 @@
 import time
 import cProfile
 import functools
-from pathlib import PurePath
 from collections.abc import Callable
 from typing import Any, Optional, Union, Literal
 
 from line_profiler import LineProfiler
+
+from frykit.help import PathType
 
 TimeUnits = Literal['ns', 'us', 'ms', 's', 'min']
 
@@ -140,7 +141,7 @@ class Timer:
         self.stop()
 
 
-def cprofiler(filepath: Union[str, PurePath]) -> Callable:
+def cprofiler(filepath: PathType) -> Callable:
     '''cProfile的装饰器. 保存结果到指定路径.'''
 
     def decorator(func: Callable) -> Callable:
@@ -156,7 +157,7 @@ def cprofiler(filepath: Union[str, PurePath]) -> Callable:
     return decorator
 
 
-def lprofiler(filepath: Union[str, PurePath]) -> Callable:
+def lprofiler(filepath: PathType) -> Callable:
     '''line_profiler的装饰器. 保存结果到指定路径.'''
 
     def decorator(func: Callable) -> Callable:

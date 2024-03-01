@@ -1,6 +1,8 @@
+from collections.abc import Sequence
 from typing import Any, Union, Literal
 
 import numpy as np
+import pandas as pd
 from scipy.spatial import KDTree
 from scipy.stats import binned_statistic_2d
 
@@ -82,13 +84,31 @@ def uv_to_wswd(u: Any, v: Any) -> tuple[Any, Any]:
     return ws, wd
 
 
-def hms_to_degree(hour: Any, minute: Any, second: Any) -> Any:
+def hms_to_degrees(hour: Any, minute: Any, second: Any) -> Any:
     '''时分秒转为度数.'''
     return hour + minute / 60 + second / 3600
 
 
+def hms_to_degrees2(hms: Union[str, Sequence[str]]) -> Union[float, np.ndarray]:
+    '''时分秒转为度数. 要求hms是形如43°08′20″的字符串.'''
+    parts = (
+        pd.Series(hms)
+        .str.split(r'[^\d.]+', expand=True)
+        .iloc[:, :3]
+        .to_numpy(float)
+    )
+    if parts.shape[0] == 1:
+        hour, minute, second = parts[0]
+    else:
+        hour = parts[:, 0]
+        minute = parts[:, 1]
+        second = parts[:, 2]
+
+    return hms_to_degrees(hour, minute, second)
+
+
 def haversine(
-    lon1: Any, lat1: Any, lon2: Any, lat2: Any, as_degrees: bool = False
+    lon1: Any, lat1: Any, lon2: Any, lat2: Any, degrees: bool = False
 ) -> Any:
     '''利用haversine公式计算两点间的圆心角.'''
     lon1, lat1, lon2, lat2 = map(np.deg2rad, [lon1, lat1, lon2, lat2])
@@ -99,7 +119,7 @@ def haversine(
     a = hav(dlat)
     b = np.cos(lat1) * np.cos(lat2) * hav(dlon)
     dtheta = 2 * np.arcsin(np.sqrt(a + b))
-    if as_degrees:
+    if degrees:
         dtheta = np.rad2deg(dtheta)
 
     return dtheta

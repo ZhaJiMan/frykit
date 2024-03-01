@@ -1,14 +1,16 @@
-from pathlib import PurePath
 from collections.abc import Sequence
 from typing import Any, Optional, Union
 
 from PIL import Image
+import numpy as np
+
+from frykit.help import PathType
 
 
 # TODO: 支持输入为Image的序列.
 def make_gif(
-    img_filepaths: Sequence[Union[str, PurePath]],
-    gif_filepath: Union[str, PurePath],
+    img_filepaths: Sequence[PathType],
+    gif_filepath: PathType,
     duration: int = 500,
     loop: int = 0,
     optimize: bool = False,
@@ -18,10 +20,10 @@ def make_gif(
 
     Parameters
     ----------
-    img_filepaths : sequence of str or sequence of PurePath
+    img_filepaths : sequence of PathType
         图片路径的列表.
 
-    gif_filepath : str or PurePath
+    gif_filepath : PathType
         输出GIF图片的路径.
 
     duration : int or list or tuple, optional
@@ -51,7 +53,7 @@ def make_gif(
 
 # TODO: 加入从右往左的粘贴顺序?
 def merge_images(
-    filepaths: Union[Sequence[str], Sequence[PurePath]],
+    filepaths: Sequence[PathType],
     shape: Optional[tuple[int, int]] = None,
     mode: Optional[str] = None,
     bgcolor: Any = 'white',
@@ -65,7 +67,7 @@ def merge_images(
 
     Parameters
     ----------
-    filepaths : sequence of str or sequence of PurePath
+    filepaths : sequence of PathType
         图片路径的列表.
 
     shape : (2,) tuple of int, optional
@@ -126,7 +128,7 @@ def merge_images(
 
 
 def split_image(
-    filepath: Union[str, PurePath], shape: Union[int, tuple[int, int]]
+    filepath: PathType, shape: Union[int, tuple[int, int]]
 ) -> list[Image.Image]:
     '''
     分割一张图片.
@@ -135,7 +137,7 @@ def split_image(
 
     Parameters
     ----------
-    filepath : str or PurePath
+    filepath : PathType
         图片路径
 
     shape : (2,) int or tuple of int
@@ -166,3 +168,36 @@ def split_image(
             images.append(part)
 
     return images
+
+
+def compare_images(filepath1: PathType, filepath2: PathType) -> Image.Image:
+    '''
+    通过求两张图片的绝对差值比较前后差异.
+
+    要求两张图片大小和模式相同.
+
+    Parameters
+    ----------
+    filepath1 : PathType
+        第一张图片的路径.
+
+    filepath2 : PathType
+        第二张图片的路径.
+
+    Returns
+    -------
+    images : list of Image
+        两张图片的绝对差值构成的图片.
+    '''
+    image1 = Image.open(str(filepath1))
+    image2 = Image.open(str(filepath2))
+    if image1.size != image2.size:
+        raise ValueError('两张图片的宽高不同')
+    if image1.mode != image2.mode:
+        raise ValueError('两张图片的mode不同')
+    arr1 = np.asarray(image1, np.int16)
+    arr2 = np.asarray(image2, np.int16)
+    diff = np.abs(arr1 - arr2).astype(np.uint8)
+    diff = Image.fromarray(diff)
+
+    return diff

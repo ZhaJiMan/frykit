@@ -122,16 +122,14 @@ def add_polygons(
         raise ValueError('ax不是Axes')
     elif isinstance(ax, GeoAxes):
         crs = ccrs.PlateCarree() if crs is None else crs
-        trans = ax.projection._as_mpl_transform(ax)
         polygons = _cached_transform_polygons(polygons, crs, ax.projection)
     else:
         if crs is not None:
             raise ValueError('ax不是GeoAxes时crs只能为None')
-        trans = ax.transData
 
     # PathCollection比PathPatch更快.
     paths = [fshp.polygon_to_path(polygon) for polygon in polygons]
-    pc = PathCollection(paths, transform=trans, **kwargs)
+    pc = PathCollection(paths, transform=ax.transData, **kwargs)
     ax.add_collection(pc)
     ax._request_autoscale_view()
 
@@ -233,7 +231,6 @@ def clip_by_polygon(
     if not isinstance(ax, Axes):
         raise ValueError('ax不是Axes')
     if isinstance(ax, GeoAxes):
-        trans = ax.projection._as_mpl_transform(ax)
         crs = ccrs.PlateCarree() if crs is None else crs
         polygon = _cached_transform_polygon(polygon, crs, ax.projection)
         if strict:  # 在data坐标系求polygon和ax.patch的交集.
@@ -242,8 +239,8 @@ def clip_by_polygon(
         # Axes会自动给Artist设置clipbox, 所以不会出界.
         if crs is not None:
             raise ValueError('ax不是GeoAxes时crs只能为None')
-        trans = ax.transData
     path = fshp.polygon_to_path(polygon)
+    trans = ax.transData
 
     # TODO:
     # 用字体位置来判断仍然会有出界的情况.

@@ -1,11 +1,12 @@
 import struct
 from io import BytesIO
-from pathlib import PurePath
 from typing import Any, Union
 
 import numpy as np
 import shapefile
 import shapely.geometry as sgeom
+
+from frykit.help import PathType
 
 '''
 利用类似NetCDF的有损压缩方式, 将64-bit的shapefile转换成32-bit的整数.
@@ -33,7 +34,7 @@ SCALE_FACTORS = np.array([LON1 - LON0, LAT1 - LAT0]) / (2**N - 1)
 class BinaryConverter:
     '''将shapefile文件转为二进制的类.'''
 
-    def convert(self, filepath: Union[str, PurePath]) -> None:
+    def convert(self, filepath: PathType) -> None:
         '''转换filepath指向的文件.'''
         with shapefile.Reader(str(filepath)) as reader:
             if reader.shapeType != 5:
@@ -101,7 +102,7 @@ class BinaryConverter:
 class BinaryReader:
     '''读取二进制文件的类.'''
 
-    def __init__(self, filepath: Union[str, PurePath]) -> None:
+    def __init__(self, filepath: PathType) -> None:
         self.file = open(str(filepath), 'rb')
         self.num_shapes = struct.unpack(DTYPE, self.file.read(DTYPE_SIZE))[0]
         self.shape_sizes = np.frombuffer(

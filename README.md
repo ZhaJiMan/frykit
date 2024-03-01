@@ -27,7 +27,7 @@
 ## 安装
 
 ```
-pip install frykit==0.4.2post1
+pip install frykit==0.4.3
 ```
 
 依赖为：
@@ -37,6 +37,8 @@ python>=3.9.0
 cartopy>=0.20.0
 pandas>=1.2.0
 ```
+
+Python 版本较低时可以尝试安装 `frykit==0.2.5`。
 
 ## 更新记录
 
@@ -137,14 +139,24 @@ fplt.clip_by_land(cf)
 
 当用于裁剪的多边形超出 `GeoAxes` 的显示范围时，直接用 `Artist.set_clip_path` 做裁剪会发生填色图出界的现象（[cartopy/issues/2052](https://github.com/SciTools/cartopy/issues/2052)）。工具箱内的 `clip_by_xxx` 系列函数对此进行了处理。
 
+### 填色图掩膜
+
+```Python
+border = fshp.get_cn_border()
+mask = fshp.polygon_to_mask(border, lon, lat)
+data[~mask] = np.nan
+ax.contourf(lon, lat, data)
+```
+
 ### 加速绘制和裁剪
 
-绘制多边形和裁剪填色图过程中需要对多边形进行坐标变换，工具箱默认进行速度更快，但结果不够严格的变换方法。快速和严格两种变换方法间的切换为：
+绘制多边形和裁剪填色图过程中需要对多边形进行坐标变换，工具箱默认直接使用 pyproj 进行变换，速度快但可能在某些投影的边界产生错误的结果。为此可以手动切换回更正确的 Cartopy 的变换：
 
 ```Python
 use_fast_transform(True)
 fplt.add_cn_city(ax)  # 耗时1.6s
 
+# 相当于ax.add_geometries
 use_fast_transform(False)
 fplt.add_cn_city(ax)  # 耗时31.6s
 ```

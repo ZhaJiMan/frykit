@@ -1,5 +1,7 @@
 '''运行example目录下的所有脚本.'''
 
+# TODO: 换用pytest
+# TODO: 加入Mercator和rhumb line的例子.
 import subprocess
 from pathlib import Path
 

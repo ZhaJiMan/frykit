@@ -1,3 +1,8 @@
+## `0.4.4`
+
+- `set_extent_and_ticks` 函数更名为 `set_map_ticks` 函数，新增 `dx` 和 `dy` 参数，`nx` 和 `ny` 参数改名为 `mx` 和 `my`。非等经纬度投影现已支持开启次刻度。
+- `image` 模块各函数的输入现在可以是 `Image` 对象。
+
 ## `0.4.3`
 
 - 将影响坐标变换速度的 `Projection._as_mpl_transform` 修改成了 `Axes.transData`。

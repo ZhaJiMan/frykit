@@ -1,4 +1,3 @@
-import numpy as np
 import matplotlib.pyplot as plt
 import frykit.plot as fplt
 
@@ -11,12 +10,7 @@ fplt.add_ocean(ax, fc='#c4e7fa')
 fplt.add_countries(ax, fc='#e7e4e2')
 fplt.add_cn_province(ax, fc='#fcfeff')
 fplt.add_nine_line(ax)
-fplt.set_extent_and_ticks(
-    ax=ax,
-    extents=[70, 140, 0, 60],
-    xticks=np.arange(-180, 181, 10),
-    yticks=np.arange(-90, 91, 10),
-)
+fplt.set_map_ticks(ax, [70, 140, 0, 60], dx=10, dy=10)
 fplt.gmt_style_frame(ax)
 ax.grid(ls='--', c='gray')
 

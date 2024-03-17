@@ -7,7 +7,7 @@ with open(str(readme_filepath), 'r', encoding='utf-8') as f:
 
 setuptools.setup(
     name='frykit',
-    version='0.4.3',
+    version='0.4.4',
     author='ZhaJiMan',
     author_email='915023793@qq.com',
     description='A simple toolbox for Matplotib and Cartopy',

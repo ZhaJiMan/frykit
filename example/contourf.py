@@ -28,9 +28,7 @@ plt.rc('ytick', labelsize=8, right=True, labelright=True)
 # 准备主地图.
 fig = plt.figure(figsize=(10, 6))
 ax1 = fig.add_subplot(projection=map_crs)
-fplt.set_extent_and_ticks(
-    ax=ax1, extents=extents1, xticks=xticks, yticks=yticks
-)
+fplt.set_map_ticks(ax1, extents1, xticks, yticks)
 ax1.gridlines(xlocs=xticks, ylocs=yticks, lw=0.5, ls='--', color='gray')
 
 # 添加要素.

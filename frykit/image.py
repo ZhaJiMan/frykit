@@ -6,11 +6,19 @@ import numpy as np
 
 from frykit.help import PathType
 
+ImageInput = Union[PathType, Image.Image]
 
-# TODO: 支持输入为Image的序列.
+
+def _read_image(image: ImageInput) -> Image.Image:
+    '''读取图片为Image对象.'''
+    if isinstance(image, Image.Image):
+        return image
+    return Image.open(str(image))
+
+
 def make_gif(
-    img_filepaths: Sequence[PathType],
-    gif_filepath: PathType,
+    images: Sequence[ImageInput],
+    filepath: PathType,
     duration: int = 500,
     loop: int = 0,
     optimize: bool = False,
@@ -20,10 +28,10 @@ def make_gif(
 
     Parameters
     ----------
-    img_filepaths : sequence of PathType
-        图片路径的列表.
+    images : sequence of ImageInput
+        输入的一组图片.
 
-    gif_filepath : PathType
+    filepath : PathType
         输出GIF图片的路径.
 
     duration : int or list or tuple, optional
@@ -36,12 +44,12 @@ def make_gif(
     optimize : bool, optional
         尝试压缩GIF图片的调色板.
     '''
-    if not img_filepaths:
+    if not images:
         raise ValueError('至少需要一张图片')
 
-    images = [Image.open(str(filepath)) for filepath in img_filepaths]
+    images = [_read_image(image) for image in images]
     images[0].save(
-        str(gif_filepath),
+        str(filepath),
         format='gif',
         save_all=True,
         append_images=images[1:],
@@ -51,9 +59,8 @@ def make_gif(
     )
 
 
-# TODO: 加入从右往左的粘贴顺序?
 def merge_images(
-    filepaths: Sequence[PathType],
+    images: Sequence[ImageInput],
     shape: Optional[tuple[int, int]] = None,
     mode: Optional[str] = None,
     bgcolor: Any = 'white',
@@ -67,8 +74,8 @@ def merge_images(
 
     Parameters
     ----------
-    filepaths : sequence of PathType
-        图片路径的列表.
+    images : sequence of ImageInput
+        输入的一组图片.
 
     shape : (2,) tuple of int, optional
         合并的行列形状. 默认为None, 表示纵向拼接.
@@ -84,19 +91,13 @@ def merge_images(
     merged : Image
         合并后的图片.
     '''
-    if not filepaths:
+    if not images:
         raise ValueError('至少需要一张图片')
 
     # 获取最大宽高.
-    images = []
-    width = height = 0
-    for filepath in filepaths:
-        image = Image.open(str(filepath))
-        images.append(image)
-        if image.width > width:
-            width = image.width
-        if image.height > height:
-            height = image.height
+    images = [_read_image(image) for image in images]
+    width = max(image.width for image in images)
+    height = max(image.height for image in images)
 
     # 决定行列.
     num = len(images)
@@ -104,7 +105,7 @@ def merge_images(
         shape = (num, 1)
     row, col = shape
     if row == 0 or row < -1 or col == 0 or col < -1:
-        raise ValueError('shape的元素只能为正数或-1')
+        raise ValueError('shape的元素只能为正整数或-1')
     if row == -1 and col == -1:
         raise ValueError('shape的元素不能同时为-1')
     if row == -1:
@@ -128,49 +129,47 @@ def merge_images(
 
 
 def split_image(
-    filepath: PathType, shape: Union[int, tuple[int, int]]
-) -> list[Image.Image]:
+    image: ImageInput, shape: Union[int, tuple[int, int]]
+) -> np.ndarray:
     '''
-    分割一张图片.
-
-    将图片分割成shape[0]行和shape[1]列, 然后按从左往右从上往下的顺序收集结果.
+    将一张图片分割成形如shape的图片数组.
 
     Parameters
     ----------
-    filepath : PathType
-        图片路径
+    image : ImageInput
+        输入图片.
 
-    shape : (2,) int or tuple of int
-        分割的行列形状. 整数表示仅按行分割.
+    shape : int or (2,) tuple of int
+        分割的行列形状. 规则类似NumPy.
 
     Returns
     -------
-    images : list of Image
-        分割出来的一组图片.
+    split : ndarray of Image
+        形如shape的图片数组.
     '''
-    row, col = (shape, 1) if isinstance(shape, int) else shape
+    is_1d = isinstance(shape, int)
+    row, col = (1, shape) if is_1d else shape
     if row <= 0 or col <= 0:
-        raise ValueError('shape只能含正数维度')
+        raise ValueError('shape只能含正整数维度')
 
     # 可能无法整除.
-    image = Image.open(str(filepath))
+    image = _read_image(image)
     width = image.width // col
     height = image.height // row
 
-    images = []
+    split = np.empty((row, col), object)
     for i in range(row):
         for j in range(col):
             left = j * width
             right = left + width
             top = i * height
             lower = top + height
-            part = image.crop((left, top, right, lower))
-            images.append(part)
+            split[i, j] = image.crop((left, top, right, lower))
 
-    return images
+    return split[0, :] if is_1d else split
 
 
-def compare_images(filepath1: PathType, filepath2: PathType) -> Image.Image:
+def compare_images(image1: ImageInput, image2: ImageInput) -> Image.Image:
     '''
     通过求两张图片的绝对差值比较前后差异.
 
@@ -178,19 +177,19 @@ def compare_images(filepath1: PathType, filepath2: PathType) -> Image.Image:
 
     Parameters
     ----------
-    filepath1 : PathType
-        第一张图片的路径.
+    image1 : ImageInput
+        第一张图片.
 
-    filepath2 : PathType
-        第二张图片的路径.
+    image2 : ImageInput
+        第二张图片.
 
     Returns
     -------
     images : list of Image
         两张图片的绝对差值构成的图片.
     '''
-    image1 = Image.open(str(filepath1))
-    image2 = Image.open(str(filepath2))
+    image1 = _read_image(image1)
+    image2 = _read_image(image2)
     if image1.size != image2.size:
         raise ValueError('两张图片的宽高不同')
     if image1.mode != image2.mode:

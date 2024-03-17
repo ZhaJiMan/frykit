@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from typing import Any, Optional, Union, Literal
 
 import numpy as np
+import pandas as pd
 import shapely.geometry as sgeom
 from shapely.ops import unary_union
 from pyproj import Geod
@@ -22,7 +23,7 @@ from matplotlib.colorbar import Colorbar
 from matplotlib.colors import Normalize, Colormap, ListedColormap, BoundaryNorm
 from matplotlib.quiver import Quiver, QuiverKey
 from matplotlib.text import Text
-from matplotlib.ticker import Formatter, AutoMinorLocator
+from matplotlib.ticker import Formatter
 
 import cartopy.crs as ccrs
 from cartopy.mpl.geoaxes import GeoAxes
@@ -30,6 +31,7 @@ from cartopy.mpl.feature_artist import _GeomKey
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 
 import frykit.shp as fshp
+from frykit.help import deprecator
 from frykit import DATA_DIRPATH
 
 # 当polygon的引用计数为零时, 弱引用会自动清理缓存.
@@ -415,6 +417,8 @@ def _set_pc_kwargs(
 CN_AZIMUTHAL_EQUIDISTANT = ccrs.AzimuthalEquidistant(
     central_longitude=105, central_latitude=35
 )
+# 网络墨卡托投影.
+WEB_MERCATOR = ccrs.Mercator.GOOGLE
 
 
 def add_cn_border(ax: Axes, **kwargs: Any) -> PathCollection:
@@ -763,6 +767,26 @@ def _set_text_kwargs(kwargs: dict) -> None:
         kwargs['fontproperties'] = filepath
 
 
+def _label_by_table(ax: Axes, table: pd.DataFrame, **kwargs: Any) -> list[Text]:
+    '''用label_cn_xxx函数里的表格标注地名.'''
+    texts = []
+    _set_text_kwargs(kwargs)
+    trans = ccrs.PlateCarree() if isinstance(ax, GeoAxes) else ax.transData
+    for name_, lon, lat in table.itertuples(index=False):
+        t = ax.text(
+            x=lon,
+            y=lat,
+            s=name_,
+            transform=trans,
+            clip_on=True,
+            clip_box=ax.bbox,
+            **kwargs,
+        )
+        texts.append(t)
+
+    return texts
+
+
 def label_cn_province(
     ax: Axes,
     name: Optional[fshp.GetCNKeyword] = None,
@@ -795,21 +819,7 @@ def label_cn_province(
     mask = fshp._get_pr_mask(name)
     key = 'short_name' if short else 'pr_name'
     table = fshp.PROVINCE_TABLE.loc[mask, [key, 'lon', 'lat']]
-
-    texts = []
-    _set_text_kwargs(kwargs)
-    trans = ccrs.PlateCarree() if isinstance(ax, GeoAxes) else ax.transData
-    for name_, lon, lat in table.itertuples(index=False):
-        t = ax.text(
-            x=lon,
-            y=lat,
-            s=name_,
-            transform=trans,
-            clip_on=True,
-            clip_box=ax.bbox,
-            **kwargs,
-        )
-        texts.append(t)
+    texts = _label_by_table(ax, table, **kwargs)
 
     return texts
 
@@ -852,208 +862,301 @@ def label_cn_city(
     mask = fshp._get_ct_mask(name, province)
     key = 'short_name' if short else 'ct_name'
     table = fshp.CITY_TABLE.loc[mask, [key, 'lon', 'lat']]
-
-    texts = []
-    _set_text_kwargs(kwargs)
-    trans = ccrs.PlateCarree() if isinstance(ax, GeoAxes) else ax.transData
-    for name_, lon, lat in table.itertuples(index=False):
-        t = ax.text(
-            x=lon,
-            y=lat,
-            s=name_,
-            transform=trans,
-            clip_on=True,
-            clip_box=ax.bbox,
-            **kwargs,
-        )
-        texts.append(t)
+    texts = _label_by_table(ax, table, **kwargs)
 
     return texts
 
 
-def _set_rectangular_geoaxes(
-    ax: GeoAxes,
-    extents: Optional[Any] = None,
-    xticks: Optional[Any] = None,
-    yticks: Optional[Any] = None,
-    nx: int = 0,
-    ny: int = 0,
-    xformatter: Optional[Formatter] = None,
-    yformatter: Optional[Formatter] = None,
+def _set_axes_ticks(
+    ax: Axes,
+    extents: Any,
+    major_xticks: np.ndarray,
+    major_yticks: np.ndarray,
+    minor_xticks: np.ndarray,
+    minor_yticks: np.ndarray,
+    xformatter: Formatter,
+    yformatter: Formatter,
 ) -> None:
-    '''设置矩形投影的GeoAxes的范围和刻度.'''
-    # 默认formatter.
-    if xformatter is None:
-        xformatter = LongitudeFormatter()
-    if yformatter is None:
-        yformatter = LatitudeFormatter()
+    '''设置PlateCarree投影的Axes的范围和刻度.'''
+    x0, x1 = ax.get_xlim()
+    y0, y1 = ax.get_ylim()
+    if extents is not None:
+        x0, x1, y0, y1 = extents
+    ax.set_xticks(major_xticks, minor=False)
+    ax.set_yticks(major_yticks, minor=False)
+    ax.set_xticks(minor_xticks, minor=True)
+    ax.set_yticks(minor_yticks, minor=True)
+    ax.xaxis.set_major_formatter(xformatter)
+    ax.yaxis.set_major_formatter(yformatter)
+    ax.set_xlim(x0, x1)
+    ax.set_ylim(y0, y1)
 
-    # 设置x轴主次刻度.
+
+def _set_simple_geoaxes_ticks(
+    ax: GeoAxes,
+    extents: Any,
+    major_xticks: np.ndarray,
+    major_yticks: np.ndarray,
+    minor_xticks: np.ndarray,
+    minor_yticks: np.ndarray,
+    xformatter: Formatter,
+    yformatter: Formatter,
+) -> None:
+    '''设置简单投影的GeoAxes的范围和刻度.'''
+    x0, x1 = ax.get_xlim()
+    y0, y1 = ax.get_ylim()
     crs = ccrs.PlateCarree()
-    if xticks is not None:
-        ax.set_xticks(xticks, crs=crs)
-        if nx > 0:
-            ax.xaxis.set_minor_locator(AutoMinorLocator(nx + 1))
-        ax.xaxis.set_major_formatter(xformatter)
+    ax.set_xticks(major_xticks, minor=False, crs=crs)
+    ax.set_yticks(major_yticks, minor=False, crs=crs)
+    ax.set_xticks(minor_xticks, minor=True, crs=crs)
+    ax.set_yticks(minor_yticks, minor=True, crs=crs)
+    ax.xaxis.set_major_formatter(xformatter)
+    ax.yaxis.set_major_formatter(yformatter)
 
-    # 设置y轴主次刻度.
-    if yticks is not None:
-        ax.set_yticks(yticks, crs=crs)
-        if ny > 0:
-            ax.yaxis.set_minor_locator(AutoMinorLocator(ny + 1))
-        ax.yaxis.set_major_formatter(yformatter)
-
-    # 最后调用set_extent, 防止刻度拓宽显示范围.
     if extents is None:
-        ax.set_global()
+        ax.set_xlim(x0, x1)
+        ax.set_ylim(y0, y1)
     else:
         ax.set_extent(extents, crs)
 
 
-def _set_non_rectangular_geoaxes(
+def _set_complex_geoaxes_ticks(
     ax: GeoAxes,
-    extents: Optional[Any] = None,
-    xticks: Optional[Any] = None,
-    yticks: Optional[Any] = None,
-    nx: int = 0,
-    ny: int = 0,
-    xformatter: Optional[Formatter] = None,
-    yformatter: Optional[Formatter] = None,
+    extents: Any,
+    major_xticks: np.ndarray,
+    major_yticks: np.ndarray,
+    minor_xticks: np.ndarray,
+    minor_yticks: np.ndarray,
+    xformatter: Formatter,
+    yformatter: Formatter,
 ) -> None:
-    '''设置非矩形投影的GeoAxes的范围和刻度.'''
-    # 默认formatter.
-    if xformatter is None:
-        xformatter = LongitudeFormatter()
-    if yformatter is None:
-        yformatter = LatitudeFormatter()
-
-    # 先设置范围, 使地图边框呈矩形.
+    '''设置复杂投影的GeoAxes的范围和刻度.'''
+    # 将地图边框设置为矩形.
     crs = ccrs.PlateCarree()
-    ax.set_extent(extents, crs)
+    if extents is not None:
+        ax.set_extent(extents, crs)
 
-    # 获取ax的经纬度范围.
     eps = 1
     npt = 100
     x0, x1 = ax.get_xlim()
     y0, y1 = ax.get_ylim()
-    x = np.linspace(x0, x1, npt)
-    y = np.linspace(y0, y1, npt)
-    X, Y = np.meshgrid(x, y)
-    coords = crs.transform_points(ax.projection, X.ravel(), Y.ravel())
-    lon, lat = coords[:, 0], coords[:, 1]
-    lon0 = np.nanmin(lon) - eps
-    lon1 = np.nanmax(lon) + eps
-    lat0 = np.nanmin(lat) - eps
-    lat1 = np.nanmax(lat) + eps
+    lon0, lon1, lat0, lat1 = ax.get_extent(crs)
+    lon0 -= eps
+    lon1 += eps
+    lat0 -= eps
+    lat1 += eps
 
-    # 以经线与上下axis的交点作为刻度.
-    if xticks is not None:
-        bottom_ticklocs, bottom_ticklabels = [], []
-        top_ticklocs, top_ticklabels = [], []
-        bottom_axis = sgeom.LineString([(x0, y0), (x1, y0)])
-        top_axis = sgeom.LineString([(x0, y1), (x1, y1)])
-        lat = np.linspace(lat0, lat1, npt)
+    # 在data坐标系用LineString表示地图边框四条边长.
+    lineB = sgeom.LineString([(x0, y0), (x1, y0)])
+    lineT = sgeom.LineString([(x0, y1), (x1, y1)])
+    lineL = sgeom.LineString([(x0, y0), (x0, y1)])
+    lineR = sgeom.LineString([(x1, y0), (x1, y1)])
+
+    def get_two_xticks(
+        xticks: np.ndarray,
+    ) -> tuple[list[float], list[float], list[str], list[str]]:
+        '''获取地图上下边框的x刻度和刻度标签.'''
+        xticksB = []
+        xticksT = []
+        xticklabelsB = []
+        xticklabelsT = []
+        lats = np.linspace(lat0, lat1, npt)
+        xticks = xticks[(xticks >= lon0) & (xticks <= lon1)]
         for xtick in xticks:
-            if xtick < lon0 or xtick > lon1:
-                continue
-            lon = np.full_like(lat, xtick)
-            line = sgeom.LineString(np.column_stack([lon, lat]))
-            line = ax.projection.project_geometry(line, crs)
-            point = bottom_axis.intersection(line)
-            if isinstance(point, sgeom.Point) and not point.is_empty:
-                bottom_ticklocs.append(point.x)
-                bottom_ticklabels.append(xformatter(xtick))
-            point = top_axis.intersection(line)
-            if isinstance(point, sgeom.Point) and not point.is_empty:
-                top_ticklocs.append(point.x)
-                top_ticklabels.append(xformatter(xtick))
+            lons = np.full_like(lats, xtick)
+            lon_line = sgeom.LineString(np.column_stack((lons, lats)))
+            lon_line = ax.projection.project_geometry(lon_line, crs)
+            pointB = lineB.intersection(lon_line)
+            if isinstance(pointB, sgeom.Point) and not pointB.is_empty:
+                xticksB.append(pointB.x)
+                xticklabelsB.append(xformatter(xtick))
+            pointT = lineT.intersection(lon_line)
+            if isinstance(pointT, sgeom.Point) and not pointT.is_empty:
+                xticksT.append(pointT.x)
+                xticklabelsT.append(xformatter(xtick))
 
-        # 让上下axis的刻度不同.
-        ax.set_xticks(bottom_ticklocs + top_ticklocs)
-        ax.set_xticklabels(bottom_ticklabels + top_ticklabels)
-        ind = len(bottom_ticklabels)
-        for tick in ax.xaxis.get_major_ticks()[:ind]:
-            tick.tick2line.set_alpha(0)
-            tick.label2.set_alpha(0)
-        for tick in ax.xaxis.get_major_ticks()[ind:]:
-            tick.tick1line.set_alpha(0)
-            tick.label1.set_alpha(0)
+        return xticksB, xticksT, xticklabelsB, xticklabelsT
 
-    # 以纬线与左右axis的交点作为刻度.
-    if yticks is not None:
-        left_ticklocs, left_ticklabels = [], []
-        right_ticklocs, right_ticklabels = [], []
-        left_axis = sgeom.LineString([(x0, y0), (x0, y1)])
-        right_axis = sgeom.LineString([(x1, y0), (x1, y1)])
-        lon = np.linspace(lon0, lon1, npt)
+    def get_two_yticks(
+        yticks: np.ndarray,
+    ) -> tuple[list[float], list[float], list[str], list[str]]:
+        '''获取地图左右边框的y刻度和刻度标签.'''
+        yticksL = []
+        yticksR = []
+        yticklabelsL = []
+        yticklabelsR = []
+        lons = np.linspace(lon0, lon1, npt)
+        yticks = yticks[(yticks >= lat0) & (yticks <= lat1)]
         for ytick in yticks:
-            if ytick < lat0 or ytick > lat1:
-                continue
-            lat = np.full_like(lon, ytick)
-            line = sgeom.LineString(np.column_stack([lon, lat]))
-            line = ax.projection.project_geometry(line, crs)
-            point = left_axis.intersection(line)
-            if isinstance(point, sgeom.Point) and not point.is_empty:
-                left_ticklocs.append(point.y)
-                left_ticklabels.append(yformatter(ytick))
-            point = right_axis.intersection(line)
-            if isinstance(point, sgeom.Point) and not point.is_empty:
-                right_ticklocs.append(point.y)
-                right_ticklabels.append(yformatter(ytick))
+            lats = np.full_like(lons, ytick)
+            lat_line = sgeom.LineString(np.column_stack((lons, lats)))
+            lat_line = ax.projection.project_geometry(lat_line, crs)
+            pointL = lineL.intersection(lat_line)
+            if isinstance(pointL, sgeom.Point) and not pointL.is_empty:
+                yticksL.append(pointL.y)
+                yticklabelsL.append(yformatter(ytick))
+            pointR = lineR.intersection(lat_line)
+            if isinstance(pointR, sgeom.Point) and not pointR.is_empty:
+                yticksR.append(pointR.y)
+                yticklabelsR.append(yformatter(ytick))
 
-        # 让左右axis的刻度不同.
-        ax.set_yticks(left_ticklocs + right_ticklocs)
-        ax.set_yticklabels(left_ticklabels + right_ticklabels)
-        ind = len(left_ticklabels)
-        for tick in ax.yaxis.get_major_ticks()[:ind]:
-            tick.tick2line.set_alpha(False)
-            tick.label2.set_alpha(False)
-        for tick in ax.yaxis.get_major_ticks()[ind:]:
-            tick.tick1line.set_alpha(False)
-            tick.label1.set_alpha(False)
+        return yticksL, yticksR, yticklabelsL, yticklabelsR
+
+    # 通过隐藏部分刻度, 实现上下刻度不同的效果.
+    major_xticksB, major_xticksT, major_xticklabelsB, major_xticklabelsT = (
+        get_two_xticks(major_xticks)
+    )
+    minor_xticksB, minor_xticksT, _, _ = get_two_xticks(minor_xticks)
+    ax.set_xticks(major_xticksB + major_xticksT, minor=False)
+    ax.set_xticks(minor_xticksB + minor_xticksT, minor=True)
+    ax.set_xticklabels(major_xticklabelsB + major_xticklabelsT, minor=False)
+    major_numB = len(major_xticksB)
+    for tick in ax.xaxis.get_major_ticks()[:major_numB]:
+        tick.tick2line.set_alpha(0)
+        tick.label2.set_alpha(0)
+    for tick in ax.xaxis.get_major_ticks()[major_numB:]:
+        tick.tick1line.set_alpha(0)
+        tick.label1.set_alpha(0)
+    minor_numB = len(minor_xticksB)
+    for tick in ax.xaxis.get_minor_ticks()[:minor_numB]:
+        tick.tick2line.set_alpha(0)
+    for tick in ax.xaxis.get_minor_ticks()[minor_numB:]:
+        tick.tick1line.set_alpha(0)
+
+    # 通过隐藏部分刻度, 实现左右刻度不同的效果.
+    major_yticksL, major_yticksR, major_yticklabelsL, major_yticklabelsR = (
+        get_two_yticks(major_yticks)
+    )
+    minor_yticksL, minor_yticksR, _, _ = get_two_yticks(minor_yticks)
+    ax.set_yticks(major_yticksL + major_yticksR, minor=False)
+    ax.set_yticks(minor_yticksL + minor_yticksR, minor=True)
+    ax.set_yticklabels(major_yticklabelsL + major_yticklabelsR, minor=False)
+    major_numL = len(major_yticksL)
+    for tick in ax.yaxis.get_major_ticks()[:major_numL]:
+        tick.tick2line.set_alpha(0)
+        tick.label2.set_alpha(0)
+    for tick in ax.yaxis.get_major_ticks()[major_numL:]:
+        tick.tick1line.set_alpha(0)
+        tick.label1.set_alpha(0)
+    minor_numL = len(minor_yticksL)
+    for tick in ax.yaxis.get_minor_ticks()[:minor_numL]:
+        tick.tick2line.set_alpha(0)
+    for tick in ax.yaxis.get_minor_ticks()[minor_numL:]:
+        tick.tick1line.set_alpha(0)
 
 
-def _set_PlateCarree_axes(
+def _interp_minor_ticks(major_ticks: Any, m: int) -> np.ndarray:
+    '''在主刻度的每段间隔内线性插值出m个次刻度.'''
+    n = len(major_ticks)
+    if n == 0 or m == 0:
+        return np.array([])
+
+    L = n + (n - 1) * m
+    x = np.array([i for i in range(L) if i % (m + 1) > 0]) / (L - 1)
+    xp = np.linspace(0, 1, n)
+    minor_ticks = np.interp(x, xp, major_ticks)
+
+    return minor_ticks
+
+
+def set_map_ticks(
     ax: Axes,
     extents: Optional[Any] = None,
     xticks: Optional[Any] = None,
     yticks: Optional[Any] = None,
-    nx: int = 0,
-    ny: int = 0,
+    dx: float = 10,
+    dy: float = 10,
+    mx: int = 0,
+    my: int = 0,
     xformatter: Optional[Formatter] = None,
     yformatter: Optional[Formatter] = None,
 ) -> None:
-    '''设置PlateCarree投影的Axes的范围和刻度.'''
-    # 默认formatter.
+    '''
+    设置地图的范围和刻度.
+
+    当ax是普通Axes时, 认为其投影为PlateCarree().
+    当ax是GeoAxes时, 如果设置效果有误, 建议换用GeoAxes.gridlines.
+
+    Parameters
+    ----------
+    ax : Axes
+        目标Axes.
+
+    extents : (4,) array_like, optional
+        经纬度范围[lon0, lon1, lat0, lat1]. 默认为None, 表示不修改范围.
+
+    xticks : array_like, optional
+        x轴主刻度的坐标, 单位为经度. 默认为None, 表示使用dx参数.
+
+    yticks : array_like, optional
+        y轴主刻度的坐标, 单位为纬度. 默认为None, 表示使用dy参数.
+
+    dx : float, optional
+        以dx为间隔从-180度开始生成x轴主刻度的间隔. 默认为10度.
+        xticks不为None时会覆盖该参数.
+
+    dy : float, optional
+        以dy为间隔从-90度开始生成y轴主刻度的间隔. 默认为10度.
+        yticks不为None时会覆盖该参数.
+
+    mx : int, optional
+        经度主刻度之间次刻度的个数. 默认为0.
+
+    my : int, optional
+        纬度主刻度之间次刻度的个数. 默认为0.
+
+    xformatter : Formatter, optional
+        x轴刻度标签的Formatter. 默认为None, 表示LongitudeFormatter().
+
+    yformatter : Formatter, optional
+        y轴刻度标签的Formatter. 默认为None, 表示LatitudeFormatter().
+    '''
+    if xticks is None:
+        major_xticks = np.arange(math.floor(360 / dx) + 1) * dx - 180
+    else:
+        major_xticks = np.asarray(xticks)
+
+    if yticks is None:
+        major_yticks = np.arange(math.floor(180 / dy) + 1) * dy - 90
+    else:
+        major_yticks = np.asarray(yticks)
+
+    if not isinstance(mx, int) or mx < 0:
+        raise ValueError('mx只能是非负整数')
+    minor_xticks = _interp_minor_ticks(major_xticks, mx)
+
+    if not isinstance(my, int) or my < 0:
+        raise ValueError('my只能是非负整数')
+    minor_yticks = _interp_minor_ticks(major_yticks, my)
+
     if xformatter is None:
         xformatter = LongitudeFormatter()
     if yformatter is None:
         yformatter = LatitudeFormatter()
 
-    # 设置x轴主次刻度.
-    if xticks is not None:
-        ax.set_xticks(xticks)
-        if nx > 0:
-            ax.xaxis.set_minor_locator(AutoMinorLocator(nx + 1))
-        ax.xaxis.set_major_formatter(xformatter)
-
-    # 设置y轴主次刻度.
-    if yticks is not None:
-        ax.set_yticks(yticks)
-        if ny > 0:
-            ax.yaxis.set_minor_locator(AutoMinorLocator(ny + 1))
-        ax.yaxis.set_major_formatter(yformatter)
-
-    # 最后调用set_xlim和set_ylim, 防止刻度拓宽显示范围.
-    if extents is None:
-        ax.set_xlim(-180, 180)
-        ax.set_ylim(-90, 90)
+    if not isinstance(ax, Axes):
+        raise ValueError('ax不是Axes')
+    elif isinstance(ax, GeoAxes):
+        if isinstance(ax.projection, (ccrs.PlateCarree, ccrs.Mercator)):
+            setter = _set_simple_geoaxes_ticks
+        else:
+            setter = _set_complex_geoaxes_ticks
     else:
-        x0, x1, y0, y1 = extents
-        ax.set_xlim(x0, x1)
-        ax.set_ylim(y0, y1)
+        setter = _set_axes_ticks
+
+    setter(
+        ax,
+        extents,
+        major_xticks,
+        major_yticks,
+        minor_xticks,
+        minor_yticks,
+        xformatter,
+        yformatter,
+    )
 
 
+@deprecator(set_map_ticks)
 def set_extent_and_ticks(
     ax: Axes,
     extents: Optional[Any] = None,
@@ -1068,8 +1171,7 @@ def set_extent_and_ticks(
     设置Axes的范围和刻度.
 
     当ax是普通Axes时, 认为其投影为PlateCarree().
-    当ax是GeoAxes时, 支持矩形投影和显示范围为矩形的非矩形投影.
-    如果在非矩形投影上的效果存在问题, 建议换用GeoAxes.gridlines.
+    当ax是GeoAxes时, 如果设置效果有误, 建议换用GeoAxes.gridlines.
 
     Parameters
     ----------
@@ -1087,11 +1189,9 @@ def set_extent_and_ticks(
 
     nx : int, optional
         经度主刻度之间次刻度的个数. 默认为0.
-        当投影为非矩形投影或经度不是等距分布时, 请不要进行设置.
 
     ny : int, optional
         纬度主刻度之间次刻度的个数. 默认为0.
-        当投影为非矩形投影或纬度不是等距分布时, 请不要进行设置.
 
     xformatter : Formatter, optional
         经度刻度标签的Formatter. 默认为None, 表示无参数的LongitudeFormatter.
@@ -1099,16 +1199,23 @@ def set_extent_and_ticks(
     yformatter : Formatter, optional
         纬度刻度标签的Formatter. 默认为None, 表示无参数的LatitudeFormatter.
     '''
-    if isinstance(ax, GeoAxes):
-        if isinstance(
-            ax.projection, (ccrs._RectangularProjection, ccrs.Mercator)
-        ):
-            func = _set_rectangular_geoaxes
+    set_map_ticks(
+        ax=ax,
+        extents=extents,
+        xticks=xticks if xticks is not None else [],
+        yticks=yticks if yticks is not None else [],
+        mx=nx,
+        my=ny,
+        xformatter=xformatter,
+        yformatter=yformatter,
+    )
+    # 为了维持旧API的效果.
+    if extents is None:
+        if isinstance(ax, GeoAxes):
+            ax.set_global()
         else:
-            func = _set_non_rectangular_geoaxes
-    else:
-        func = _set_PlateCarree_axes
-    func(ax, extents, xticks, yticks, nx, ny, xformatter, yformatter)
+            ax.set_xlim(-180, 180)
+            ax.set_ylim(-90, 90)
 
 
 def _create_kwargs(kwargs: Optional[dict] = None) -> dict:
@@ -1455,7 +1562,7 @@ def add_map_scale(
     return map_scale
 
 
-def _path_from_extents(x0, x1, y0, y1, ccw=True):
+def _path_from_extents(x0, x1, y0, y1, ccw=True) -> Path:
     '''根据方框范围构造Path对象. ccw表示逆时针.'''
     verts = [(x0, y0), (x1, y0), (x1, y1), (x0, y1), (x0, y0)]
     if not ccw:
@@ -1486,9 +1593,9 @@ def gmt_style_frame(ax: Axes, width: float = 5, **kwargs: Any) -> None:
     '''
     is_geoaxes = isinstance(ax, GeoAxes)
     if is_geoaxes and not isinstance(
-        ax.projection, (ccrs._RectangularProjection, ccrs.Mercator)
+        ax.projection, (ccrs.PlateCarree, ccrs.Mercator)
     ):
-        raise ValueError('只支持矩形投影的GeoAxes')
+        raise ValueError('只支持PlateCarree和Mercator投影')
 
     # 设置条纹参数.
     if not any(kw in kwargs for kw in ['fc', 'facecolor', 'facecolors']):
@@ -1646,7 +1753,11 @@ def add_box(
 
 def load_test_nc():
     '''读取测试用的nc文件. 需要安装xarray和NetCDF4.'''
-    import xarray as xr
+    try:
+        import netCDF4
+        import xarray as xr
+    except Exception:
+        raise ImportError('需要安装xarray和netCDF4')
 
     filepath = DATA_DIRPATH / 'test.nc'
     ds = xr.load_dataset(str(filepath))

@@ -400,7 +400,7 @@ def polygon_to_mask(polygon: PolygonType, x: Any, y: Any) -> np.ndarray:
         return polygon.contains(sgeom.Point(x, y))
     prepared = prep(polygon)
 
-    def recursion(x, y):
+    def recursion(x: np.ndarray, y: np.ndarray) -> np.ndarray:
         '''递归判断坐标为x和y的点集是否落入多边形中.'''
         xmin, xmax = x.min(), x.max()
         ymin, ymax = y.min(), y.max()

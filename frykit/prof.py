@@ -11,7 +11,7 @@ from frykit.help import PathType
 TimeUnits = Literal['ns', 'us', 'ms', 's', 'min']
 
 
-def _convert_seconds(seconds, unit: TimeUnits = 's'):
+def _convert_seconds(seconds, unit: TimeUnits = 's') -> float:
     '''将时间秒数转换为其它单位.'''
     if unit == 'ns':
         scale = 1e9

@@ -27,7 +27,7 @@
 ## 安装
 
 ```
-pip install frykit==0.4.3
+pip install frykit
 ```
 
 依赖为：
@@ -38,7 +38,7 @@ cartopy>=0.20.0
 pandas>=1.2.0
 ```
 
-Python 版本较低时可以尝试安装 `frykit==0.2.5`。
+Python 版本较低时需要手动指定版本为 `frykit==0.2.5`。
 
 ## 更新记录
 
@@ -64,7 +64,7 @@ hefei = fshp.get_cn_city(name='合肥市')
 cities_of_anhui = fshp.get_cn_city(province='安徽省')
 ```
 
-返回结果是 Shapely 的多边形对象，可以进行交并等几何运算。
+返回结果是 [Shapely](https://shapely.readthedocs.io/en/stable/manual.html) 的多边形对象，可以进行交并等几何运算。
 
 行政区划源数据来自 [高德地图行政区域查询接口](https://lbs.amap.com/api/webservice/guide/api/district)，含国界、省界和市界三套数据，已从 GCJ-02 坐标系处理到了 WGS84 坐标系上。文件都在 `frykit.DATA_DIRPATH` 指向的目录里。制作方法见 [amap-shp](https://github.com/ZhaJiMan/amap-shp)。
 
@@ -162,6 +162,13 @@ fplt.add_cn_city(ax)  # 耗时31.6s
 ```
 
 `add_cn_xxx` 系列函数在多次调用时会通过缓存节省读取国界和省界数据的时间开销。如果能维持对多边形对象的引用，`add_polygon`、`add_polygons` 和 `clip_by_polygon` 函数在多次调用时会通过缓存节省多边形坐标变换的时间开销。
+
+### 设置地图范围和刻度
+
+```Python
+fplt.set_map_ticks(ax, extents=[-180, 180, -90, 90], dx=60, dy=30)
+fplt.set_map_ticks(ax, xticks=[90, 100, 110], yticks=[20, 30, 40])
+```
 
 ### 添加指北针和比例尺
 

@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 
-__version__ = '0.4.4'
+__version__ = '0.4.4post1'
 
 DATA_DIRPATH = Path(__file__).parent / 'data'
 

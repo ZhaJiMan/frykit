@@ -570,6 +570,9 @@ def add_land(ax: Axes, **kwargs: Any) -> PathCollection:
     '''
     将陆地添加到Axes上.
 
+    注意默认zorder为-1
+    全球数据可能因为地图边界产生错误的结果.
+
     Parameters
     ----------
     ax : Axes
@@ -594,6 +597,9 @@ def add_land(ax: Axes, **kwargs: Any) -> PathCollection:
 def add_ocean(ax: Axes, **kwargs: Any) -> PathCollection:
     '''
     将海洋添加到Axes上.
+
+    注意默认zorder为-1
+    全球数据可能因为地图边界产生错误的结果.
 
     Parameters
     ----------
@@ -700,6 +706,8 @@ def clip_by_land(artist: ArtistType, strict: bool = False) -> None:
     '''
     用陆地边界裁剪Artist.
 
+    全球数据可能因为地图边界产生错误的结果.
+
     Parameters
     ----------
     artist : ArtistType
@@ -722,7 +730,7 @@ def clip_by_ocean(artist: ArtistType, strict: bool = False) -> None:
     '''
     用海洋边界裁剪Artist.
 
-    在非PlateCarre投影中可能产生错误的结果.
+    全球数据可能因为地图边界产生错误的结果.
 
     Parameters
     ----------
@@ -878,16 +886,16 @@ def _set_axes_ticks(
     yformatter: Formatter,
 ) -> None:
     '''设置PlateCarree投影的Axes的范围和刻度.'''
-    x0, x1 = ax.get_xlim()
-    y0, y1 = ax.get_ylim()
-    if extents is not None:
-        x0, x1, y0, y1 = extents
     ax.set_xticks(major_xticks, minor=False)
     ax.set_yticks(major_yticks, minor=False)
     ax.set_xticks(minor_xticks, minor=True)
     ax.set_yticks(minor_yticks, minor=True)
     ax.xaxis.set_major_formatter(xformatter)
     ax.yaxis.set_major_formatter(yformatter)
+
+    if extents is None:
+        extents = [-180, 180, -90, 90]
+    x0, x1, y0, y1 = extents
     ax.set_xlim(x0, x1)
     ax.set_ylim(y0, y1)
 
@@ -903,8 +911,6 @@ def _set_simple_geoaxes_ticks(
     yformatter: Formatter,
 ) -> None:
     '''设置简单投影的GeoAxes的范围和刻度.'''
-    x0, x1 = ax.get_xlim()
-    y0, y1 = ax.get_ylim()
     crs = ccrs.PlateCarree()
     ax.set_xticks(major_xticks, minor=False, crs=crs)
     ax.set_yticks(major_yticks, minor=False, crs=crs)
@@ -914,8 +920,7 @@ def _set_simple_geoaxes_ticks(
     ax.yaxis.set_major_formatter(yformatter)
 
     if extents is None:
-        ax.set_xlim(x0, x1)
-        ax.set_ylim(y0, y1)
+        ax.set_global()
     else:
         ax.set_extent(extents, crs)
 
@@ -933,11 +938,13 @@ def _set_complex_geoaxes_ticks(
     '''设置复杂投影的GeoAxes的范围和刻度.'''
     # 将地图边框设置为矩形.
     crs = ccrs.PlateCarree()
-    if extents is not None:
-        ax.set_extent(extents, crs)
+    if extents is None:
+        proj_type = str(type(ax.projection)).split("'")[1]
+        raise RuntimeError(f'在{proj_type}投影里extents为None会产生错误的刻度')
+    ax.set_extent(extents, crs)
 
     eps = 1
-    npt = 100
+    npts = 100
     x0, x1 = ax.get_xlim()
     y0, y1 = ax.get_ylim()
     lon0, lon1, lat0, lat1 = ax.get_extent(crs)
@@ -960,7 +967,7 @@ def _set_complex_geoaxes_ticks(
         xticksT = []
         xticklabelsB = []
         xticklabelsT = []
-        lats = np.linspace(lat0, lat1, npt)
+        lats = np.linspace(lat0, lat1, npts)
         xticks = xticks[(xticks >= lon0) & (xticks <= lon1)]
         for xtick in xticks:
             lons = np.full_like(lats, xtick)
@@ -985,7 +992,7 @@ def _set_complex_geoaxes_ticks(
         yticksR = []
         yticklabelsL = []
         yticklabelsR = []
-        lons = np.linspace(lon0, lon1, npt)
+        lons = np.linspace(lon0, lon1, npts)
         yticks = yticks[(yticks >= lat0) & (yticks <= lat1)]
         for ytick in yticks:
             lats = np.full_like(lons, ytick)
@@ -1048,7 +1055,7 @@ def _set_complex_geoaxes_ticks(
 def _interp_minor_ticks(major_ticks: Any, m: int) -> np.ndarray:
     '''在主刻度的每段间隔内线性插值出m个次刻度.'''
     n = len(major_ticks)
-    if n == 0 or m == 0:
+    if n == 0 or m <= 0:
         return np.array([])
 
     L = n + (n - 1) * m
@@ -1083,7 +1090,8 @@ def set_map_ticks(
         目标Axes.
 
     extents : (4,) array_like, optional
-        经纬度范围[lon0, lon1, lat0, lat1]. 默认为None, 表示不修改范围.
+        经纬度范围[lon0, lon1, lat0, lat1]. 默认为None, 表示显示全球.
+        当GeoAxes的投影不是PlateCarree或Mercator时extents不能为None.
 
     xticks : array_like, optional
         x轴主刻度的坐标, 单位为经度. 默认为None, 表示使用dx参数.
@@ -1209,13 +1217,6 @@ def set_extent_and_ticks(
         xformatter=xformatter,
         yformatter=yformatter,
     )
-    # 为了维持旧API的效果.
-    if extents is None:
-        if isinstance(ax, GeoAxes):
-            ax.set_global()
-        else:
-            ax.set_xlim(-180, 180)
-            ax.set_ylim(-90, 90)
 
 
 def _create_kwargs(kwargs: Optional[dict] = None) -> dict:
@@ -1751,18 +1752,10 @@ def add_box(
     return patch
 
 
-def load_test_nc():
-    '''读取测试用的nc文件. 需要安装xarray和NetCDF4.'''
-    try:
-        import netCDF4
-        import xarray as xr
-    except Exception:
-        raise ImportError('需要安装xarray和netCDF4')
-
-    filepath = DATA_DIRPATH / 'test.nc'
-    ds = xr.load_dataset(str(filepath))
-
-    return ds
+def load_test_data():
+    '''读取测试用的数据. 包含地表2m气温(K)和水平10m风速.'''
+    filepath = DATA_DIRPATH / 'test.npz'
+    return np.load(str(filepath))
 
 
 # TODO: inset_axes实现.
@@ -1907,10 +1900,10 @@ def get_cross_section_xticks(
 
     Parameters
     ----------
-    lon : (npt,) array_like
+    lon : (npts,) array_like
         横截面对应的经度数组.
 
-    lat : (npt,) array_like
+    lat : (npts,) array_like
         横截面对应的纬度数组.
 
     ntick : int, optional
@@ -1926,7 +1919,7 @@ def get_cross_section_xticks(
 
     Returns
     -------
-    x : (npt,) ndarray
+    x : (npts,) ndarray
         横截面的横坐标.
 
     xticks : (ntick,) ndarray
@@ -1936,8 +1929,8 @@ def get_cross_section_xticks(
         用经纬度表示的刻度标签.
     '''
     # 线性插值计算刻度的经纬度值.
-    npt = len(lon)
-    if npt <= 1:
+    npts = len(lon)
+    if npts <= 1:
         raise ValueError('lon和lat至少有2个元素')
     dlon = lon - lon[0]
     dlat = lat - lat[0]

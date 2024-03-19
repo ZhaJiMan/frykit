@@ -2,12 +2,13 @@ import numpy as np
 from scipy.ndimage import gaussian_filter
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
+from cartopy.feature import LAND
 import frykit.plot as fplt
 
 # 读取数据.
-ds = fplt.load_test_nc()
-X, Y = np.meshgrid(ds['longitude'], ds['latitude'])
-Z = gaussian_filter(ds['t2m'] - 273.15, sigma=1)
+data = fplt.load_test_data()
+X, Y = np.meshgrid(data['longitude'], data['latitude'])
+Z = gaussian_filter(data['t2m'] - 273.15, sigma=1)
 
 # 设置地图范围和刻度.
 extents1 = [74, 136, 13, 57]
@@ -32,9 +33,9 @@ fplt.set_map_ticks(ax1, extents1, xticks, yticks)
 ax1.gridlines(xlocs=xticks, ylocs=yticks, lw=0.5, ls='--', color='gray')
 
 # 添加要素.
-ax1.set_facecolor('skyblue')  # 海洋直接投影会出错.
-fplt.add_land(ax1)
-fplt.add_countries(ax1, lw=0.3)
+land = LAND.with_scale('50m')
+ax1.set_facecolor('skyblue')
+ax1.add_feature(land, fc='floralwhite', ec='k', lw=0.5)
 fplt.add_cn_province(ax1, lw=0.3)
 fplt.add_nine_line(ax1, lw=0.5)
 
@@ -88,8 +89,7 @@ ax2.gridlines(xlocs=xticks, ylocs=yticks, lw=0.5, ls='--', color='gray')
 
 # 添加要素.
 ax2.set_facecolor('skyblue')
-fplt.add_land(ax2)
-fplt.add_countries(ax2, lw=0.3)
+ax2.add_feature(land, fc='floralwhite', ec='k', lw=0.5)
 fplt.add_cn_province(ax2, lw=0.3)
 fplt.add_nine_line(ax2, lw=0.5)
 

@@ -106,6 +106,8 @@ fplt.add_ocean(ax)
 fplt.add_countries(ax)
 ```
 
+全球数据在跨越地图投影坐标系的边界时很容易产生问题，需要小心使用。
+
 ### 绘制任意多边形
 
 ```Python
@@ -214,7 +216,7 @@ fplt.add_box(ax, [lon0, lon1, lat0, lat1], transform=ccrs.PlateCarree())
 fplt.gmt_style_frame(ax, width=5)
 ```
 
-使用类似 [GMT](https://www.generic-mapping-tools.org/) 黑白相间格子的边框。目前仅支持 `Axes` 和矩形投影的 `GeoAxes`。
+使用类似 [GMT](https://www.generic-mapping-tools.org/) 黑白相间格子的边框。目前仅支持 `Axes`、等经纬度或墨卡托投影的 `GeoAxes`。
 
 ### 离散 colorbar
 
@@ -255,6 +257,10 @@ cbar.set_ticks(boundaries)
 - [在普通 `Axes` 上画地图](example/axes.py)
 
 ![axes](image/axes.png)
+
+- [墨卡托投影](example/mercator.py)
+
+![mercator](image/mercator.png)
 
 - [分省填色](example/fill.py)
 

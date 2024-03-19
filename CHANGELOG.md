@@ -1,7 +1,9 @@
 ## `0.4.4`
 
 - `set_extent_and_ticks` 函数更名为 `set_map_ticks` 函数，新增 `dx` 和 `dy` 参数，`nx` 和 `ny` 参数改名为 `mx` 和 `my`。非等经纬度投影现已支持开启次刻度。
+- `load_test_nc` 函数更名为 `load_test_data`，移除对 xarray 和 netCDF4 的依赖。
 - `image` 模块各函数的输入现在可以是 `Image` 对象。
+- 新增墨卡托投影的例子。为避免错误，简化 `contourf.py` 例子。
 
 ## `0.4.3`
 

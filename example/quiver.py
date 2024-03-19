@@ -5,11 +5,11 @@ import cartopy.crs as ccrs
 import frykit.plot as fplt
 
 # 读取数据.
-ds = fplt.load_test_nc()
-X, Y = np.meshgrid(ds['longitude'], ds['latitude'])
-t2m = gaussian_filter(ds['t2m'] - 273.15, sigma=1)
-u10 = gaussian_filter(ds['u10'], sigma=1)
-v10 = gaussian_filter(ds['v10'], sigma=1)
+data = fplt.load_test_data()
+X, Y = np.meshgrid(data['longitude'], data['latitude'])
+t2m = gaussian_filter(data['t2m'] - 273.15, sigma=1)
+u10 = gaussian_filter(data['u10'], sigma=1)
+v10 = gaussian_filter(data['v10'], sigma=1)
 
 # 设置地图范围.
 extents = [78, 128, 15, 55]

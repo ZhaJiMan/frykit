@@ -41,21 +41,21 @@ ax.plot(
     rhumb_line[:, 1],
     'k',
     transform=data_crs,
-    label='Rhumb Line'
+    label='Rhumb Line',
 )
 ax.plot(
     plate_carree_line[:, 0],
     plate_carree_line[:, 1],
     'r--',
     transform=data_crs,
-    label='PlateCarre Line'
+    label='PlateCarre Line',
 )
 ax.plot(
     greate_circle_line[:, 0],
     greate_circle_line[:, 1],
     'b--',
     transform=data_crs,
-    label='Great Circle Line'
+    label='Great Circle Line',
 )
 ax.plot([lon1, lon2], [lat1, lat2], 'ko', transform=data_crs)
 

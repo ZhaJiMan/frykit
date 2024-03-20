@@ -131,7 +131,8 @@ def add_polygons(
 
     # PathCollection比PathPatch更快.
     paths = [fshp.polygon_to_path(polygon) for polygon in polygons]
-    pc = PathCollection(paths, transform=ax.transData, **kwargs)
+    kwargs.setdefault('transform', ax.transData)
+    pc = PathCollection(paths, **kwargs)
     ax.add_collection(pc)
     ax._request_autoscale_view()
 
@@ -249,7 +250,7 @@ def clip_by_polygon(
     # 用t.get_window_extent()的结果和polygon做运算?
     for a in artists:
         a.set_clip_on(True)
-        a.set_clip_box(ax.bbox)
+        a.set_clip_box(ax.bbox)  # Axes其实不用设置这个.
         if isinstance(a, Text):
             point = sgeom.Point(a.get_position())
             if not polygon.contains(point):
@@ -750,8 +751,41 @@ def clip_by_ocean(artist: ArtistType, strict: bool = False) -> None:
     clip_by_polygon(artist, ocean, strict=strict)
 
 
-def _set_text_kwargs(kwargs: dict) -> None:
-    '''设置Axes.text的参数.'''
+def add_texts(
+    ax: Axes, x: Any, y: Any, s: Sequence[str], **kwargs: Any
+) -> list[Text]:
+    '''
+    在Axes上添加一组文本.
+
+    Parameters
+    ----------
+    ax : Axes
+        目标Axes.
+
+    x : (n,) array_like
+        文本的横坐标数组.
+
+    y : (n,) array_like
+        文本的纵坐标数组.
+
+    s : (n,) sequence of str
+        一组字符串文本.
+
+    **kwargs
+        Axes.text方法的关键字参数.
+
+    Returns
+    -------
+    texts : (n,) list of Text
+        一组Text对象.
+    '''
+    if not len(x) == len(y) == len(s):
+        raise ValueError('x, y和s长度必须相同')
+    return [ax.text(xi, yi, si, **kwargs) for xi, yi, si in zip(x, y, s)]
+
+
+def _add_cn_texts(ax: Axes, table: pd.DataFrame, **kwargs: Any) -> list[Text]:
+    '''用省或市的table在Axes上添加一组文本.'''
     if not any(kw in kwargs for kw in ['size', 'fontsize']):
         kwargs['fontsize'] = 'x-small'
     if not any(kw in kwargs for kw in ['ha', 'horizontalalignment']):
@@ -774,25 +808,20 @@ def _set_text_kwargs(kwargs: dict) -> None:
     ):
         kwargs['fontproperties'] = filepath
 
+    is_geoaxes = isinstance(ax, GeoAxes)
+    kwargs.setdefault('clip_on', True)
+    kwargs.setdefault('clip_box', ax.bbox if is_geoaxes else None)
+    kwargs.setdefault(
+        'transform', ccrs.PlateCarree() if is_geoaxes else ax.transData
+    )
 
-def _label_by_table(ax: Axes, table: pd.DataFrame, **kwargs: Any) -> list[Text]:
-    '''用label_cn_xxx函数里的表格标注地名.'''
-    texts = []
-    _set_text_kwargs(kwargs)
-    trans = ccrs.PlateCarree() if isinstance(ax, GeoAxes) else ax.transData
-    for name_, lon, lat in table.itertuples(index=False):
-        t = ax.text(
-            x=lon,
-            y=lat,
-            s=name_,
-            transform=trans,
-            clip_on=True,
-            clip_box=ax.bbox,
-            **kwargs,
-        )
-        texts.append(t)
-
-    return texts
+    return add_texts(
+        ax=ax,
+        x=table.iloc[:, 1],
+        y=table.iloc[:, 2],
+        s=table.iloc[:, 0],
+        **kwargs,
+    )
 
 
 def label_cn_province(
@@ -827,7 +856,7 @@ def label_cn_province(
     mask = fshp._get_pr_mask(name)
     key = 'short_name' if short else 'pr_name'
     table = fshp.PROVINCE_TABLE.loc[mask, [key, 'lon', 'lat']]
-    texts = _label_by_table(ax, table, **kwargs)
+    texts = _add_cn_texts(ax, table, **kwargs)
 
     return texts
 
@@ -870,7 +899,7 @@ def label_cn_city(
     mask = fshp._get_ct_mask(name, province)
     key = 'short_name' if short else 'ct_name'
     table = fshp.CITY_TABLE.loc[mask, [key, 'lon', 'lat']]
-    texts = _label_by_table(ax, table, **kwargs)
+    texts = _add_cn_texts(ax, table, **kwargs)
 
     return texts
 
@@ -939,8 +968,8 @@ def _set_complex_geoaxes_ticks(
     # 将地图边框设置为矩形.
     crs = ccrs.PlateCarree()
     if extents is None:
-        proj_type = str(type(ax.projection)).split("'")[1]
-        raise RuntimeError(f'在{proj_type}投影里extents为None会产生错误的刻度')
+        proj_type = str(type(ax.projection)).split("'")[1].split('.')[-1]
+        raise ValueError(f'在{proj_type}投影里extents为None会产生错误的刻度')
     ax.set_extent(extents, crs)
 
     eps = 1
@@ -1573,7 +1602,7 @@ def _path_from_extents(x0, x1, y0, y1, ccw=True) -> Path:
     return path
 
 
-# TODO: 非矩形投影
+# TODO: 复杂投影.
 def gmt_style_frame(ax: Axes, width: float = 5, **kwargs: Any) -> None:
     '''
     为Axes设置GMT风格的边框.
@@ -1888,14 +1917,14 @@ def add_side_axes(
 def get_cross_section_xticks(
     lon: Any,
     lat: Any,
-    ntick: int = 6,
+    nticks: int = 6,
     lon_formatter: Optional[Formatter] = None,
     lat_formatter: Optional[Formatter] = None,
 ) -> tuple[np.ndarray, np.ndarray, list[str]]:
     '''
     返回垂直截面图所需的横坐标, 刻度位置和刻度标签.
 
-    用经纬度的欧式距离表示横坐标, 在横坐标上取ntick个等距的刻度,
+    用经纬度的欧式距离表示横坐标, 在横坐标上取nticks个等距的刻度,
     利用线性插值计算每个刻度对应的经纬度值并用作刻度标签.
 
     Parameters
@@ -1906,7 +1935,7 @@ def get_cross_section_xticks(
     lat : (npts,) array_like
         横截面对应的纬度数组.
 
-    ntick : int, optional
+    nticks : int, optional
         刻度的数量. 默认为6.
 
     lon_formatter : Formatter, optional
@@ -1922,10 +1951,10 @@ def get_cross_section_xticks(
     x : (npts,) ndarray
         横截面的横坐标.
 
-    xticks : (ntick,) ndarray
+    xticks : (nticks,) ndarray
         刻度的横坐标.
 
-    xticklabels : (ntick,) list of str
+    xticklabels : (nticks,) list of str
         用经纬度表示的刻度标签.
     '''
     # 线性插值计算刻度的经纬度值.
@@ -1935,7 +1964,7 @@ def get_cross_section_xticks(
     dlon = lon - lon[0]
     dlat = lat - lat[0]
     x = np.hypot(dlon, dlat)
-    xticks = np.linspace(x[0], x[-1], ntick)
+    xticks = np.linspace(x[0], x[-1], nticks)
     tlon = np.interp(xticks, x, lon)
     tlat = np.interp(xticks, x, lat)
 
@@ -1945,7 +1974,7 @@ def get_cross_section_xticks(
         lon_formatter = LongitudeFormatter(number_format='.1f')
     if lat_formatter is None:
         lat_formatter = LatitudeFormatter(number_format='.1f')
-    for i in range(ntick):
+    for i in range(nticks):
         lon_label = lon_formatter(tlon[i])
         lat_label = lat_formatter(tlat[i])
         xticklabels.append(lon_label + '\n' + lat_label)

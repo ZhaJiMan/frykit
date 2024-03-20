@@ -1,3 +1,7 @@
+## `0.4.5`
+
+- 新增 `add_texts` 函数。
+
 ## `0.4.4`
 
 - `set_extent_and_ticks` 函数更名为 `set_map_ticks` 函数，新增 `dx` 和 `dy` 参数，`nx` 和 `ny` 参数改名为 `mx` 和 `my`。非等经纬度投影现已支持开启次刻度。

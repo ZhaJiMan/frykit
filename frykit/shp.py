@@ -1,6 +1,6 @@
 import math
 from collections.abc import Sequence, Callable
-from typing import Any, Union, Optional, Literal
+from typing import Any, Union, Optional
 
 import numpy as np
 import pandas as pd
@@ -25,273 +25,133 @@ from frykit._shp import BinaryReader, PolygonType
 - 海陆: https://www.naturalearthdata.com/downloads/50m-physical-vectors/
 '''
 
-GetCNResult = Union[PolygonType, dict[str, Any]]
 GetCNKeyword = Union[str, Sequence[str]]
+GetCNResult = Union[PolygonType, list[PolygonType]]
 
 # 省界和市界的表格.
 shp_dirpath = DATA_DIRPATH / 'shp'
-PROVINCE_TABLE = pd.read_csv(str(shp_dirpath / 'cn_province.csv'))
-CITY_TABLE = pd.read_csv(str(shp_dirpath / 'cn_city.csv'))
+pr_filepath = shp_dirpath / 'cn_province.csv'
+ct_filepath = shp_dirpath / 'cn_city.csv'
+PR_TABLE = pd.read_csv(str(pr_filepath), index_col='pr_name')
+CT_TABLE = pd.read_csv(str(ct_filepath), index_col=['pr_name', 'ct_name'])
 
 
-def get_cn_border(as_dict: bool = False) -> GetCNResult:
-    '''
-    获取中国国界的多边形.
-
-    Parameters
-    ----------
-    as_dict : bool, optional
-        是否以字典形式返回结果. 默认为False.
-        多边形在字典中的键为'geometry'.
-
-    Returns
-    -------
-    result : GetCNResult
-        表示国界的多边形或字典.
-    '''
+def get_cn_border() -> PolygonType:
+    '''获取中国国界的多边形.'''
     with BinaryReader(shp_dirpath / 'cn_border.bin') as reader:
-        geom = reader.shape(0)
-    if as_dict:
-        return {
-            'cn_name': '中华人民共和国',
-            'cn_adcode': 100000,
-            'geometry': geom,
-        }
-    else:
-        return geom
+        return reader.shape(0)
 
 
-def get_nine_line(as_dict: bool = False) -> GetCNResult:
-    '''
-    获取九段线的多边形.
-
-    Parameters
-    ----------
-    as_dict : bool, optional
-        是否以字典形式返回结果. 默认为False.
-        多边形在字典中的键为'geometry'.
-
-    Returns
-    -------
-    result : GetCNResult
-        表示九段线的多边形或字典.
-    '''
+def get_nine_line() -> PolygonType:
+    '''获取九段线的多边形.'''
     with BinaryReader(shp_dirpath / 'nine_line.bin') as reader:
-        geom = reader.shape(0)
-    if as_dict:
-        return {'cn_name': '九段线', 'cn_adcode': 100000, 'geometry': geom}
-    else:
-        return geom
+        return reader.shape(0)
 
 
-def _get_pr_mask(name: Optional[GetCNKeyword] = None) -> np.ndarray:
-    '''查询PROVINCE_TABLE时的布尔索引.'''
-    if name is None:
-        return np.full(PROVINCE_TABLE.shape[0], True)
+def _get_pr_locs(province: Optional[GetCNKeyword] = None) -> list[int]:
+    '''查询PR_TABLE得到整数索引.'''
+    if province is None:
+        return list(range(PR_TABLE.shape[0]))
+    provinces = [province] if isinstance(province, str) else province
+    locs = list(map(PR_TABLE.index.get_loc, provinces))
 
-    pr_names = PROVINCE_TABLE['pr_name']
-    if isinstance(name, str):
-        mask = pr_names == name
-    else:
-        mask = pr_names.isin(name)
-    if not mask.any():
-        raise ValueError('name错误')
-
-    return mask.to_numpy()
+    return locs
 
 
-def get_cn_province(
-    name: Optional[GetCNKeyword] = None, as_dict: bool = False
-) -> Union[GetCNResult, list[GetCNResult]]:
+def _get_ct_locs(
+    city: Optional[GetCNKeyword] = None, province: Optional[GetCNKeyword] = None
+) -> list[int]:
+    '''查询CT_TABLE得到整数索引.'''
+    if city is not None and province is not None:
+        raise ValueError('不能同时指定city和province')
+    if city is None:
+        city = slice(None)
+    if province is None:
+        province = slice(None)
+    locs = CT_TABLE.index.get_locs([province, city]).tolist()
+
+    return locs
+
+
+def get_cn_province(province: Optional[GetCNKeyword] = None) -> GetCNResult:
     '''
     获取中国省界的多边形.
 
     Parameters
     ----------
-    name: GetCNKeyword, optional
+    province : GetCNKeyword, optional
         单个省名或一组省名. 默认为None, 表示获取所有省.
-
-    as_dict : bool, optional
-        是否以字典形式返回结果. 默认为False.
-        多边形在字典中的键为'geometry'.
 
     Returns
     -------
-    result : GetCNResult or list of GetCNResult
-        表示省界的多边形或字典.
-        name不是字符串时result是列表.
+    result : GetCNResult
+        表示省界的多边形. province不是字符串时返回列表.
     '''
-    result = []
-    mask = _get_pr_mask(name)
-    table = PROVINCE_TABLE.loc[mask]
     with BinaryReader(shp_dirpath / 'cn_province.bin') as reader:
-        for row in table.itertuples():
-            geom = reader.shape(row.Index)
-            if as_dict:
-                record = row._asdict()
-                del record['Index']
-                result.append({**record, 'geometry': geom})
-            else:
-                result.append(geom)
-    if isinstance(name, str):
+        result = [reader.shape(i) for i in _get_pr_locs(province)]
+    if isinstance(province, str):
         result = result[0]
 
     return result
 
 
-def _get_ct_mask(
-    name: Optional[GetCNKeyword] = None, province: Optional[GetCNKeyword] = None
-) -> np.ndarray:
-    '''查询CITY_TABLE时的布尔索引.'''
-    if name is not None and province is not None:
-        raise ValueError('不能同时指定name和province')
-    if name is None and province is None:
-        return np.full(CITY_TABLE.shape[0], True)
-
-    ct_names = CITY_TABLE['ct_name']
-    pr_names = CITY_TABLE['pr_name']
-    if name is not None:
-        if isinstance(name, str):
-            mask = ct_names == name
-        else:
-            mask = ct_names.isin(name)
-        if not mask.any():
-            raise ValueError('name错误')
-    else:
-        if isinstance(province, str):
-            mask = pr_names == province
-        else:
-            mask = pr_names.isin(province)
-        if not mask.any():
-            raise ValueError('province错误')
-
-    return mask.to_numpy()
-
-
 def get_cn_city(
-    name: Optional[GetCNKeyword] = None,
-    province: Optional[GetCNKeyword] = None,
-    as_dict: bool = False,
-) -> Union[GetCNResult, list[GetCNResult]]:
+    city: Optional[GetCNKeyword] = None, province: Optional[GetCNKeyword] = None
+) -> GetCNResult:
     '''
     获取中国市界的多边形.
 
     Parameters
     ----------
-    name: GetCNKeyword, optional
+    city : GetCNKeyword, optional
         单个市名或一组市名. 默认为None, 表示获取所有市.
 
-    province: GetCNKeyword, optional
+    province : GetCNKeyword, optional
         单个省名或一组省名, 获取属于某个省的所有市.
         默认为None, 表示不使用省名获取.
-        不能同时指定name和province.
-
-    as_dict : bool, optional
-        是否以字典形式返回结果. 默认为False.
-        多边形在字典中的键为'geometry'.
+        不能同时指定city和province.
 
     Returns
     -------
-    result : GetCNResult or list of GetCNResult
-        表示市界的多边形或字典.
-        name不是字符串时result是列表.
+    result : GetCNResult
+        表示市界的多边形. city不是字符串时返回列表.
     '''
-    result = []
-    mask = _get_ct_mask(name, province)
-    table = CITY_TABLE.loc[mask]
     with BinaryReader(shp_dirpath / 'cn_city.bin') as reader:
-        for row in table.itertuples():
-            geom = reader.shape(row.Index)
-            if as_dict:
-                record = row._asdict()
-                del record['Index']
-                result.append({**record, 'geometry': geom})
-            else:
-                result.append(geom)
-    if isinstance(name, str):
+        result = [reader.shape(i) for i in _get_ct_locs(city, province)]
+    if isinstance(city, str):
         result = result[0]
 
     return result
 
 
-def get_cn_shp(
-    level: Literal['国', '省', '市'] = '国',
-    province: Optional[GetCNKeyword] = None,
-    city: Optional[GetCNKeyword] = None,
-    as_dict: bool = False,
-) -> Union[GetCNResult, list[GetCNResult]]:
-    '''
-    获取中国行政区划的多边形. 支持国界, 省界和市界.
-
-    接口仿照cnmaps.maps.get_adm_maps
-    数据源: https://lbs.amap.com/api/webservice/guide/api/district
-
-    Examples
-    --------
-    - 获取国界: get_cn_shp(level='国')
-    - 获取所有省: get_cn_shp(level='省')
-    - 获取某个省: get_cn_shp(level='省', province='河北省')
-    - 获取所有市: get_cn_shp(level='市')
-    - 获取某个省的所有市: get_cn_shp(level='市', province='河北省')
-    - 获取某个市: get_cn_shp(level='市', city='石家庄市')
-
-    Parameters
-    ----------
-    level : {'国', '省', '市'}, optional
-        边界等级. 默认为'国'.
-
-    province : GetCNKeyword, optional
-        省名. 可以是字符串或一组字符串. 默认为None.
-
-    city : GetCNKeyword, optional
-        市名. 可以是字符串或一组字符串. 默认为None.
-
-    as_dict : bool, optional
-        是否以字典形式返回结果. 默认为False.
-        多边形在字典中的键为'geometry'.
-
-    Returns
-    -------
-    result : GetCNResult or list of GetCNResult
-        表示行政区划的多边形或字典.
-        含有多个行政区划时result是列表.
-    '''
-    if level == '国':
-        if province is not None or city is not None:
-            raise ValueError("level='国'时不能指定province或city")
-        return get_cn_border(as_dict)
-    elif level == '省':
-        if city is not None:
-            raise ValueError("level='省'时不能指定city")
-        return get_cn_province(province, as_dict)
-    elif level == '市':
-        if province is not None and city is not None:
-            raise ValueError("level='市'时不能同时指定province和city")
-        return get_cn_city(city, province, as_dict)
-    else:
-        raise ValueError("level只能是{'国', '省', '市'}中的一种")
-
-
 def get_cn_province_names(short=False) -> list[str]:
     '''获取所有中国省名.'''
-    key = 'short_name' if short else 'pr_name'
-    return PROVINCE_TABLE[key].to_list()
+    if short:
+        names = PR_TABLE['short_name']
+    else:
+        names = PR_TABLE.index
+
+    return names.to_list()
 
 
 def get_cn_city_names(short=False) -> list[str]:
     '''获取所有中国市名.'''
-    key = 'short_name' if short else 'ct_name'
-    return CITY_TABLE[key].to_list()
+    if short:
+        names = CT_TABLE['short_name']
+    else:
+        names = CT_TABLE.index.get_level_values(1)
+
+    return names.to_list()
 
 
 def get_cn_province_lonlats() -> np.ndarray:
     '''获取所有中国省的经纬度.'''
-    return PROVINCE_TABLE[['lon', 'lat']].to_numpy()
+    return PR_TABLE[['lon', 'lat']].to_numpy()
 
 
 def get_cn_city_lonlats() -> np.ndarray:
     '''获取所有中国市的经纬度.'''
-    return CITY_TABLE[['lon', 'lat']].to_numpy()
+    return CT_TABLE[['lon', 'lat']].to_numpy()
 
 
 def get_countries() -> list[PolygonType]:
@@ -348,8 +208,7 @@ def polygon_to_path(polygon: PolygonType, keep_empty: bool = True) -> Path:
         else:
             raise ValueError('polygon不能为空多边形')
 
-    # TODO: shapely=2.0提供更简单的写法.
-    # 用多边形含有的所有环的顶点构造Path.
+    # 注意: 用户构造的多边形不一定满足内外环绕行方向相反的前提.
     vertices, codes = [], []
     for polygon in getattr(polygon, 'geoms', [polygon]):
         for ring in [polygon.exterior, *polygon.interiors]:
@@ -555,58 +414,3 @@ class GeometryTransformer:
             目标坐标系上的几何对象.
         '''
         return self._func(geom)
-
-
-def transform_geometries(
-    geoms: Sequence[BaseGeometry], crs_from: CRS, crs_to: CRS
-) -> list[BaseGeometry]:
-    '''
-    将一组几何对象从crs_from坐标系变换到crs_to坐标系上.
-
-    基于pyproj.Transformer实现, 当几何对象跨越坐标系边界时可能产生错误的连线.
-
-    Parameters
-    ----------
-    geoms : sequence of BaseGeometry
-        源坐标系上的一组几何对象.
-
-    crs_from : CRS
-        源坐标系.
-
-    crs_to : CRS
-        目标坐标系.
-
-    Returns
-    -------
-    geoms : list of BaseGeometry
-        目标坐标系上的一组几何对象.
-    '''
-    transformer = GeometryTransformer(crs_from, crs_to)
-    return [transformer(geom) for geom in geoms]
-
-
-def transform_geometry(
-    geom: BaseGeometry, crs_from: CRS, crs_to: CRS
-) -> BaseGeometry:
-    '''
-    将一个几何对象从crs_from坐标系变换到crs_to坐标系上.
-
-    基于pyproj.Transformer实现, 当几何对象跨越坐标系边界时可能产生错误的连线.
-
-    Parameters
-    ----------
-    geom : BaseGeometry
-        源坐标系上的几何对象.
-
-    crs_from : CRS
-        源坐标系.
-
-    crs_to : CRS
-        目标坐标系.
-
-    Returns
-    -------
-    geom : BaseGeometry
-        目标坐标系上的几何对象.
-    '''
-    return GeometryTransformer(crs_from, crs_to)(geom)

@@ -56,11 +56,11 @@ border = fshp.get_cn_border()
 
 # 读取省界.
 provinces = fshp.get_cn_province()
-anhui = fshp.get_cn_province(name='安徽省')
+anhui = fshp.get_cn_province('安徽省')
 
 # 读取市界.
 cities = fshp.get_cn_city()
-hefei = fshp.get_cn_city(name='合肥市')
+hefei = fshp.get_cn_city('合肥市')
 cities_of_anhui = fshp.get_cn_city(province='安徽省')
 ```
 
@@ -79,11 +79,11 @@ fplt.add_nine_line(ax)
 
 # 绘制省界.
 fplt.add_cn_province(ax)
-fplt.add_cn_province(ax, name=['安徽省', '江苏省'])
+fplt.add_cn_province(ax, ['安徽省', '江苏省'])
 
 # 绘制市界
 fplt.add_cn_city(ax)
-fplt.add_cn_city(ax, name=['石家庄市', '保定市'])
+fplt.add_cn_city(ax, ['石家庄市', '保定市'])
 fplt.add_cn_city(ax, province='河南省')
 ```
 

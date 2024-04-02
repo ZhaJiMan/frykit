@@ -31,7 +31,6 @@ from cartopy.mpl.feature_artist import _GeomKey
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 
 import frykit.shp as fshp
-from frykit.help import deprecator
 from frykit import DATA_DIRPATH
 
 # 当polygon的引用计数为零时, 弱引用会自动清理缓存.
@@ -301,87 +300,79 @@ _data_cache = {}
 
 def _get_cached_cn_border() -> fshp.PolygonType:
     '''获取缓存的中国国界.'''
-    border = _data_cache.get('cn_border')
-    if border is None:
-        border = fshp.get_cn_border()
-        _data_cache['cn_border'] = border
+    polygon = _data_cache.get('cn_border')
+    if polygon is None:
+        polygon = fshp.get_cn_border()
+        _data_cache['cn_border'] = polygon
 
-    return border
+    return polygon
 
 
 def _get_cached_nine_line() -> fshp.PolygonType:
     '''获取缓存的九段线.'''
-    nine_line = _data_cache.get('nine_line')
-    if nine_line is None:
-        nine_line = fshp.get_nine_line()
-        _data_cache['nine_line'] = nine_line
+    polygon = _data_cache.get('nine_line')
+    if polygon is None:
+        polygon = fshp.get_nine_line()
+        _data_cache['nine_line'] = polygon
 
-    return nine_line
-
-
-def _get_cached_cn_province(
-    name: Optional[fshp.GetCNKeyword] = None,
-) -> Union[fshp.PolygonType, list[fshp.PolygonType]]:
-    '''获取缓存的中国省界.'''
-    provinces = _data_cache.get('cn_province')
-    if provinces is None:
-        provinces = np.array(fshp.get_cn_province(), dtype=object)
-        _data_cache['cn_province'] = provinces
-
-    mask = fshp._get_pr_mask(name)
-    result = provinces[mask].tolist()
-    if isinstance(name, str):
-        result = result[0]
-
-    return result
+    return polygon
 
 
-def _get_cached_cn_city(
-    name: Optional[fshp.GetCNKeyword] = None,
+def _get_cached_cn_provinces(
     province: Optional[fshp.GetCNKeyword] = None,
-) -> Union[fshp.PolygonType, list[fshp.PolygonType]]:
+) -> list[fshp.PolygonType]:
+    '''获取缓存的中国省界.'''
+    polygons = _data_cache.get('cn_province')
+    if polygons is None:
+        polygons = fshp.get_cn_province()
+        _data_cache['cn_province'] = polygons
+    polygons = [polygons[i] for i in fshp._get_pr_locs(province)]
+
+    return polygons
+
+
+def _get_cached_cn_cities(
+    city: Optional[fshp.GetCNKeyword] = None,
+    province: Optional[fshp.GetCNKeyword] = None,
+) -> list[fshp.PolygonType]:
     '''获取缓存的中国市界.'''
-    cities = _data_cache.get('cn_city')
-    if cities is None:
-        cities = np.array(fshp.get_cn_city(), dtype=object)
-        _data_cache['cn_city'] = cities
+    polygons = _data_cache.get('cn_city')
+    if polygons is None:
+        polygons = fshp.get_cn_city()
+        _data_cache['cn_city'] = polygons
+    polygons = [polygons[i] for i in fshp._get_ct_locs(city, province)]
 
-    mask = fshp._get_ct_mask(name, province)
-    result = cities[mask].tolist()
-    if isinstance(name, str):
-        result = result[0]
-
-    return result
+    return polygons
 
 
 def _get_cached_countries() -> list[fshp.PolygonType]:
     '''获取缓存的所有国家的国界.'''
-    countries = _data_cache.get('countries')
-    if countries is None:
-        countries = fshp.get_countries()
-        _data_cache['countries'] = countries
+    polygons = _data_cache.get('countries')
+    if polygons is None:
+        polygons = fshp.get_countries()
+        _data_cache['countries'] = polygons
 
-    return countries
+    return polygons
 
 
 def _get_cached_land() -> fshp.PolygonType:
     '''获取缓存的陆地.'''
-    land = _data_cache.get('land')
-    if land is None:
-        land = fshp.get_land()
-        _data_cache['land'] = land
+    polygon = _data_cache.get('land')
+    if polygon is None:
+        polygon = fshp.get_land()
+        _data_cache['land'] = polygon
 
-    return land
+    return polygon
 
 
 def _get_cached_ocean() -> fshp.PolygonType:
     '''获取缓存的海洋.'''
-    ocean = _data_cache.get('ocean')
-    if ocean is None:
-        ocean = fshp.get_ocean()
-        _data_cache['ocean'] = ocean
+    polygon = _data_cache.get('ocean')
+    if polygon is None:
+        polygon = fshp.get_ocean()
+        _data_cache['ocean'] = polygon
 
-    return ocean
+    return polygon
 
 
 def _set_pc_kwargs(
@@ -441,8 +432,8 @@ def add_cn_border(ax: Axes, **kwargs: Any) -> PathCollection:
         表示国界的集合对象.
     '''
     _set_pc_kwargs(kwargs)
-    border = _get_cached_cn_border()
-    pc = add_polygon(ax, border, **kwargs)
+    polygon = _get_cached_cn_border()
+    pc = add_polygon(ax, polygon, **kwargs)
 
     return pc
 
@@ -466,14 +457,14 @@ def add_nine_line(ax: Axes, **kwargs: Any) -> PathCollection:
         表示九段线的集合对象.
     '''
     _set_pc_kwargs(kwargs)
-    nine_line = _get_cached_nine_line()
-    pc = add_polygon(ax, nine_line, **kwargs)
+    polygon = _get_cached_nine_line()
+    pc = add_polygon(ax, polygon, **kwargs)
 
     return pc
 
 
 def add_cn_province(
-    ax: Axes, name: Optional[fshp.GetCNKeyword] = None, **kwargs: Any
+    ax: Axes, province: Optional[fshp.GetCNKeyword] = None, **kwargs: Any
 ) -> PathCollection:
     '''
     将中国省界添加到Axes上.
@@ -483,7 +474,7 @@ def add_cn_province(
     ax : Axes
         目标Axes.
 
-    name : GetCNKeyword, optional
+    province : GetCNKeyword, optional
         单个省名或一组省名. 默认为None, 表示添加所有省.
 
     **kwargs
@@ -496,16 +487,15 @@ def add_cn_province(
         表示省界的集合对象.
     '''
     _set_pc_kwargs(kwargs)
-    province = _get_cached_cn_province(name)
-    provinces = province if isinstance(province, list) else [province]
-    pc = add_polygons(ax, provinces, **kwargs)
+    polygons = _get_cached_cn_provinces(province)
+    pc = add_polygons(ax, polygons, **kwargs)
 
     return pc
 
 
 def add_cn_city(
     ax: Axes,
-    name: Optional[fshp.GetCNKeyword] = None,
+    city: Optional[fshp.GetCNKeyword] = None,
     province: Optional[fshp.GetCNKeyword] = None,
     **kwargs: Any,
 ) -> PathCollection:
@@ -517,13 +507,13 @@ def add_cn_city(
     ax : Axes
         目标Axes.
 
-    name : GetCNKeyword, optional
+    city : GetCNKeyword, optional
         单个市名或一组市名. 默认为None, 表示添加所有市.
 
-    province: GetCNKeyword, optional
+    province : GetCNKeyword, optional
         单个省名或一组省名, 添加属于某个省的所有市.
         默认为None, 表示不使用省名添加.
-        不能同时指定name和province.
+        不能同时指定city和province.
 
     **kwargs
         创建PathCollection时的关键字参数.
@@ -535,9 +525,8 @@ def add_cn_city(
         表示市界的集合对象.
     '''
     _set_pc_kwargs(kwargs)
-    city = _get_cached_cn_city(name, province)
-    cities = city if isinstance(city, list) else [city]
-    pc = add_polygons(ax, cities, **kwargs)
+    polygons = _get_cached_cn_cities(city, province)
+    pc = add_polygons(ax, polygons, **kwargs)
 
     return pc
 
@@ -561,8 +550,8 @@ def add_countries(ax: Axes, **kwargs: Any) -> PathCollection:
         表示国界的集合对象.
     '''
     _set_pc_kwargs(kwargs)
-    countries = _get_cached_countries()
-    pc = add_polygons(ax, countries, **kwargs)
+    polygons = _get_cached_countries()
+    pc = add_polygons(ax, polygons, **kwargs)
 
     return pc
 
@@ -589,8 +578,8 @@ def add_land(ax: Axes, **kwargs: Any) -> PathCollection:
         表示陆地的集合对象.
     '''
     _set_pc_kwargs(kwargs, 'land')
-    land = _get_cached_land()
-    pc = add_polygon(ax, land, **kwargs)
+    polygon = _get_cached_land()
+    pc = add_polygon(ax, polygon, **kwargs)
 
     return pc
 
@@ -617,8 +606,8 @@ def add_ocean(ax: Axes, **kwargs: Any) -> PathCollection:
         表示海洋的集合对象.
     '''
     _set_pc_kwargs(kwargs, 'ocean')
-    ocean = _get_cached_ocean()
-    pc = add_polygon(ax, ocean, **kwargs)
+    polygon = _get_cached_ocean()
+    pc = add_polygon(ax, polygon, **kwargs)
 
     return pc
 
@@ -641,12 +630,12 @@ def clip_by_cn_border(artist: ArtistType, strict: bool = False) -> None:
         是否使用更严格的裁剪方法. 默认为False.
         为True时即便GeoAxes的边界不是矩形也能避免出界.
     '''
-    border = _get_cached_cn_border()
-    clip_by_polygon(artist, border, strict=strict)
+    polygon = _get_cached_cn_border()
+    clip_by_polygon(artist, polygon, strict=strict)
 
 
 def clip_by_cn_province(
-    artist: ArtistType, name: str, strict: bool = False
+    artist: ArtistType, province: str, strict: bool = False
 ) -> None:
     '''
     用中国省界裁剪Artist.
@@ -661,21 +650,21 @@ def clip_by_cn_province(
         - imshow
         - quiver
 
-    name: str
+    province : str
         单个省名.
 
     strict : bool, optional
         是否使用更严格的裁剪方法. 默认为False.
         为True时即便GeoAxes的边界不是矩形也能避免出界.
     '''
-    if not isinstance(name, str):
+    if not isinstance(province, str):
         raise ValueError('只支持单个省')
-    province = _get_cached_cn_province(name)
-    clip_by_polygon(artist, province, strict=strict)
+    polygon = _get_cached_cn_provinces(province)[0]
+    clip_by_polygon(artist, polygon, strict=strict)
 
 
 def clip_by_cn_city(
-    artist: ArtistType, name: str = None, strict: bool = False
+    artist: ArtistType, city: str = None, strict: bool = False
 ) -> None:
     '''
     用中国市界裁剪Artist.
@@ -690,17 +679,17 @@ def clip_by_cn_city(
         - imshow
         - quiver
 
-    name: str
+    city : str
         单个市名.
 
     strict : bool, optional
         是否使用更严格的裁剪方法. 默认为False.
         为True时即便GeoAxes的边界不是矩形也能避免出界.
     '''
-    if not isinstance(name, str):
+    if not isinstance(city, str):
         raise ValueError('只支持单个市')
-    city = _get_cached_cn_city(name)
-    clip_by_polygon(artist, city, strict=strict)
+    polygon = _get_cached_cn_cities(city)[0]
+    clip_by_polygon(artist, polygon, strict=strict)
 
 
 def clip_by_land(artist: ArtistType, strict: bool = False) -> None:
@@ -723,8 +712,7 @@ def clip_by_land(artist: ArtistType, strict: bool = False) -> None:
         是否使用更严格的裁剪方法. 默认为False.
         为True时即便GeoAxes的边界不是矩形也能避免出界.
     '''
-    land = _get_cached_land()
-    clip_by_polygon(artist, land, strict=strict)
+    clip_by_polygon(artist, _get_cached_land(), strict=strict)
 
 
 def clip_by_ocean(artist: ArtistType, strict: bool = False) -> None:
@@ -747,8 +735,7 @@ def clip_by_ocean(artist: ArtistType, strict: bool = False) -> None:
         是否使用更严格的裁剪方法. 默认为False.
         为True时即便GeoAxes的边界不是矩形也能避免出界.
     '''
-    ocean = _get_cached_ocean()
-    clip_by_polygon(artist, ocean, strict=strict)
+    clip_by_polygon(artist, _get_cached_ocean(), strict=strict)
 
 
 def add_texts(
@@ -817,16 +804,16 @@ def _add_cn_texts(ax: Axes, table: pd.DataFrame, **kwargs: Any) -> list[Text]:
 
     return add_texts(
         ax=ax,
-        x=table.iloc[:, 1],
-        y=table.iloc[:, 2],
-        s=table.iloc[:, 0],
+        x=table.iloc[:, 0],
+        y=table.iloc[:, 1],
+        s=table.iloc[:, 2],
         **kwargs,
     )
 
 
 def label_cn_province(
     ax: Axes,
-    name: Optional[fshp.GetCNKeyword] = None,
+    province: Optional[fshp.GetCNKeyword] = None,
     short: bool = True,
     **kwargs: Any,
 ) -> list[Text]:
@@ -838,7 +825,7 @@ def label_cn_province(
     ax : Axes
         目标Axes.
 
-    name : GetCNKeyword, optional
+    province : GetCNKeyword, optional
         单个省名或一组省名. 默认为None, 表示标注所有省.
 
     short : bool, optional
@@ -853,9 +840,9 @@ def label_cn_province(
     texts : list of Text
         表示省名的Text对象.
     '''
-    mask = fshp._get_pr_mask(name)
+    locs = fshp._get_pr_locs(province)
     key = 'short_name' if short else 'pr_name'
-    table = fshp.PROVINCE_TABLE.loc[mask, [key, 'lon', 'lat']]
+    table = fshp.PR_TABLE[['lon', 'lat', key]].iloc[locs]
     texts = _add_cn_texts(ax, table, **kwargs)
 
     return texts
@@ -863,7 +850,7 @@ def label_cn_province(
 
 def label_cn_city(
     ax: Axes,
-    name: Optional[fshp.GetCNKeyword] = None,
+    city: Optional[fshp.GetCNKeyword] = None,
     province: Optional[fshp.GetCNKeyword] = None,
     short: bool = True,
     **kwargs: Any,
@@ -876,7 +863,7 @@ def label_cn_city(
     ax : Axes
         目标Axes.
 
-    name : GetCNKeyword, optional
+    city : GetCNKeyword, optional
         单个市名或一组市名. 默认为None, 表示标注所有市.
 
     province: GetCNKeyword, optional
@@ -896,9 +883,9 @@ def label_cn_city(
     texts : list of Text
         表示市名的Text对象.
     '''
-    mask = fshp._get_ct_mask(name, province)
+    locs = fshp._get_ct_locs(city, province)
     key = 'short_name' if short else 'ct_name'
-    table = fshp.CITY_TABLE.loc[mask, [key, 'lon', 'lat']]
+    table = fshp.CT_TABLE[['lon', 'lat', key]].iloc[locs]
     texts = _add_cn_texts(ax, table, **kwargs)
 
     return texts
@@ -1190,61 +1177,6 @@ def set_map_ticks(
         minor_yticks,
         xformatter,
         yformatter,
-    )
-
-
-@deprecator(set_map_ticks)
-def set_extent_and_ticks(
-    ax: Axes,
-    extents: Optional[Any] = None,
-    xticks: Optional[Any] = None,
-    yticks: Optional[Any] = None,
-    nx: int = 0,
-    ny: int = 0,
-    xformatter: Optional[Formatter] = None,
-    yformatter: Optional[Formatter] = None,
-) -> None:
-    '''
-    设置Axes的范围和刻度.
-
-    当ax是普通Axes时, 认为其投影为PlateCarree().
-    当ax是GeoAxes时, 如果设置效果有误, 建议换用GeoAxes.gridlines.
-
-    Parameters
-    ----------
-    ax : Axes
-        目标Axes.
-
-    extents : (4,) array_like, optional
-        经纬度范围[lon0, lon1, lat0, lat1]. 默认为None, 表示全球范围.
-
-    xticks : array_like, optional
-        经度主刻度的坐标. 默认为None, 表示不设置.
-
-    yticks : array_like, optional
-        纬度主刻度的坐标. 默认为None, 表示不设置.
-
-    nx : int, optional
-        经度主刻度之间次刻度的个数. 默认为0.
-
-    ny : int, optional
-        纬度主刻度之间次刻度的个数. 默认为0.
-
-    xformatter : Formatter, optional
-        经度刻度标签的Formatter. 默认为None, 表示无参数的LongitudeFormatter.
-
-    yformatter : Formatter, optional
-        纬度刻度标签的Formatter. 默认为None, 表示无参数的LatitudeFormatter.
-    '''
-    set_map_ticks(
-        ax=ax,
-        extents=extents,
-        xticks=xticks if xticks is not None else [],
-        yticks=yticks if yticks is not None else [],
-        mx=nx,
-        my=ny,
-        xformatter=xformatter,
-        yformatter=yformatter,
     )
 
 

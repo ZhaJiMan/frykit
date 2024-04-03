@@ -1,8 +1,9 @@
 # https://scitools.org.uk/cartopy/docs/latest/matplotlib/intro.html
+import cartopy.crs as ccrs
+import matplotlib.pyplot as plt
 import numpy as np
 from pyproj import Geod
-import matplotlib.pyplot as plt
-import cartopy.crs as ccrs
+
 import frykit.plot as fplt
 
 # 设置投影.

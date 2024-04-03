@@ -1,34 +1,33 @@
 import math
-from weakref import WeakValueDictionary, WeakKeyDictionary
 from collections.abc import Sequence
-from typing import Any, Optional, Union, Literal
+from typing import Any, Literal, Optional, Union
+from weakref import WeakKeyDictionary, WeakValueDictionary
 
+import cartopy.crs as ccrs
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import shapely.geometry as sgeom
-from shapely.ops import unary_union
-from pyproj import Geod
-
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-from matplotlib.axes import Axes
+from cartopy.mpl.feature_artist import _GeomKey
+from cartopy.mpl.geoaxes import GeoAxes
+from cartopy.mpl.ticker import LatitudeFormatter, LongitudeFormatter
 from matplotlib.artist import Artist
-from matplotlib.contour import ContourSet
-from matplotlib.path import Path as Path
-from matplotlib.collections import PathCollection
-from matplotlib.patches import Rectangle, PathPatch
-from matplotlib.transforms import Bbox, Affine2D, ScaledTranslation, offset_copy
+from matplotlib.axes import Axes
+from matplotlib.cbook import normalize_kwargs
 from matplotlib.cm import ScalarMappable
+from matplotlib.collections import PathCollection
 from matplotlib.colorbar import Colorbar
-from matplotlib.colors import Normalize, Colormap, ListedColormap, BoundaryNorm
+from matplotlib.colors import BoundaryNorm, Colormap, ListedColormap, Normalize
+from matplotlib.contour import ContourSet
+from matplotlib.patches import PathPatch, Rectangle
+from matplotlib.path import Path as Path
 from matplotlib.quiver import Quiver, QuiverKey
 from matplotlib.text import Text
 from matplotlib.ticker import Formatter
-
-import cartopy.crs as ccrs
-from cartopy.mpl.geoaxes import GeoAxes
-from cartopy.mpl.feature_artist import _GeomKey
-from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
+from matplotlib.transforms import Affine2D, Bbox, ScaledTranslation, offset_copy
+from pyproj import Geod
+from shapely.ops import unary_union
 
 import frykit.shp as fshp
 from frykit import DATA_DIRPATH
@@ -171,14 +170,11 @@ def add_polygon(
     return add_polygons(ax, [polygon], crs, **kwargs)
 
 
-# TODO: ax.draw, patch.draw, 还是其它?
 def _get_boundary(ax: GeoAxes) -> sgeom.Polygon:
     '''将GeoAxes.patch转为data坐标系下的多边形.'''
     patch = ax.patch
-    # 决定patch的形状. 兼容Matplotlib3.6之前的版本.
-    patch.draw(ax.figure.canvas.get_renderer())
+    patch._adjust_location()
     trans = patch.get_transform() - ax.transData
-    # get_path比get_verts更可靠.
     path = patch.get_path().transformed(trans)
     boundary = sgeom.Polygon(path.vertices)
 
@@ -220,7 +216,6 @@ def clip_by_polygon(
     '''
     artists = []
     for a in artist if isinstance(artist, Sequence) else [artist]:
-        # 3.8.0后ContourSet直接就是Artist.
         if isinstance(a, ContourSet) and mpl.__version__ < '3.8.0':
             artists.extend(a.collections)
         else:
@@ -235,6 +230,7 @@ def clip_by_polygon(
     if isinstance(ax, GeoAxes):
         crs = ccrs.PlateCarree() if crs is None else crs
         polygon = _cached_transform_polygon(polygon, crs, ax.projection)
+        # TODO: 通过装饰Artist.draw方法实现.
         if strict:  # 在data坐标系求polygon和ax.patch的交集.
             polygon &= _get_boundary(ax)
     else:
@@ -246,10 +242,10 @@ def clip_by_polygon(
 
     # TODO:
     # 用字体位置来判断仍然会有出界的情况.
-    # 用t.get_window_extent()的结果和polygon做运算?
+    # 用t.get_window_extent()的结果和polygon做运算.
     for a in artists:
         a.set_clip_on(True)
-        a.set_clip_box(ax.bbox)  # Axes其实不用设置这个.
+        a.set_clip_box(ax.bbox)
         if isinstance(a, Text):
             point = sgeom.Point(a.get_position())
             if not polygon.contains(point):
@@ -375,33 +371,15 @@ def _get_cached_ocean() -> fshp.PolygonType:
     return polygon
 
 
-def _set_pc_kwargs(
-    kwargs: dict, setting: Literal['default', 'land', 'ocean'] = 'default'
-) -> None:
-    '''设置PathCollection的参数.'''
-    # zorder=1.5时高于contourf, 但低于line和text.
-    if setting == 'default':
-        fc = 'none'
-        ec = 'k'
-        zorder = 1.5
-    elif setting == 'land':
-        fc = 'floralwhite'
-        ec = 'none'
-        zorder = -1
-    elif setting == 'ocean':
-        fc = 'skyblue'
-        ec = 'none'
-        zorder = -1
-    else:
-        raise ValueError('不支持的设置')
+def _init_pc_kwargs(kwargs: dict) -> dict:
+    '''初始化传给PathCollection的参数.'''
+    kwargs = normalize_kwargs(kwargs, PathCollection)
+    kwargs.setdefault('linewidth', 0.5)
+    kwargs.setdefault('edgecolor', 'k')
+    kwargs.setdefault('facecolor', 'none')
+    kwargs.setdefault('zorder', 1.5)
 
-    if not any(kw in kwargs for kw in ['fc', 'facecolor', 'facecolors']):
-        kwargs['facecolors'] = fc
-    if not any(kw in kwargs for kw in ['ec', 'edgecolor', 'edgecolors']):
-        kwargs['edgecolors'] = ec
-    if not any(kw in kwargs for kw in ['lw', 'linewidth', 'linewidths']):
-        kwargs['linewidths'] = 0.5
-    kwargs.setdefault('zorder', zorder)
+    return kwargs
 
 
 # 竖版中国标准地图的投影.
@@ -431,7 +409,7 @@ def add_cn_border(ax: Axes, **kwargs: Any) -> PathCollection:
     pc : PathCollection
         表示国界的集合对象.
     '''
-    _set_pc_kwargs(kwargs)
+    kwargs = _init_pc_kwargs(kwargs)
     polygon = _get_cached_cn_border()
     pc = add_polygon(ax, polygon, **kwargs)
 
@@ -456,7 +434,7 @@ def add_nine_line(ax: Axes, **kwargs: Any) -> PathCollection:
     pc : PathCollection
         表示九段线的集合对象.
     '''
-    _set_pc_kwargs(kwargs)
+    kwargs = _init_pc_kwargs(kwargs)
     polygon = _get_cached_nine_line()
     pc = add_polygon(ax, polygon, **kwargs)
 
@@ -486,7 +464,7 @@ def add_cn_province(
     pc : PathCollection
         表示省界的集合对象.
     '''
-    _set_pc_kwargs(kwargs)
+    kwargs = _init_pc_kwargs(kwargs)
     polygons = _get_cached_cn_provinces(province)
     pc = add_polygons(ax, polygons, **kwargs)
 
@@ -524,7 +502,7 @@ def add_cn_city(
     pc : PathCollection
         表示市界的集合对象.
     '''
-    _set_pc_kwargs(kwargs)
+    kwargs = _init_pc_kwargs(kwargs)
     polygons = _get_cached_cn_cities(city, province)
     pc = add_polygons(ax, polygons, **kwargs)
 
@@ -549,7 +527,7 @@ def add_countries(ax: Axes, **kwargs: Any) -> PathCollection:
     pc : PathCollection
         表示国界的集合对象.
     '''
-    _set_pc_kwargs(kwargs)
+    kwargs = _init_pc_kwargs(kwargs)
     polygons = _get_cached_countries()
     pc = add_polygons(ax, polygons, **kwargs)
 
@@ -577,7 +555,7 @@ def add_land(ax: Axes, **kwargs: Any) -> PathCollection:
     pc : PathCollection
         表示陆地的集合对象.
     '''
-    _set_pc_kwargs(kwargs, 'land')
+    kwargs = _init_pc_kwargs(kwargs)
     polygon = _get_cached_land()
     pc = add_polygon(ax, polygon, **kwargs)
 
@@ -605,7 +583,7 @@ def add_ocean(ax: Axes, **kwargs: Any) -> PathCollection:
     pc : PathCollection
         表示海洋的集合对象.
     '''
-    _set_pc_kwargs(kwargs, 'ocean')
+    kwargs = _init_pc_kwargs(kwargs)
     polygon = _get_cached_ocean()
     pc = add_polygon(ax, polygon, **kwargs)
 
@@ -773,27 +751,15 @@ def add_texts(
 
 def _add_cn_texts(ax: Axes, table: pd.DataFrame, **kwargs: Any) -> list[Text]:
     '''用省或市的table在Axes上添加一组文本.'''
-    if not any(kw in kwargs for kw in ['size', 'fontsize']):
-        kwargs['fontsize'] = 'x-small'
-    if not any(kw in kwargs for kw in ['ha', 'horizontalalignment']):
-        kwargs['horizontalalignment'] = 'center'
-    if not any(kw in kwargs for kw in ['va', 'verticalalignment']):
-        kwargs['verticalalignment'] = 'center'
+    kwargs = normalize_kwargs(kwargs, Text)
+    kwargs.setdefault('fontsize', 'x-small')
+    kwargs.setdefault('horizontalalignment', 'center')
+    kwargs.setdefault('verticalalignment', 'center')
 
     # 加载精简的思源黑体.
     filepath = DATA_DIRPATH / 'zh_font.otf'
-    if not any(
-        kw in kwargs
-        for kw in [
-            'font',
-            'fontname',
-            'family',
-            'fontfamily',
-            'fontproperties',
-            'font_properties',
-        ]
-    ):
-        kwargs['fontproperties'] = filepath
+    if kwargs.get('fontname') is None and kwargs.get('fontfamily') is None:
+        kwargs.setdefault('fontproperties', filepath)
 
     is_geoaxes = isinstance(ax, GeoAxes)
     kwargs.setdefault('clip_on', True)
@@ -1180,11 +1146,6 @@ def set_map_ticks(
     )
 
 
-def _create_kwargs(kwargs: Optional[dict] = None) -> dict:
-    '''参数为None时创建新字典, 否则复制参数字典.'''
-    return {} if kwargs is None else kwargs.copy()
-
-
 def add_quiver_legend(
     Q: Quiver,
     U: float,
@@ -1254,15 +1215,12 @@ def add_quiver_legend(
         raise ValueError('loc参数错误')
 
     # 设置参数.
-    rect_kwargs = _create_kwargs(rect_kwargs)
-    if 'fc' not in rect_kwargs and 'facecolor' not in rect_kwargs:
-        rect_kwargs['facecolor'] = 'white'
-    if 'ec' not in rect_kwargs and 'edgecolor' not in rect_kwargs:
-        rect_kwargs['edgecolor'] = 'black'
-    if 'lw' not in rect_kwargs and 'linewidth' not in rect_kwargs:
-        rect_kwargs['linewidth'] = 0.8
+    key_kwargs = normalize_kwargs(key_kwargs)
+    rect_kwargs = normalize_kwargs(rect_kwargs, Rectangle)
+    rect_kwargs.setdefault('linewidth', 0.8)
+    rect_kwargs.setdefault('edgecolor', 'k')
+    rect_kwargs.setdefault('facecolor', 'w')
     rect_kwargs.setdefault('zorder', 3)
-    key_kwargs = _create_kwargs(key_kwargs)
 
     # 在ax上添加patch.
     ax = Q.axes
@@ -1345,23 +1303,19 @@ def add_compass(
         指北针N字对象.
     '''
     # 设置箭头参数.
-    path_kwargs = _create_kwargs(path_kwargs)
-    if not any(kw in path_kwargs for kw in ['fc', 'facecolor', 'facecolors']):
-        if style == 'circle':
-            path_kwargs['facecolors'] = ['none', 'black', 'white']
-        else:
-            path_kwargs['facecolors'] = ['black', 'white']
-    if not any(kw in path_kwargs for kw in ['ec', 'edgecolor', 'edgecolors']):
-        path_kwargs['edgecolors'] = 'black'
-    if not any(kw in path_kwargs for kw in ['lw', 'linewidth', 'linewidths']):
-        path_kwargs['linewidths'] = 1
+    path_kwargs = normalize_kwargs(path_kwargs, PathCollection)
+    path_kwargs.setdefault('linewidth', 1)
+    path_kwargs.setdefault('edgecolor', 'k')
+    if style == 'circle':
+        path_kwargs.setdefault('facecolor', ['none', 'k', 'w'])
+    else:
+        path_kwargs.setdefault('facecolor', ['k', 'w'])
     path_kwargs.setdefault('zorder', 3)
     path_kwargs.setdefault('clip_on', False)
 
     # 设置文字参数.
-    text_kwargs = _create_kwargs(text_kwargs)
-    if 'size' not in text_kwargs and 'fontsize' not in text_kwargs:
-        text_kwargs['fontsize'] = size / 1.5
+    text_kwargs = normalize_kwargs(text_kwargs, Text)
+    text_kwargs.setdefault('fontsize', size / 1.5)
 
     # 计算(lon, lat)到(lon, lat + 1)的角度.
     # 当(x, y)超出Axes范围时会计算出无意义的角度.
@@ -1560,12 +1514,10 @@ def gmt_style_frame(ax: Axes, width: float = 5, **kwargs: Any) -> None:
         raise ValueError('只支持PlateCarree和Mercator投影')
 
     # 设置条纹参数.
-    if not any(kw in kwargs for kw in ['fc', 'facecolor', 'facecolors']):
-        kwargs['facecolors'] = ['black', 'white']
-    if not any(kw in kwargs for kw in ['ec', 'edgecolor', 'edgecolors']):
-        kwargs['edgecolors'] = 'black'
-    if not any(kw in kwargs for kw in ['lw', 'linewidth', 'linewidths']):
-        kwargs['linewidths'] = 1
+    kwargs = normalize_kwargs(kwargs, PathCollection)
+    kwargs.setdefault('linewidth', 1)
+    kwargs.setdefault('edgecolor', 'k')
+    kwargs.setdefault('facecolor', ['k', 'w'])
     kwargs.setdefault('zorder', 3)
     kwargs.setdefault('clip_on', False)
 
@@ -1700,10 +1652,9 @@ def add_box(
         方框对象.
     '''
     # 设置参数.
-    if 'facecolor' not in kwargs or 'fc' not in kwargs:
-        kwargs['facecolor'] = 'none'
-    if 'edgecolor' not in kwargs or 'ec' not in kwargs:
-        kwargs['edgecolor'] = 'r'
+    kwargs = normalize_kwargs(kwargs, PathPatch)
+    kwargs.setdefault('edgecolor', 'r')
+    kwargs.setdefault('facecolor', 'none')
 
     # 添加Patch.
     path = _path_from_extents(*extents).interpolated(steps)

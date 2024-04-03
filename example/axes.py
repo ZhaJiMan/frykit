@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+
 import frykit.plot as fplt
 
 # Axes的比例应该为1:1
@@ -6,7 +7,7 @@ fig, ax = plt.subplots()
 ax.set_aspect('equal')
 
 # 添加要素和修饰.
-fplt.add_ocean(ax, fc='#c4e7fa')
+ax.set_facecolor('#c4e7fa')
 fplt.add_countries(ax, fc='#e7e4e2')
 fplt.add_cn_province(ax, fc='#fcfeff')
 fplt.add_nine_line(ax)

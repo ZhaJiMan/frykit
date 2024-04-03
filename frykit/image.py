@@ -1,8 +1,8 @@
 from collections.abc import Sequence
 from typing import Any, Optional, Union
 
-from PIL import Image
 import numpy as np
+from PIL import Image
 
 from frykit.help import PathType
 

@@ -1,17 +1,15 @@
 import math
-from collections.abc import Sequence, Callable
-from typing import Any, Union, Optional
+from collections.abc import Callable, Sequence
+from typing import Any, Optional, Union
 
 import numpy as np
 import pandas as pd
-
 import shapely.geometry as sgeom
+from cartopy.crs import CRS
+from matplotlib.path import Path
+from pyproj import Transformer
 from shapely.geometry.base import BaseGeometry, CoordinateSequence
 from shapely.prepared import prep
-from pyproj import Transformer
-
-from matplotlib.path import Path
-from cartopy.crs import CRS
 
 from frykit import DATA_DIRPATH
 from frykit._shp import BinaryReader, PolygonType

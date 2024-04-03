@@ -1,9 +1,9 @@
 import shutil
 import warnings
-from pathlib import Path
+from collections.abc import Iterator, Sequence
 from functools import wraps
-from collections.abc import Sequence, Iterator
-from typing import Any, Union, Optional, Callable
+from pathlib import Path
+from typing import Any, Callable, Optional, Union
 
 PathType = Union[str, Path]
 

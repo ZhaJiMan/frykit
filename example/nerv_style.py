@@ -1,8 +1,9 @@
-import opencc
-import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
-import frykit.shp as fshp
+import matplotlib.pyplot as plt
+import opencc
+
 import frykit.plot as fplt
+import frykit.shp as fshp
 
 # 线条颜色.
 linecolor = '#a3ffc2'

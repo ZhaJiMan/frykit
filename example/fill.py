@@ -1,9 +1,10 @@
-import numpy as np
-import matplotlib.pyplot as plt
+import cartopy.crs as ccrs
 import matplotlib.colors as mcolors
 import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib import patheffects
-import cartopy.crs as ccrs
+
 import frykit.plot as fplt
 import frykit.shp as fshp
 

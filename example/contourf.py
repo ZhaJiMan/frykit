@@ -1,8 +1,9 @@
-import numpy as np
-from scipy.ndimage import gaussian_filter
-import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
+import matplotlib.pyplot as plt
+import numpy as np
 from cartopy.feature import LAND
+from scipy.ndimage import gaussian_filter
+
 import frykit.plot as fplt
 
 # 读取数据.

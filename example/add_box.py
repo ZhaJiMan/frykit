@@ -1,6 +1,7 @@
-import numpy as np
-import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
+import matplotlib.pyplot as plt
+import numpy as np
+
 import frykit.plot as fplt
 
 # 设置地图投影.

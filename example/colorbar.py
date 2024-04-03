@@ -1,6 +1,7 @@
-import matplotlib.pyplot as plt
-import frykit.plot as fplt
 import cmaps
+import matplotlib.pyplot as plt
+
+import frykit.plot as fplt
 
 
 def plot_qualitative_cbar(ax):

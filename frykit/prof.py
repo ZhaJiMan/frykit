@@ -1,8 +1,8 @@
-import time
 import cProfile
 import functools
+import time
 from collections.abc import Callable
-from typing import Any, Optional, Union, Literal
+from typing import Any, Literal, Optional, Union
 
 from line_profiler import LineProfiler
 

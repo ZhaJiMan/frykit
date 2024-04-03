@@ -1,5 +1,6 @@
-import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
+import matplotlib.pyplot as plt
+
 import frykit.plot as fplt
 
 # 设置投影

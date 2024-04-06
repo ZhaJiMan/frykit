@@ -25,12 +25,13 @@ from matplotlib.path import Path as Path
 from matplotlib.quiver import Quiver, QuiverKey
 from matplotlib.text import Text
 from matplotlib.ticker import Formatter
-from matplotlib.transforms import Affine2D, Bbox, ScaledTranslation, offset_copy
+from matplotlib.transforms import Affine2D, Bbox, ScaledTranslation
 from pyproj import Geod
 from shapely.ops import unary_union
 
 import frykit.shp as fshp
 from frykit import DATA_DIRPATH
+from frykit._artist import QuiverLegend
 
 # 当polygon的引用计数为零时, 弱引用会自动清理缓存.
 # cartopy是直接缓存Path, 但测试后发现差距不大.
@@ -105,8 +106,9 @@ def add_polygons(
         默认为None, 表示PlateCarree().
 
     **kwargs
-        创建PathCollection时的关键字参数.
-        例如facecolors, edgecolors, cmap, norm和array等.
+        PathCollection类的关键字参数.
+        例如edgecolor, facecolor, cmap, norm和array等.
+        https://matplotlib.org/stable/api/collections_api.html
 
     Returns
     -------
@@ -159,8 +161,9 @@ def add_polygon(
         默认为None, 表示PlateCarree().
 
     **kwargs
-        创建PathCollection时的关键字参数.
-        例如facecolors, edgecolors, cmap, norm和array等.
+        PathCollection类的关键字参数.
+        例如edgecolor, facecolor, cmap, norm和array等.
+        https://matplotlib.org/stable/api/collections_api.html
 
     Returns
     -------
@@ -401,8 +404,9 @@ def add_cn_border(ax: Axes, **kwargs: Any) -> PathCollection:
         目标Axes.
 
     **kwargs
-        创建PathCollection时的关键字参数.
-        例如facecolors, edgecolors, cmap, norm和array等.
+        PathCollection类的关键字参数.
+        例如edgecolor, facecolor, cmap, norm和array等.
+        https://matplotlib.org/stable/api/collections_api.html
 
     Returns
     -------
@@ -426,8 +430,9 @@ def add_nine_line(ax: Axes, **kwargs: Any) -> PathCollection:
         目标Axes.
 
     **kwargs
-        创建PathCollection时的关键字参数.
-        例如facecolors, edgecolors, cmap, norm和array等.
+        PathCollection类的关键字参数.
+        例如edgecolor, facecolor, cmap, norm和array等.
+        https://matplotlib.org/stable/api/collections_api.html
 
     Returns
     -------
@@ -456,8 +461,9 @@ def add_cn_province(
         单个省名或一组省名. 默认为None, 表示添加所有省.
 
     **kwargs
-        创建PathCollection时的关键字参数.
-        例如facecolors, edgecolors, cmap, norm和array等.
+        PathCollection类的关键字参数.
+        例如edgecolor, facecolor, cmap, norm和array等.
+        https://matplotlib.org/stable/api/collections_api.html
 
     Returns
     -------
@@ -494,8 +500,9 @@ def add_cn_city(
         不能同时指定city和province.
 
     **kwargs
-        创建PathCollection时的关键字参数.
-        例如facecolors, edgecolors, cmap, norm和array等.
+        PathCollection类的关键字参数.
+        例如edgecolor, facecolor, cmap, norm和array等.
+        https://matplotlib.org/stable/api/collections_api.html
 
     Returns
     -------
@@ -519,8 +526,9 @@ def add_countries(ax: Axes, **kwargs: Any) -> PathCollection:
         目标Axes.
 
     **kwargs
-        创建PathCollection时的关键字参数.
-        例如facecolors, edgecolors, cmap, norm和array等.
+        PathCollection类的关键字参数.
+        例如edgecolor, facecolor, cmap, norm和array等.
+        https://matplotlib.org/stable/api/collections_api.html
 
     Returns
     -------
@@ -547,8 +555,9 @@ def add_land(ax: Axes, **kwargs: Any) -> PathCollection:
         目标Axes.
 
     **kwargs
-        创建PathCollection时的关键字参数.
-        例如facecolors, edgecolors, cmap, norm和array等.
+        PathCollection类的关键字参数.
+        例如edgecolor, facecolor, cmap, norm和array等.
+        https://matplotlib.org/stable/api/collections_api.html
 
     Returns
     -------
@@ -575,8 +584,9 @@ def add_ocean(ax: Axes, **kwargs: Any) -> PathCollection:
         目标Axes.
 
     **kwargs
-        创建PathCollection时的关键字参数.
-        例如facecolors, edgecolors, cmap, norm和array等.
+        PathCollection类的关键字参数.
+        例如edgecolor, facecolor, cmap, norm和array等.
+        https://matplotlib.org/stable/api/collections_api.html
 
     Returns
     -------
@@ -738,6 +748,7 @@ def add_texts(
 
     **kwargs
         Axes.text方法的关键字参数.
+        https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.text.html
 
     Returns
     -------
@@ -798,8 +809,8 @@ def label_cn_province(
         是否使用缩短的省名. 默认为True.
 
     **kwargs
-        调用Axes.text时的关键字参数.
-        例如fontsize, fontfamily和color等.
+        Axes.text方法的关键字参数.
+        https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.text.html
 
     Returns
     -------
@@ -841,8 +852,8 @@ def label_cn_city(
         是否使用缩短的市名. 默认为True.
 
     **kwargs
-        调用Axes.text时的关键字参数.
-        例如fontsize, fontfamily和color等.
+        Axes.text方法的关键字参数.
+        https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.text.html
 
     Returns
     -------
@@ -1155,11 +1166,11 @@ def add_quiver_legend(
     loc: Literal[
         'bottom left', 'bottom right', 'top left', 'top right'
     ] = 'bottom right',
-    rect_kwargs: Optional[dict] = None,
-    key_kwargs: Optional[dict] = None,
+    quiver_key_kwargs: Optional[dict] = None,
+    patch_kwargs: Optional[dict] = None,
 ) -> tuple[Rectangle, QuiverKey]:
     '''
-    为Axes.quiver的结果添加图例.
+    为Quiver添加图例.
 
     图例由背景方框patch和风箭头key组成.
     key下方有形如'{U} {units}'的标签.
@@ -1167,88 +1178,44 @@ def add_quiver_legend(
     Parameters
     ----------
     Q : Quiver
-        Axes.quiver返回的结果.
+        Axes.quiver返回的对象.
 
     U : float
-        key的长度.
+        箭头长度.
 
     units : str, optional
-        key标签的单位. 默认为'm/s'.
+        标签单位. 默认为m/s.
 
     width : float, optional
-        方框的宽度. 基于Axes坐标, 默认为0.15
+        图例宽度. 基于Axes坐标, 默认为0.15
 
     height : float, optional
-        方框的高度. 基于Axes坐标, 默认为0.15
+        图例高度. 基于Axes坐标, 默认为0.15
 
     loc : {'bottom left', 'bottom right', 'top left', 'top right'}, optional
-        将图例摆放在四个角落中的哪一个. 默认为'bottom right'.
+        图例位置. 默认为'bottom right'.
 
-    rect_kwargs : dict, optional
-        方框的参数. 例如facecolor, edgecolor, linewidth等.
+    quiver_key_kwargs : dict, optional
+        QuiverKey类的关键字参数.
+        例如labelsep, labelcolor, fontproperties等.
+        https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.quiverkey.html
 
-    key_kwargs : dict, optional
-        quiverkey的参数. 例如labelsep, fontproperties等.
+    patch_kwargs : dict, optional
+        表示背景方框的Retangle类的关键字参数.
+        例如linewidth, edgecolor, facecolor等.
+        https://matplotlib.org/stable/api/_as_gen/matplotlib.patches.Rectangle.html
 
     Returns
     -------
-    rect : Rectangle
-        图例方框对象.
-
-    qk : QuiverKey
-        风箭头和标签的对象.
+    quiver_legend : QuiverLegend
+        图例对象.
     '''
-    # 决定legend的位置.
-    if loc == 'bottom left':
-        x = width / 2
-        y = height / 2
-    elif loc == 'bottom right':
-        x = 1 - width / 2
-        y = height / 2
-    elif loc == 'top left':
-        x = width / 2
-        y = 1 - height / 2
-    elif loc == 'top right':
-        x = 1 - width / 2
-        y = 1 - height / 2
-    else:
-        raise ValueError('loc参数错误')
-
-    # 设置参数.
-    key_kwargs = normalize_kwargs(key_kwargs)
-    rect_kwargs = normalize_kwargs(rect_kwargs, Rectangle)
-    rect_kwargs.setdefault('linewidth', 0.8)
-    rect_kwargs.setdefault('edgecolor', 'k')
-    rect_kwargs.setdefault('facecolor', 'w')
-    rect_kwargs.setdefault('zorder', 3)
-
-    # 在ax上添加patch.
-    ax = Q.axes
-    rect = Rectangle(
-        xy=(x - width / 2, y - height / 2),
-        width=width,
-        height=height,
-        transform=ax.transAxes,
-        **rect_kwargs,
+    quiver_legend = QuiverLegend(
+        Q, U, units, width, height, loc, quiver_key_kwargs, patch_kwargs
     )
-    ax.add_patch(rect)
+    Q.axes.add_artist(quiver_legend)
 
-    # 先创建QuiverKey对象.
-    qk = ax.quiverkey(
-        Q, x, y, U, label=f'{U} {units}', labelpos='S', **key_kwargs
-    )
-    # 在参数中设置zorder无效.
-    zorder = key_kwargs.get('zorder', 3)
-    qk.set_zorder(zorder)
-
-    # 再将qk调整至patch的中心.
-    fontsize = qk.text.get_fontsize() / 72
-    dy = (qk._labelsep_inches + fontsize) / 2
-    trans = offset_copy(ax.transAxes, ax.figure, 0, dy)
-    qk._set_transform = lambda: None  # 无效类方法.
-    qk.set_transform(trans)
-
-    return rect, qk
+    return quiver_legend
 
 
 def add_compass(
@@ -1285,13 +1252,11 @@ def add_compass(
         指北针的造型. 默认为'arrow'.
 
     path_kwargs : dict, optional
-        指北针的PathCollection的关键字参数.
-        例如facecolors, edgecolors, linewidths等.
-        默认为None, 表示使用默认参数.
+        表示指北针的PathCollection类的关键字参数.
+        例如linewidth, edgecolor, facecolor等.
 
     text_kwargs : dict, optional
-        绘制指北针N字的关键字参数.
-        例如fontsize, fontweight和fontfamily等.
+        绘制指北针N字时Axes.Text方法的关键字参数.
         默认为None, 表示使用默认参数.
 
     Returns
@@ -1504,8 +1469,9 @@ def gmt_style_frame(ax: Axes, width: float = 5, **kwargs: Any) -> None:
         边框的宽度. 单位为点(point), 默认为5.
 
     **kwargs
-        边框的PathCollection的关键字参数.
-        例如facecolors, edgecolors, linewidths等.
+        PathCollection类的关键字参数.
+        例如linewidth, edgecolor, facecolor等.
+        https://matplotlib.org/stable/api/collections_api.html
     '''
     is_geoaxes = isinstance(ax, GeoAxes)
     if is_geoaxes and not isinstance(
@@ -1643,8 +1609,9 @@ def add_box(
         当ax是GeoAxes且指定transform关键字时能保证方框的平滑.
 
     **kwargs
-        创建PathPatch对象的关键字参数.
+        PathPatch类的关键字参数.
         例如linewidth, edgecolor, facecolor和transform等.
+        https://matplotlib.org/stable/api/_as_gen/matplotlib.patches.PathPatch.html
 
     Returns
     -------

@@ -8,12 +8,12 @@ from scipy.stats import binned_statistic_2d
 
 
 def lon_to_180(lon: Any) -> Any:
-    '''将经度换算到[-180, 180]范围内. 注意180会变成-180.'''
-    return (lon + 180) % 360 - 180
+    '''将经度换算到(-180, 180]范围内.'''
+    return (lon - 540) % -360 + 180
 
 
 def lon_to_360(lon: Any) -> Any:
-    '''将经度换算到[0, 360]范围内.'''
+    '''将经度换算到[0, 360)范围内.'''
     return lon % 360
 
 
@@ -33,7 +33,7 @@ def rt_to_xy(r: Any, t: Any, degrees: bool = False) -> tuple[Any, Any]:
 
 
 def xy_to_rt(x: Any, y: Any, degrees: bool = False) -> tuple[Any, Any]:
-    '''直角坐标转极坐标. 默认使用弧度, 角度范围[-pi, pi].'''
+    '''直角坐标转极坐标. 默认使用弧度, 角度范围(-180, 180].'''
     r = np.hypot(x, y)
     t = np.arctan2(y, x)
     if degrees:
@@ -43,7 +43,7 @@ def xy_to_rt(x: Any, y: Any, degrees: bool = False) -> tuple[Any, Any]:
 
 
 def t_to_az(t: Any, degrees: bool = False) -> Any:
-    '''x轴夹角转方位角. 默认使用弧度.'''
+    '''x轴夹角转方位角. 默认使用弧度, az范围[0, 360).'''
     if degrees:
         az = (90 - t) % 360
     else:
@@ -55,14 +55,14 @@ def t_to_az(t: Any, degrees: bool = False) -> Any:
 
 
 def az_to_t(az: Any, degrees: bool = False) -> Any:
-    '''方位角转x轴夹角. 默认使用弧度, 夹角范围[-pi, pi].'''
+    '''方位角转x轴夹角. 默认使用弧度, t范围(-180, 180].'''
     if degrees:
-        t = np.where(az >= 270, 450 - az, 90 - az)
+        t = -(az + 90) % -360 + 180
     else:
         _90 = np.pi / 2
-        _270 = 3 * _90
-        _450 = 5 * _90
-        t = np.where(az >= _270, _450 - az, _90 - az)
+        _180 = 2 * _90
+        _360 = 4 * _90
+        t = -(az + _90) % -_360 + _180
 
     return t
 

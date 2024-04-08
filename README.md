@@ -38,8 +38,6 @@ cartopy>=0.20.0
 pandas>=1.2.0
 ```
 
-Python 版本较低时需要手动指定版本为 `frykit==0.2.5`。
-
 ## 更新记录
 
 [CHANGELOG.md](https://github.com/ZhaJiMan/frykit/blob/main/CHANGELOG.md)
@@ -172,27 +170,36 @@ fplt.set_map_ticks(ax, extents=[-180, 180, -90, 90], dx=60, dy=30)
 fplt.set_map_ticks(ax, xticks=[90, 100, 110], yticks=[20, 30, 40])
 ```
 
-### 添加指北针和比例尺
+用 `dx` 和 `dy` 参数指定刻度间隔，或者通过数组直接指定刻度位置。
+
+`mx` 和 `my` 参数指定小刻度的数量。
+
+### 添加指北针
 
 ```Python
-fplt.add_compass(ax1, 0.95, 0.8, size=15, style='star')
-map_scale = fplt.add_map_scale(ax1, 0.36, 0.8, length=1000)
-map_scale.set_xticks([0, 500, 1000])
+fplt.add_compass(ax, 0.95, 0.8, size=15)
 ```
 
-指北针会自动指向所在位置处的北向，也可以通过 `angle` 参数手动指定角度。
+`ax` 是 `GeoAxes` 时指北针会自动指向所在位置处的北向，也可以通过 `angle` 参数手动指定角度。
 
-比例尺的长度通过 `Axes` 中心处单位长度和实际距离的比值计算得到。比例尺本身由一个压扁了的 `Axes` 模拟，所以可通过 `set_xticks` 等方法修改样式。
-
-### 定位南海小地图
+### 添加比例尺
 
 ```Python
-sub_ax = fig.add_subplot(projection=map_crs)
-sub_ax.set_extent([105, 120, 2, 25], crs=data_crs)
-fplt.move_axes_to_corner(sub_ax, ax)
+scale_bar = fplt.add_scale_bar(ax1, 0.36, 0.8, length=1000)
+scale_bar.set_xticks([0, 500, 1000])
 ```
 
-需要先确定主图和子图的显示范围，再利用 `move_axes_to_corner` 函数将子图缩小并定位到主图的角落。
+比例尺的长度通过取样 `GeoAxes` 中心处单位长度对应的地理距离得到。比例尺对象类似 `Axes`，可以用 `set_xticks` 等方法进一步修改样式。
+
+### 添加小地图
+
+```Python
+mini_ax = fplt.add_mini_axes(ax)
+mini_ax.set_extent([105, 120, 2, 25], crs=data_crs)
+fplt.add_cn_province(mini_ax)
+```
+
+小地图默认使用大地图的投影，会自动定位到大地图的角落，无需手动反复调节。
 
 ### 添加风矢量图例
 
@@ -200,7 +207,7 @@ fplt.move_axes_to_corner(sub_ax, ax)
 fplt.add_quiver_legend(Q, U=10, width=0.15, height=0.12)
 ```
 
-在 `Axes` 的角落添加一个白色矩形背景的风矢量图例。可以通过 `rect_kwargs` 字典控制矩形的样式，通过 `key_kwargs` 字典控制 `quiverkey` 的样式。
+在 `Axes` 的角落添加一个白色矩形背景的风矢量图例。通过 `patch_kwargs` 字典控制背景的样式，`key_kwargs` 字典控制风箭头的样式。
 
 ### 添加经纬度方框
 
@@ -213,7 +220,7 @@ fplt.add_box(ax, [lon0, lon1, lat0, lat1], transform=ccrs.PlateCarree())
 ### GMT 风格边框
 
 ```Python
-fplt.gmt_style_frame(ax, width=5)
+fplt.add_frame(ax)
 ```
 
 使用类似 [GMT](https://www.generic-mapping-tools.org/) 黑白相间格子的边框。目前仅支持 `Axes`、等经纬度或墨卡托投影的 `GeoAxes`。

@@ -70,9 +70,9 @@ cbar.ax.tick_params(length=4, labelsize=8)
 
 # 添加指北针和比例尺.
 fplt.add_compass(ax1, 0.92, 0.85, size=15, style='star')
-map_scale = fplt.add_map_scale(ax1, 0.05, 0.1, length=1000)
-map_scale.set_xticks([0, 500, 1000])
-map_scale.xaxis.get_label().set_fontsize('small')
+scale_bar = fplt.add_scale_bar(ax1, 0.05, 0.1, length=1000)
+scale_bar.set_xticks([0, 500, 1000])
+scale_bar.xaxis.get_label().set_fontsize('small')
 
 # 设置标题.
 ax1.set_title(
@@ -83,9 +83,8 @@ ax1.set_title(
 )
 
 # 准备小地图.
-ax2 = fig.add_subplot(projection=map_crs)
+ax2 = fplt.add_mini_axes(ax1)
 ax2.set_extent(extents2, crs=data_crs)
-fplt.move_axes_to_corner(ax2, ax1)
 ax2.gridlines(xlocs=xticks, ylocs=yticks, lw=0.5, ls='--', color='gray')
 
 # 添加要素.
@@ -108,9 +107,9 @@ cf = ax2.contourf(
 fplt.clip_by_cn_border(cf)
 
 # 添加比例尺.
-map_scale = fplt.add_map_scale(ax2, 0.4, 0.15, length=500)
-map_scale.set_xticks([0, 500])
-map_scale.xaxis.get_label().set_fontsize('small')
+scale_bar = fplt.add_scale_bar(ax2, 0.4, 0.15, length=500)
+scale_bar.set_xticks([0, 500])
+scale_bar.xaxis.get_label().set_fontsize('small')
 
 # 保存图片.
 fig.savefig('../image/contourf.png', dpi=300, bbox_inches='tight')

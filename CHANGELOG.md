@@ -1,3 +1,16 @@
+## `0.5.0`
+
+- 新增 `_artist` 模块，将风矢量图例、指北针、比例尺和 GMT 边框改用 `Artist` 实现，保证它们能自动更新状态。
+- `add_map_scale` 函数更名为 `add_scale_bar`。
+- `gmt_style_frame` 函数更名为 `add_frame`，内部不再修改 `ax` 的刻度样式。
+- 移除 `move_axes_to_corner` 函数，新增功能更强的 `add_mini_axes` 函数。
+- 移除 `get_cn_shp` 函数。
+- 修改 `get_cn_xxx` 系列函数的参数名。
+- 修改 `get_cn_xxx` 系列函数查询的方式，查询一组地名时只要有一个地名出错就会报错。
+- 改进 `calc` 模块里角度转换的函数输出的数值范围。
+- `deprecator` 装饰器新增 `raise_error` 参数。
+- 所有代码用 isort 做了格式化。
+
 ## `0.4.5`
 
 - 新增 `add_texts` 函数。

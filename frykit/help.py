@@ -40,7 +40,13 @@ def split_list(lst: Sequence, n: int) -> Iterator[Sequence]:
         start = stop
 
 
-def deprecator(new_func: Optional[Callable]) -> Callable:
+class DeprecationError(Exception):
+    pass
+
+
+def deprecator(
+    new_func: Optional[Callable], raise_error: bool = False
+) -> Callable:
     '''提示弃用的装饰器.'''
 
     def decorator(old_func: Callable) -> Callable:
@@ -50,6 +56,8 @@ def deprecator(new_func: Optional[Callable]) -> Callable:
 
         @wraps(old_func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
+            if raise_error:
+                raise DeprecationError(info)
             warnings.warn(info, DeprecationWarning, stacklevel=2)
             result = old_func(*args, **kwargs)
             return result

@@ -3,17 +3,18 @@ from collections.abc import Sequence
 from typing import Any, Literal, Optional, Union
 from weakref import WeakKeyDictionary, WeakValueDictionary
 
-import cartopy.crs as ccrs
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import shapely.geometry as sgeom
+from cartopy.crs import CRS, AzimuthalEquidistant, Mercator, PlateCarree
 from cartopy.mpl.feature_artist import _GeomKey
 from cartopy.mpl.geoaxes import GeoAxes
 from cartopy.mpl.ticker import LatitudeFormatter, LongitudeFormatter
 from matplotlib.artist import Artist
 from matplotlib.axes import Axes
+from matplotlib.backend_bases import RendererBase
 from matplotlib.cbook import normalize_kwargs
 from matplotlib.cm import ScalarMappable
 from matplotlib.collections import PathCollection
@@ -25,13 +26,14 @@ from matplotlib.path import Path as Path
 from matplotlib.quiver import Quiver, QuiverKey
 from matplotlib.text import Text
 from matplotlib.ticker import Formatter
-from matplotlib.transforms import Affine2D, Bbox, ScaledTranslation
-from pyproj import Geod
+from matplotlib.transforms import Bbox
+from numpy.lib.npyio import NpzFile
 from shapely.ops import unary_union
 
 import frykit.shp as fshp
 from frykit import DATA_DIRPATH
-from frykit._artist import QuiverLegend
+from frykit._artist import *
+from frykit.help import deprecator
 
 # 当polygon的引用计数为零时, 弱引用会自动清理缓存.
 # cartopy是直接缓存Path, 但测试后发现差距不大.
@@ -55,7 +57,7 @@ def use_fast_transform(b: bool) -> None:
 
 
 def _cached_transform_polygons(
-    polygons: Sequence[fshp.PolygonType], crs_from: ccrs.CRS, crs_to: ccrs.CRS
+    polygons: Sequence[fshp.PolygonType], crs_from: CRS, crs_to: CRS
 ) -> list[fshp.PolygonType]:
     '''对一组多边形做坐标变换并缓存结果.'''
     if _USE_FAST_TRANSFORM:
@@ -78,7 +80,7 @@ def _cached_transform_polygons(
 
 
 def _cached_transform_polygon(
-    polygon: fshp.PolygonType, crs_from: ccrs.CRS, crs_to: ccrs.CRS
+    polygon: fshp.PolygonType, crs_from: CRS, crs_to: CRS
 ) -> fshp.PolygonType:
     '''对一个多边形做坐标变换并缓存结果.'''
     return _cached_transform_polygons([polygon], crs_from, crs_to)[0]
@@ -87,7 +89,7 @@ def _cached_transform_polygon(
 def add_polygons(
     ax: Axes,
     polygons: Sequence[fshp.PolygonType],
-    crs: Optional[ccrs.CRS] = None,
+    crs: Optional[CRS] = None,
     **kwargs: Any,
 ) -> PathCollection:
     '''
@@ -123,7 +125,7 @@ def add_polygons(
     if not isinstance(ax, Axes):
         raise ValueError('ax不是Axes')
     elif isinstance(ax, GeoAxes):
-        crs = ccrs.PlateCarree() if crs is None else crs
+        crs = PlateCarree() if crs is None else crs
         polygons = _cached_transform_polygons(polygons, crs, ax.projection)
     else:
         if crs is not None:
@@ -142,7 +144,7 @@ def add_polygons(
 def add_polygon(
     ax: Axes,
     polygon: fshp.PolygonType,
-    crs: Optional[ccrs.CRS] = None,
+    crs: Optional[CRS] = None,
     **kwargs: Any,
 ) -> PathCollection:
     '''
@@ -190,7 +192,7 @@ ArtistType = Union[Artist, Sequence[Artist]]
 def clip_by_polygon(
     artist: ArtistType,
     polygon: fshp.PolygonType,
-    crs: Optional[ccrs.CRS] = None,
+    crs: Optional[CRS] = None,
     strict: bool = False,
 ) -> None:
     '''
@@ -231,7 +233,7 @@ def clip_by_polygon(
     if not isinstance(ax, Axes):
         raise ValueError('ax不是Axes')
     if isinstance(ax, GeoAxes):
-        crs = ccrs.PlateCarree() if crs is None else crs
+        crs = PlateCarree() if crs is None else crs
         polygon = _cached_transform_polygon(polygon, crs, ax.projection)
         # TODO: 通过装饰Artist.draw方法实现.
         if strict:  # 在data坐标系求polygon和ax.patch的交集.
@@ -260,7 +262,7 @@ def clip_by_polygon(
 def clip_by_polygons(
     artist: ArtistType,
     polygons: Sequence[fshp.PolygonType],
-    crs: Optional[ccrs.CRS] = None,
+    crs: Optional[CRS] = None,
     strict: bool = False,
 ) -> None:
     '''
@@ -387,16 +389,16 @@ def _init_pc_kwargs(kwargs: dict) -> dict:
 
 # 竖版中国标准地图的投影.
 # http://gi.m.mnr.gov.cn/202103/t20210312_2617069.html
-CN_AZIMUTHAL_EQUIDISTANT = ccrs.AzimuthalEquidistant(
+CN_AZIMUTHAL_EQUIDISTANT = AzimuthalEquidistant(
     central_longitude=105, central_latitude=35
 )
 # 网络墨卡托投影.
-WEB_MERCATOR = ccrs.Mercator.GOOGLE
+WEB_MERCATOR = Mercator.GOOGLE
 
 
 def add_cn_border(ax: Axes, **kwargs: Any) -> PathCollection:
     '''
-    将中国国界添加到Axes上.
+    在Axes上添加中国国界.
 
     Parameters
     ----------
@@ -422,7 +424,7 @@ def add_cn_border(ax: Axes, **kwargs: Any) -> PathCollection:
 
 def add_nine_line(ax: Axes, **kwargs: Any) -> PathCollection:
     '''
-    将九段线添加到Axes上.
+    在Axes上添加九段线.
 
     Parameters
     ----------
@@ -450,7 +452,7 @@ def add_cn_province(
     ax: Axes, province: Optional[fshp.GetCNKeyword] = None, **kwargs: Any
 ) -> PathCollection:
     '''
-    将中国省界添加到Axes上.
+    在Axes上添加中国省界.
 
     Parameters
     ----------
@@ -484,7 +486,7 @@ def add_cn_city(
     **kwargs: Any,
 ) -> PathCollection:
     '''
-    将中国市界添加到Axes上.
+    在Axes上添加中国市界.
 
     Parameters
     ----------
@@ -518,7 +520,9 @@ def add_cn_city(
 
 def add_countries(ax: Axes, **kwargs: Any) -> PathCollection:
     '''
-    将所有国家的国界添加到Axes上.
+    在Axes上添加所有国家的国界.
+
+    注意全球数据可能因为地图边界产生错误的结果.
 
     Parameters
     ----------
@@ -544,10 +548,9 @@ def add_countries(ax: Axes, **kwargs: Any) -> PathCollection:
 
 def add_land(ax: Axes, **kwargs: Any) -> PathCollection:
     '''
-    将陆地添加到Axes上.
+    在Axes上添加陆地.
 
-    注意默认zorder为-1
-    全球数据可能因为地图边界产生错误的结果.
+    注意全球数据可能因为地图边界产生错误的结果.
 
     Parameters
     ----------
@@ -573,10 +576,9 @@ def add_land(ax: Axes, **kwargs: Any) -> PathCollection:
 
 def add_ocean(ax: Axes, **kwargs: Any) -> PathCollection:
     '''
-    将海洋添加到Axes上.
+    在Axes上添加海洋.
 
-    注意默认zorder为-1
-    全球数据可能因为地图边界产生错误的结果.
+    注意全球数据可能因为地图边界产生错误的结果.
 
     Parameters
     ----------
@@ -684,7 +686,7 @@ def clip_by_land(artist: ArtistType, strict: bool = False) -> None:
     '''
     用陆地边界裁剪Artist.
 
-    全球数据可能因为地图边界产生错误的结果.
+    注意全球数据可能因为地图边界产生错误的结果.
 
     Parameters
     ----------
@@ -707,7 +709,7 @@ def clip_by_ocean(artist: ArtistType, strict: bool = False) -> None:
     '''
     用海洋边界裁剪Artist.
 
-    全球数据可能因为地图边界产生错误的结果.
+    注意全球数据可能因为地图边界产生错误的结果.
 
     Parameters
     ----------
@@ -761,7 +763,7 @@ def add_texts(
 
 
 def _add_cn_texts(ax: Axes, table: pd.DataFrame, **kwargs: Any) -> list[Text]:
-    '''用省或市的table在Axes上添加一组文本.'''
+    '''在Axes上用省或市的table添加文本.'''
     kwargs = normalize_kwargs(kwargs, Text)
     kwargs.setdefault('fontsize', 'x-small')
     kwargs.setdefault('horizontalalignment', 'center')
@@ -772,12 +774,10 @@ def _add_cn_texts(ax: Axes, table: pd.DataFrame, **kwargs: Any) -> list[Text]:
     if kwargs.get('fontname') is None and kwargs.get('fontfamily') is None:
         kwargs.setdefault('fontproperties', filepath)
 
-    is_geoaxes = isinstance(ax, GeoAxes)
     kwargs.setdefault('clip_on', True)
-    kwargs.setdefault('clip_box', ax.bbox if is_geoaxes else None)
-    kwargs.setdefault(
-        'transform', ccrs.PlateCarree() if is_geoaxes else ax.transData
-    )
+    if isinstance(ax, GeoAxes):
+        kwargs.setdefault('clip_box', ax.bbox)
+        kwargs.setdefault('transform', PlateCarree())
 
     return add_texts(
         ax=ax,
@@ -904,7 +904,7 @@ def _set_simple_geoaxes_ticks(
     yformatter: Formatter,
 ) -> None:
     '''设置简单投影的GeoAxes的范围和刻度.'''
-    crs = ccrs.PlateCarree()
+    crs = PlateCarree()
     ax.set_xticks(major_xticks, minor=False, crs=crs)
     ax.set_yticks(major_yticks, minor=False, crs=crs)
     ax.set_xticks(minor_xticks, minor=True, crs=crs)
@@ -930,7 +930,7 @@ def _set_complex_geoaxes_ticks(
 ) -> None:
     '''设置复杂投影的GeoAxes的范围和刻度.'''
     # 将地图边框设置为矩形.
-    crs = ccrs.PlateCarree()
+    crs = PlateCarree()
     if extents is None:
         proj_type = str(type(ax.projection)).split("'")[1].split('.')[-1]
         raise ValueError(f'在{proj_type}投影里extents为None会产生错误的刻度')
@@ -1138,7 +1138,7 @@ def set_map_ticks(
     if not isinstance(ax, Axes):
         raise ValueError('ax不是Axes')
     elif isinstance(ax, GeoAxes):
-        if isinstance(ax.projection, (ccrs.PlateCarree, ccrs.Mercator)):
+        if isinstance(ax.projection, (PlateCarree, Mercator)):
             setter = _set_simple_geoaxes_ticks
         else:
             setter = _set_complex_geoaxes_ticks
@@ -1164,16 +1164,15 @@ def add_quiver_legend(
     width: float = 0.15,
     height: float = 0.15,
     loc: Literal[
-        'bottom left', 'bottom right', 'top left', 'top right'
+        'bottom left', 'bottom right', 'upper left', 'upper right'
     ] = 'bottom right',
-    quiver_key_kwargs: Optional[dict] = None,
+    qk_kwargs: Optional[dict] = None,
     patch_kwargs: Optional[dict] = None,
 ) -> tuple[Rectangle, QuiverKey]:
     '''
-    为Quiver添加图例.
+    在Axes上添加Quiver的图例(带矩形背景的QuiverKey).
 
-    图例由背景方框patch和风箭头key组成.
-    key下方有形如'{U} {units}'的标签.
+    箭头下方有形如'{U} {units}'的标签.
 
     Parameters
     ----------
@@ -1192,16 +1191,16 @@ def add_quiver_legend(
     height : float, optional
         图例高度. 基于Axes坐标, 默认为0.15
 
-    loc : {'bottom left', 'bottom right', 'top left', 'top right'}, optional
+    loc : {'bottom left', 'bottom right', 'upper left', 'upper right'}, optional
         图例位置. 默认为'bottom right'.
 
-    quiver_key_kwargs : dict, optional
-        QuiverKey类的关键字参数.
+    qk_kwargs : dict, optional
+        QuiverKey类的关键字参数. 默认为None.
         例如labelsep, labelcolor, fontproperties等.
         https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.quiverkey.html
 
     patch_kwargs : dict, optional
-        表示背景方框的Retangle类的关键字参数.
+        表示背景方框的Rectangle类的关键字参数. 默认为None.
         例如linewidth, edgecolor, facecolor等.
         https://matplotlib.org/stable/api/_as_gen/matplotlib.patches.Rectangle.html
 
@@ -1211,7 +1210,7 @@ def add_quiver_legend(
         图例对象.
     '''
     quiver_legend = QuiverLegend(
-        Q, U, units, width, height, loc, quiver_key_kwargs, patch_kwargs
+        Q, U, units, width, height, loc, qk_kwargs, patch_kwargs
     )
     Q.axes.add_artist(quiver_legend)
 
@@ -1225,13 +1224,11 @@ def add_compass(
     angle: Optional[float] = None,
     size: float = 20,
     style: Literal['arrow', 'star', 'circle'] = 'arrow',
-    path_kwargs: Optional[dict] = None,
+    pc_kwargs: Optional[dict] = None,
     text_kwargs: Optional[dict] = None,
 ) -> tuple[PathCollection, Text]:
     '''
-    向Axes添加指北针.
-
-    调用函数前需要先固定GeoAxes的显示范围, 否则可能出现错误的结果.
+    在Axes上添加指北针.
 
     Parameters
     ----------
@@ -1239,121 +1236,39 @@ def add_compass(
         目标Axes.
 
     x, y : float
-        指北针的横纵坐标. 基于axes坐标系.
+        指北针的横纵坐标. 基于Axes坐标系.
 
     angle : float, optional
-        指北针的方向, 从x轴逆时针方向算起, 单位为度. 默认为None.
-        当ax是GeoAxes时默认自动计算角度, 否则默认表示90度.
+        指北针的方位角. 单位为度.
+        默认为None, 表示GeoAxes会自动计算角度, 而Axes默认正北.
 
     size : float, optional
-        指北针的大小, 单位为点(point). 默认为20.
+        指北针大小. 单位为点, 默认为20.
 
-    style : {'arrow', 'star', 'circle'}, optional
-        指北针的造型. 默认为'arrow'.
+    style : {'arrow', 'circle', 'star'}, optional
+        指北针造型. 默认为'arrow'.
 
-    path_kwargs : dict, optional
-        表示指北针的PathCollection类的关键字参数.
+    pc_kwargs : dict, optional
+        表示指北针的PathCollection类的关键字参数. 默认为None.
         例如linewidth, edgecolor, facecolor等.
+        https://matplotlib.org/stable/api/collections_api.html
 
     text_kwargs : dict, optional
-        绘制指北针N字时Axes.Text方法的关键字参数.
-        默认为None, 表示使用默认参数.
+        表示指北针N字的Text类的关键字参数. 默认为None.
+        https://matplotlib.org/stable/api/text_api.html
 
     Returns
     -------
-    pc : PathCollection
-        表示指北针的Collection对象.
-
-    t : Text
-        指北针N字对象.
+    compass : Compass
+        指北针对象.
     '''
-    # 设置箭头参数.
-    path_kwargs = normalize_kwargs(path_kwargs, PathCollection)
-    path_kwargs.setdefault('linewidth', 1)
-    path_kwargs.setdefault('edgecolor', 'k')
-    if style == 'circle':
-        path_kwargs.setdefault('facecolor', ['none', 'k', 'w'])
-    else:
-        path_kwargs.setdefault('facecolor', ['k', 'w'])
-    path_kwargs.setdefault('zorder', 3)
-    path_kwargs.setdefault('clip_on', False)
+    compass = Compass(x, y, angle, size, style, pc_kwargs, text_kwargs)
+    ax.add_artist(compass)
 
-    # 设置文字参数.
-    text_kwargs = normalize_kwargs(text_kwargs, Text)
-    text_kwargs.setdefault('fontsize', size / 1.5)
-
-    # 计算(lon, lat)到(lon, lat + 1)的角度.
-    # 当(x, y)超出Axes范围时会计算出无意义的角度.
-    if angle is None:
-        if isinstance(ax, GeoAxes):
-            crs = ccrs.PlateCarree()
-            axes_to_data = ax.transAxes - ax.transData
-            x0, y0 = axes_to_data.transform((x, y))
-            lon0, lat0 = crs.transform_point(x0, y0, ax.projection)
-            lon1, lat1 = lon0, min(lat0 + 1, 90)
-            x1, y1 = ax.projection.transform_point(lon1, lat1, crs)
-            angle = math.degrees(math.atan2(y1 - y0, x1 - x0))
-        else:
-            angle = 90
-
-    # 指北针的大小基于物理坐标系, 旋转基于data坐标系, 平移基于axes坐标系.
-    rotation = Affine2D().rotate_deg(angle)
-    translation = ScaledTranslation(x, y, ax.transAxes)
-    trans = ax.figure.dpi_scale_trans + rotation + translation
-
-    # 用Path画出指北针箭头.
-    head = size / 72
-    if style == 'arrow':
-        width = axis = head * 2 / 3
-        verts1 = [(0, 0), (axis, 0), (axis - head, width / 2), (0, 0)]
-        verts2 = [(0, 0), (axis - head, -width / 2), (axis, 0), (0, 0)]
-        paths = [Path(verts1), Path(verts2)]
-    elif style == 'star':
-        width = head / 3
-        axis = head + width / 2
-        verts1 = [(0, 0), (axis, 0), (axis - head, width / 2), (0, 0)]
-        verts2 = [(0, 0), (axis - head, -width / 2), (axis, 0), (0, 0)]
-        path1 = Path(verts1)
-        path2 = Path(verts2)
-        paths = []
-        for deg in range(0, 360, 90):
-            rotation = Affine2D().rotate_deg(deg)
-            paths.append(path1.transformed(rotation))
-            paths.append(path2.transformed(rotation))
-    elif style == 'circle':
-        width = axis = head * 2 / 3
-        radius = head * 2 / 5
-        theta = np.linspace(0, 2 * np.pi, 100)
-        rx = radius * np.cos(theta) + head / 9
-        ry = radius * np.sin(theta)
-        verts1 = np.column_stack((rx, ry))
-        verts2 = [(0, 0), (axis, 0), (axis - head, width / 2), (0, 0)]
-        verts3 = [(0, 0), (axis - head, -width / 2), (axis, 0), (0, 0)]
-        paths = [Path(verts1), Path(verts2), Path(verts3)]
-    else:
-        raise ValueError('style参数错误')
-
-    # 添加指北针.
-    pc = PathCollection(paths, transform=trans, **path_kwargs)
-    ax.add_collection(pc)
-
-    # 添加N字.
-    pad = head / 3
-    t = ax.text(
-        x=axis + pad,
-        y=0,
-        s='N',
-        ha='center',
-        va='center',
-        rotation=angle - 90,
-        transform=trans,
-        **text_kwargs,
-    )
-
-    return pc, t
+    return compass
 
 
-def add_map_scale(
+def add_scale_bar(
     ax: Axes,
     x: float,
     y: float,
@@ -1361,11 +1276,10 @@ def add_map_scale(
     units: Literal['m', 'km'] = 'km',
 ) -> Axes:
     '''
-    向Axes添加地图比例尺.
+    在Axes上添加地图比例尺.
 
-    当ax是普通Axes时, 认为其投影为PlateCarree(), 然后计算比例尺长度.
-    当ax是GeoAxes时, 根据ax.projection计算比例尺长度.
-    调用函数前需要先固定GeoAxes的显示范围, 否则可能出现错误的结果.
+    会根据Axes的投影计算比例尺大小.
+    假设Axes的投影是PlateCarree.
 
     Parameters
     ----------
@@ -1373,221 +1287,48 @@ def add_map_scale(
         目标Axes.
 
     x, y : float
-        比例尺左端的横纵坐标. 基于axes坐标系.
+        比例尺左端的横纵坐标. 基于Axes坐标系.
 
     length : float, optional
-        比例尺的长度. 默认为1000.
+        比例尺长度. 默认为1000.
 
     units : {'m', 'km'}, optional
         比例尺长度的单位. 默认为'km'.
 
     Returns
     -------
-    map_scale : Axes
-        表示比例尺的Axes对象. 刻度可以直接通过scale.set_xticks进行修改.
+    scale_bar : ScaleBar
+        比例尺对象. 刻度可以通过set_xticks方法修改.
     '''
-    if units == 'km':
-        unit = 1000
-    elif units == 'm':
-        unit = 1
-    else:
-        raise ValueError('units参数错误')
-
-    if isinstance(ax, GeoAxes):
-        # 取地图中心一小段水平线计算单位投影坐标的长度.
-        crs = ccrs.PlateCarree()
-        xmin, xmax = ax.get_xlim()
-        ymin, ymax = ax.get_ylim()
-        xmid = (xmin + xmax) / 2
-        ymid = (ymin + ymax) / 2
-        dx = (xmax - xmin) / 10
-        x0 = xmid - dx / 2
-        x1 = xmid + dx / 2
-        lon0, lat0 = crs.transform_point(x0, ymid, ax.projection)
-        lon1, lat1 = crs.transform_point(x1, ymid, ax.projection)
-        geod = Geod(ellps='WGS84')
-        dr = geod.inv(lon0, lat0, lon1, lat1)[2] / unit
-        dxdr = dx / dr
-    else:
-        # 取地图中心的纬度计算单位经度的长度.
-        Re = 6371e3
-        L = 2 * math.pi * Re / 360
-        lat0, lat1 = ax.get_ylim()
-        lat = (lat0 + lat1) / 2
-        drdx = L * math.cos(math.radians(lat))
-        dxdr = unit / drdx
-
-    # axes坐标转为data坐标.
-    axes_to_data = ax.transAxes - ax.transData
-    x, y = axes_to_data.transform((x, y))
-    width = length * dxdr
-
-    # 避免全局的rc设置影响刻度的样式.
-    bounds = [x, y, width, 1e-4 * width]
-    with plt.style.context('default'):
-        map_scale = ax.inset_axes(bounds, transform=ax.transData)
-    map_scale._map_scale = None  # 标识符.
-    map_scale.tick_params(
-        which='both',
-        left=False,
-        labelleft=False,
-        bottom=False,
-        labelbottom=False,
-        top=True,
-        labeltop=True,
-        labelsize='small',
-    )
-    map_scale.set_xlabel(units, fontsize='medium')
-    map_scale.set_xlim(0, length)
-
-    return map_scale
+    return ScaleBar(ax, x, y, length, units)
 
 
-def _path_from_extents(x0, x1, y0, y1, ccw=True) -> Path:
-    '''根据方框范围构造Path对象. ccw表示逆时针.'''
-    verts = [(x0, y0), (x1, y0), (x1, y1), (x0, y1), (x0, y0)]
-    if not ccw:
-        verts.reverse()
-    path = Path(verts)
-
-    return path
-
-
-# TODO: 复杂投影.
-def gmt_style_frame(ax: Axes, width: float = 5, **kwargs: Any) -> None:
+def add_frame(ax: Axes, width: float = 5, **kwargs: Any) -> Frame:
     '''
-    为Axes设置GMT风格的边框.
-
-    调用函数前需要先固定Axes的显示范围和刻度, 否则可能出现错误的结果.
+    在Axes上添加GMT风格的边框.
 
     Parameters
     ----------
     ax : Axes
-        目标Axes. 当ax是add_map_scale的返回值时只设置上边框.
+        目标Axes. 目前仅支持PlateCarree和Mercator投影的GeoAxes.
 
     width : float, optional
-        边框的宽度. 单位为点(point), 默认为5.
+        边框的宽度. 单位为点, 默认为5.
 
-    **kwargs
-        PathCollection类的关键字参数.
+    **kwargs:
+        表示边框的PathCollection类的关键字参数.
         例如linewidth, edgecolor, facecolor等.
         https://matplotlib.org/stable/api/collections_api.html
+
+    Returns
+    -------
+    frame : Frame
+        边框对象.
     '''
-    is_geoaxes = isinstance(ax, GeoAxes)
-    if is_geoaxes and not isinstance(
-        ax.projection, (ccrs.PlateCarree, ccrs.Mercator)
-    ):
-        raise ValueError('只支持PlateCarree和Mercator投影')
+    frame = Frame(width, **kwargs)
+    ax.add_artist(frame)
 
-    # 设置条纹参数.
-    kwargs = normalize_kwargs(kwargs, PathCollection)
-    kwargs.setdefault('linewidth', 1)
-    kwargs.setdefault('edgecolor', 'k')
-    kwargs.setdefault('facecolor', ['k', 'w'])
-    kwargs.setdefault('zorder', 3)
-    kwargs.setdefault('clip_on', False)
-
-    # width单位转为英寸.
-    if not hasattr(ax, '_map_scale'):
-        ax.tick_params(
-            which='both', left=True, right=True, top=True, bottom=True
-        )
-    ax.tick_params(which='major', length=width + 3.5)
-    ax.tick_params(which='minor', length=0)
-    width = width / 72
-
-    # 确定物理坐标系和axes坐标系在xy方向上的缩放值.
-    if is_geoaxes:
-        ax.apply_aspect()  # 确定GeoAxes的transAxes.
-    inches_to_axes = ax.figure.dpi_scale_trans - ax.transAxes
-    matrix = inches_to_axes.get_matrix()
-    dx = width * matrix[0, 0]
-    dy = width * matrix[1, 1]
-
-    # 条纹的transform: transData + transAxes
-    xtrans = ax.get_xaxis_transform()
-    ytrans = ax.get_yaxis_transform()
-
-    # 收集[xmin, xmax]范围内所有刻度, 去重并排序.
-    xticks = np.concatenate(
-        (ax.xaxis.get_majorticklocs(), ax.xaxis.get_minorticklocs())
-    )
-    yticks = np.concatenate(
-        (ax.yaxis.get_majorticklocs(), ax.yaxis.get_minorticklocs())
-    )
-    xmin, xmax = sorted(ax.get_xlim())
-    ymin, ymax = sorted(ax.get_ylim())
-    # xmin到xticks[0]之间也要填充条纹.
-    xticks = np.append(xticks, (xmin, xmax))
-    yticks = np.append(yticks, (ymin, ymax))
-    xticks = xticks[(xticks >= xmin) & (xticks <= xmax)]
-    yticks = yticks[(yticks >= ymin) & (yticks <= ymax)]
-    # 通过round抵消GeoAxes投影变换的误差.
-    if is_geoaxes:
-        decimals = 6
-        xticks = xticks.round(decimals)
-        yticks = yticks.round(decimals)
-    xticks = np.unique(xticks)
-    yticks = np.unique(yticks)
-    nx = len(xticks)
-    ny = len(yticks)
-
-    # 条纹从xmin开始黑白相间排列.
-    top_paths = []
-    for i in range(nx - 1):
-        path = _path_from_extents(xticks[i], xticks[i + 1], 1, 1 + dy)
-        top_paths.append(path)
-    # axis倒转不影响条纹颜色顺序.
-    if ax.xaxis.get_inverted():
-        top_paths.reverse()
-    top_pc = PathCollection(top_paths, transform=xtrans, **kwargs)
-    ax.add_collection(top_pc)
-
-    # 地图比例尺只画上边框.
-    if hasattr(ax, '_map_scale'):
-        return None
-
-    bottom_paths = []
-    for i in range(nx - 1):
-        path = _path_from_extents(xticks[i], xticks[i + 1], -dy, 0)
-        bottom_paths.append(path)
-    if ax.xaxis.get_inverted():
-        bottom_paths.reverse()
-    bottom_pc = PathCollection(bottom_paths, transform=xtrans, **kwargs)
-    ax.add_collection(bottom_pc)
-
-    left_paths = []
-    for i in range(ny - 1):
-        path = _path_from_extents(-dx, 0, yticks[i], yticks[i + 1])
-        left_paths.append(path)
-    if ax.yaxis.get_inverted():
-        left_paths.reverse()
-    left_pc = PathCollection(left_paths, transform=ytrans, **kwargs)
-    ax.add_collection(left_pc)
-
-    right_paths = []
-    for i in range(ny - 1):
-        path = _path_from_extents(1, 1 + dx, yticks[i], yticks[i + 1])
-        right_paths.append(path)
-    if ax.yaxis.get_inverted():
-        right_paths.reverse()
-    right_pc = PathCollection(right_paths, transform=ytrans, **kwargs)
-    ax.add_collection(right_pc)
-
-    # 四个角落的方块单独用白色画出.
-    corner_fc = top_pc.get_facecolor()[-1]
-    for kw in ['fc', 'facecolor', 'facecolors']:
-        if kw in kwargs:
-            break
-    kwargs[kw] = corner_fc
-    corner_paths = [
-        _path_from_extents(-dx, 0, -dy, 0),
-        _path_from_extents(1, 1 + dx, -dy, 0),
-        _path_from_extents(-dx, 0, 1, 1 + dy),
-        _path_from_extents(1, 1 + dx, 1, 1 + dy),
-    ]
-    corner_pc = PathCollection(corner_paths, transform=ax.transAxes, **kwargs)
-    ax.add_collection(corner_pc)
+    return frame
 
 
 def add_box(
@@ -1624,82 +1365,94 @@ def add_box(
     kwargs.setdefault('facecolor', 'none')
 
     # 添加Patch.
-    path = _path_from_extents(*extents).interpolated(steps)
+    path = path_from_extents(*extents).interpolated(steps)
     patch = PathPatch(path, **kwargs)
     ax.add_patch(patch)
 
     return patch
 
 
-def load_test_data():
-    '''读取测试用的数据. 包含地表2m气温(K)和水平10m风速.'''
-    filepath = DATA_DIRPATH / 'test.npz'
-    return np.load(str(filepath))
-
-
-# TODO: inset_axes实现.
-def move_axes_to_corner(
+# TODO: ax在new_ax之前绘制?
+def add_mini_axes(
     ax: Axes,
-    ref_ax: Axes,
     shrink: float = 0.4,
     loc: Literal[
-        'bottom left', 'bottom right', 'top left', 'top right'
+        'bottom left', 'bottom right', 'upper left', 'upper right'
     ] = 'bottom right',
-) -> None:
+    projection: Optional[CRS] = None,
+):
     '''
-    讲ax等比例缩小并放置在ref_ax的角落位置.
-
-    调用函数前需要先固定GeoAxes的显示范围, 否则可能出现错误的结果.
+    在Axes的角落添加一个迷你Axes并返回.
 
     Parameters
     ----------
     ax : Axes
         目标Axes.
 
-    ref_ax : Axes
-        作为参考的Axes.
-
     shrink : float, optional
         缩小倍数. 默认为0.4.
 
-    loc : {'bottom left', 'bottom right', 'top left', 'top right'}, optional
+    loc : {'bottom left', 'bottom right', 'upper left', 'upper right'}, optional
         指定放置在哪个角落. 默认为'bottom right'.
-    '''
-    bbox = ax.get_position()
-    ref_bbox = ref_ax.get_position()
-    # 使shrink=1时ax与ref_ax等宽或等高.
-    if bbox.width > bbox.height:
-        ratio = ref_bbox.width / bbox.width * shrink
-    else:
-        ratio = ref_bbox.height / bbox.height * shrink
-    width = bbox.width * ratio
-    height = bbox.height * ratio
 
-    # 可选四个角落位置.
-    if loc == 'bottom left':
-        x0 = ref_bbox.x0
-        x1 = ref_bbox.x0 + width
-        y0 = ref_bbox.y0
-        y1 = ref_bbox.y0 + height
-    elif loc == 'bottom right':
-        x0 = ref_bbox.x1 - width
-        x1 = ref_bbox.x1
-        y0 = ref_bbox.y0
-        y1 = ref_bbox.y0 + height
-    elif loc == 'top left':
-        x0 = ref_bbox.x0
-        x1 = ref_bbox.x0 + width
-        y0 = ref_bbox.y1 - height
-        y1 = ref_bbox.y1
-    elif loc == 'top right':
-        x0 = ref_bbox.x1 - width
-        x1 = ref_bbox.x1
-        y0 = ref_bbox.y1 - height
-        y1 = ref_bbox.y1
-    else:
-        raise ValueError('loc参数错误')
-    new_bbox = Bbox.from_extents(x0, y0, x1, y1)
-    ax.set_position(new_bbox)
+    projection : CRS, optional
+        新Axes的投影. 默认为None, 表示沿用ax的投影.
+
+    Returns
+    -------
+    new_ax : Axes
+        新的迷你Axes.
+    '''
+    if projection is None:
+        if isinstance(ax, GeoAxes):
+            projection = ax.projection
+    new_ax = ax.figure.add_subplot(projection=projection)
+    draw = new_ax.draw
+
+    def new_draw(renderer: RendererBase) -> None:
+        '''在原先的draw前调整new_ax的大小位置.'''
+        bbox = ax.get_position()
+        new_bbox = new_ax.get_position()
+        # shrink=1时new_ax恰好有一边填满ax.
+        if bbox.width / bbox.height < new_bbox.width / new_bbox.height:
+            ratio = bbox.width / new_bbox.width * shrink
+        else:
+            ratio = bbox.height / new_bbox.height * shrink
+        width = new_bbox.width * ratio
+        height = new_bbox.height * ratio
+
+        if loc == 'bottom left':
+            x0 = bbox.x0
+            x1 = bbox.x0 + width
+            y0 = bbox.y0
+            y1 = bbox.y0 + height
+        elif loc == 'bottom right':
+            x0 = bbox.x1 - width
+            x1 = bbox.x1
+            y0 = bbox.y0
+            y1 = bbox.y0 + height
+        elif loc == 'upper left':
+            x0 = bbox.x0
+            x1 = bbox.x0 + width
+            y0 = bbox.y1 - height
+            y1 = bbox.y1
+        elif loc == 'upper right':
+            x0 = bbox.x1 - width
+            x1 = bbox.x1
+            y0 = bbox.y1 - height
+            y1 = bbox.y1
+        else:
+            raise ValueError(
+                "loc只能取{'bottom left', 'bottom right', 'upper left', 'upper right'}"
+            )
+
+        new_bbox = Bbox.from_extents(x0, y0, x1, y1)
+        new_ax.set_position(new_bbox)
+        draw(renderer)
+
+    new_ax.draw = new_draw
+
+    return new_ax
 
 
 # TODO: mpl_toolkits.axes_grid1实现.
@@ -1728,7 +1481,7 @@ def add_side_axes(
 
     Returns
     -------
-    side_ax : Axes
+    new_ax : Axes
         新Axes对象.
     '''
     # 获取一组Axes的位置.
@@ -1757,11 +1510,11 @@ def add_side_axes(
         y0 = bbox.y1 + pad
         y1 = y0 + depth
     else:
-        raise ValueError('loc参数错误')
-    side_bbox = Bbox.from_extents(x0, y0, x1, y1)
-    side_ax = axs[0].figure.add_axes(side_bbox)
+        raise ValueError("loc只能取{'left', 'right', 'bottom', 'top'}")
+    new_bbox = Bbox.from_extents(x0, y0, x1, y1)
+    new_ax = axs[0].figure.add_axes(new_bbox)
 
-    return side_ax
+    return new_ax
 
 
 def get_cross_section_xticks(
@@ -1962,3 +1715,24 @@ def letter_axes(axes: Any, x: float, y: float, **kwargs: Any) -> None:
             transform=ax.transAxes,
             **kwargs,
         )
+
+
+def load_test_data() -> NpzFile:
+    '''读取测试用的数据. 包含地表2m气温(K)和水平10m风速.'''
+    filepath = DATA_DIRPATH / 'test.npz'
+    return np.load(str(filepath))
+
+
+@deprecator(add_scale_bar)
+def add_map_scale(*args, **kwargs):
+    return add_scale_bar(*args, **kwargs)
+
+
+@deprecator(add_frame)
+def gmt_style_frame(*args, **kwargs):
+    return add_frame(*args, **kwargs)
+
+
+@deprecator(add_mini_axes, raise_error=True)
+def move_axes_to_corner():
+    pass

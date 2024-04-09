@@ -21,9 +21,9 @@ from matplotlib.collections import PathCollection
 from matplotlib.colorbar import Colorbar
 from matplotlib.colors import BoundaryNorm, Colormap, ListedColormap, Normalize
 from matplotlib.contour import ContourSet
-from matplotlib.patches import PathPatch, Rectangle
+from matplotlib.patches import PathPatch
 from matplotlib.path import Path as Path
-from matplotlib.quiver import Quiver, QuiverKey
+from matplotlib.quiver import Quiver
 from matplotlib.text import Text
 from matplotlib.ticker import Formatter
 from matplotlib.transforms import Bbox
@@ -1164,11 +1164,11 @@ def add_quiver_legend(
     width: float = 0.15,
     height: float = 0.15,
     loc: Literal[
-        'bottom left', 'bottom right', 'upper left', 'upper right'
-    ] = 'bottom right',
+        'lower left', 'lower right', 'upper left', 'upper right'
+    ] = 'lower right',
     qk_kwargs: Optional[dict] = None,
     patch_kwargs: Optional[dict] = None,
-) -> tuple[Rectangle, QuiverKey]:
+) -> QuiverLegend:
     '''
     在Axes上添加Quiver的图例(带矩形背景的QuiverKey).
 
@@ -1191,8 +1191,8 @@ def add_quiver_legend(
     height : float, optional
         图例高度. 基于Axes坐标, 默认为0.15
 
-    loc : {'bottom left', 'bottom right', 'upper left', 'upper right'}, optional
-        图例位置. 默认为'bottom right'.
+    loc : {'lower left', 'lower right', 'upper left', 'upper right'}, optional
+        图例位置. 默认为'lower right'.
 
     qk_kwargs : dict, optional
         QuiverKey类的关键字参数. 默认为None.
@@ -1226,7 +1226,7 @@ def add_compass(
     style: Literal['arrow', 'star', 'circle'] = 'arrow',
     pc_kwargs: Optional[dict] = None,
     text_kwargs: Optional[dict] = None,
-) -> tuple[PathCollection, Text]:
+) -> Compass:
     '''
     在Axes上添加指北针.
 
@@ -1274,7 +1274,7 @@ def add_scale_bar(
     y: float,
     length: float = 1000,
     units: Literal['m', 'km'] = 'km',
-) -> Axes:
+) -> ScaleBar:
     '''
     在Axes上添加地图比例尺.
 
@@ -1377,10 +1377,10 @@ def add_mini_axes(
     ax: Axes,
     shrink: float = 0.4,
     loc: Literal[
-        'bottom left', 'bottom right', 'upper left', 'upper right'
-    ] = 'bottom right',
+        'lower left', 'lower right', 'upper left', 'upper right'
+    ] = 'lower right',
     projection: Optional[CRS] = None,
-):
+) -> Axes:
     '''
     在Axes的角落添加一个迷你Axes并返回.
 
@@ -1392,8 +1392,8 @@ def add_mini_axes(
     shrink : float, optional
         缩小倍数. 默认为0.4.
 
-    loc : {'bottom left', 'bottom right', 'upper left', 'upper right'}, optional
-        指定放置在哪个角落. 默认为'bottom right'.
+    loc : {'lower left', 'lower right', 'upper left', 'upper right'}, optional
+        指定放置在哪个角落. 默认为'lower right'.
 
     projection : CRS, optional
         新Axes的投影. 默认为None, 表示沿用ax的投影.
@@ -1421,12 +1421,12 @@ def add_mini_axes(
         width = new_bbox.width * ratio
         height = new_bbox.height * ratio
 
-        if loc == 'bottom left':
+        if loc == 'lower left':
             x0 = bbox.x0
             x1 = bbox.x0 + width
             y0 = bbox.y0
             y1 = bbox.y0 + height
-        elif loc == 'bottom right':
+        elif loc == 'lower right':
             x0 = bbox.x1 - width
             x1 = bbox.x1
             y0 = bbox.y0
@@ -1443,7 +1443,7 @@ def add_mini_axes(
             y1 = bbox.y1
         else:
             raise ValueError(
-                "loc只能取{'bottom left', 'bottom right', 'upper left', 'upper right'}"
+                "loc只能取{'lower left', 'lower right', 'upper left', 'upper right'}"
             )
 
         new_bbox = Bbox.from_extents(x0, y0, x1, y1)

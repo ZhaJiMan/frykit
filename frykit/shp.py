@@ -13,6 +13,7 @@ from shapely.prepared import prep
 
 from frykit import DATA_DIRPATH
 from frykit._shp import BinaryReader, PolygonType
+from frykit.help import deprecator
 
 '''
 数据源:
@@ -412,3 +413,8 @@ class GeometryTransformer:
             目标坐标系上的几何对象.
         '''
         return self._func(geom)
+
+
+@deprecator(get_cn_border, raise_error=True)
+def get_cn_shp():
+    pass

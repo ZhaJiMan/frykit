@@ -32,8 +32,8 @@ class QuiverLegend(QuiverKey):
         width: float = 0.15,
         height: float = 0.15,
         loc: Literal[
-            'bottom left', 'bottom right', 'upper left', 'upper right'
-        ] = 'bottom right',
+            'lower left', 'lower right', 'upper left', 'upper right'
+        ] = 'lower right',
         qk_kwargs: Optional[dict] = None,
         patch_kwargs: Optional[dict] = None,
     ) -> None:
@@ -42,10 +42,10 @@ class QuiverLegend(QuiverKey):
         self.height = height
         self.loc = loc
 
-        if loc == 'bottom left':
+        if loc == 'lower left':
             X = width / 2
             Y = height / 2
-        elif loc == 'bottom right':
+        elif loc == 'lower right':
             X = 1 - width / 2
             Y = height / 2
         elif loc == 'upper left':
@@ -56,7 +56,7 @@ class QuiverLegend(QuiverKey):
             Y = 1 - height / 2
         else:
             raise ValueError(
-                "loc只能取{'bottom left', 'bottom right', 'upper left', 'upper right'}"
+                "loc只能取{'lower left', 'lower right', 'upper left', 'upper right'}"
             )
 
         qk_kwargs = normalize_kwargs(qk_kwargs)

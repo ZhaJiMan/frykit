@@ -38,6 +38,8 @@ cartopy>=0.20.0
 pandas>=1.2.0
 ```
 
+Python 版本较低时需要手动指定版本为 `frykit==0.2.5`，不过 API 可能跟最新版有很大区别。
+
 ## 更新记录
 
 [CHANGELOG.md](https://github.com/ZhaJiMan/frykit/blob/main/CHANGELOG.md)
@@ -110,6 +112,7 @@ fplt.add_countries(ax)
 
 ```Python
 import shapely.geometry as sgeom
+from cartopy.io.shapereader import Reader
 
 # 绘制一个多边形.
 polygon = sgeom.polygon(...)
@@ -118,6 +121,12 @@ fplt.add_polygon(ax, polygon)
 # 绘制多个多边形并填色.
 pc = fplt.add_polygons(ax, polygons, array=data, cmap=cmap, norm=norm)
 cbar = fig.colorbar(pc, ax=ax)
+
+# 绘制自己的shapefile
+reader = Reader('2023年_CTAmap_1.12版/2023年县级/2023年县级.shp')
+geoms = list(reader.geometries())
+reader.close()
+fplt.add_polygons(ax, geoms, fc='none', ec='k', lw=0.25)
 ```
 
 Cartopy 的 `GeoAxes.add_geometries` 会自动去除不在 `GeoAxes` 显示范围内的 `polygons`，破坏 `polygons` 和 `array` 的一一对应关系，打乱填色的结果。工具箱中的 `add_polygons` 函数不会进行这一操作，能够产生正确的填色结果。
@@ -147,6 +156,8 @@ mask = fshp.polygon_to_mask(border, lon, lat)
 data[~mask] = np.nan
 ax.contourf(lon, lat, data)
 ```
+
+类似于 Salem 的 `roi` 方法。
 
 ### 加速绘制和裁剪
 

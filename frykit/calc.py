@@ -3,8 +3,6 @@ from typing import Any, Literal, Union
 
 import numpy as np
 import pandas as pd
-from scipy.spatial import KDTree
-from scipy.stats import binned_statistic_2d
 
 
 def lon_to_180(lon: Any) -> Any:
@@ -220,6 +218,8 @@ def interp_nearest_dd(
     if values.shape[0] != points.shape[0]:
         raise ValueError('values和points的形状不匹配')
 
+    from scipy.spatial import KDTree
+
     # 利用KDTree搜索最近点.
     tree = KDTree(points)
     dd, ii = tree.query(xi)
@@ -333,6 +333,8 @@ def binned_average_2d(
         '''避免空切片警告的nanmean.'''
         arr = arr[~np.isnan(arr)]
         return np.nan if arr.size == 0 else arr.mean()
+
+    from scipy.stats import binned_statistic_2d
 
     # 参数检查由scipy的函数负责. 注意x和y的顺序.
     avg, ybins, xbins, _ = binned_statistic_2d(

@@ -1,9 +1,3 @@
-## `0.5.1`
-
-- 修正一些函数的类型提示。
-- 将 `loc` 参数的取值 `bottom left` 和 `bottom right` 修改为 `lower left` 和 `lower right`。
-- 添加 license。
-
 ## `0.5.0`
 
 - 新增 `_artist` 模块，将风矢量图例、指北针、比例尺和 GMT 边框改用 `Artist` 实现，保证它们能自动更新状态。
@@ -14,7 +8,10 @@
 - 修改 `get_cn_xxx` 系列函数的参数名，修改它们查询地名的方式，现在只要有一个地名出错就会报错。另外移除了它们的 `as_dict` 参数（因为没见有人用过……）。
 - 改进 `calc` 模块里角度转换的函数输出的数值范围。
 - `deprecator` 装饰器新增 `raise_error` 参数。
+- 将 `loc` 参数的取值 `bottom left` 和 `bottom right` 修改为 `lower left` 和 `lower right`。
+- 修正一些函数的类型提示。
 - 所有代码用 isort 做了格式化。
+- 添加 license。
 
 ## `0.4.5`
 

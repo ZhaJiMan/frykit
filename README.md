@@ -38,7 +38,7 @@ cartopy>=0.20.0
 pandas>=1.2.0
 ```
 
-Python 版本较低时需要手动指定版本为 `frykit==0.2.5`，不过 API 可能跟最新版有很大区别。
+Python 版本较低时需要手动指定版本为 `frykit==0.2.5`，不过 API 跟最新版有很大区别。
 
 ## 更新记录
 
@@ -67,6 +67,8 @@ cities_of_anhui = fshp.get_cn_city(province='安徽省')
 返回结果是 [Shapely](https://shapely.readthedocs.io/en/stable/manual.html) 的多边形对象，可以进行交并等几何运算。
 
 行政区划源数据来自 [高德地图行政区域查询接口](https://lbs.amap.com/api/webservice/guide/api/district)，含国界、省界和市界三套数据，已从 GCJ-02 坐标系处理到了 WGS84 坐标系上。文件都在 `frykit.DATA_DIRPATH` 指向的目录里。制作方法见 [amap-shp](https://github.com/ZhaJiMan/amap-shp)。
+
+暂无县界，可以去使用 [ChinaAdminDivisonSHP](https://github.com/GaryBikini/ChinaAdminDivisonSHP) 或 [CTAmap](https://www.shengshixian.com/) 的数据。
 
 ### 绘制中国国界、省界和市界
 
@@ -112,7 +114,6 @@ fplt.add_countries(ax)
 
 ```Python
 import shapely.geometry as sgeom
-from cartopy.io.shapereader import Reader
 
 # 绘制一个多边形.
 polygon = sgeom.polygon(...)
@@ -123,6 +124,7 @@ pc = fplt.add_polygons(ax, polygons, array=data, cmap=cmap, norm=norm)
 cbar = fig.colorbar(pc, ax=ax)
 
 # 绘制自己的shapefile
+from cartopy.io.shapereader import Reader
 reader = Reader('2023年_CTAmap_1.12版/2023年县级/2023年县级.shp')
 geoms = list(reader.geometries())
 reader.close()

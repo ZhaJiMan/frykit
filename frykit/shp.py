@@ -3,7 +3,7 @@ from collections.abc import Callable, Sequence
 from typing import Any, Optional, Union
 
 import numpy as np
-import pandas as pd
+import pandas as pd  # 加载overhead还挺高.
 import shapely.geometry as sgeom
 from cartopy.crs import CRS
 from matplotlib.path import Path
@@ -415,6 +415,6 @@ class GeometryTransformer:
         return self._func(geom)
 
 
-@deprecator(get_cn_border, raise_error=True)
+@deprecator(get_cn_province, raise_error=True)
 def get_cn_shp():
     pass

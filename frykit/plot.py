@@ -759,25 +759,28 @@ def add_texts(
     '''
     if not len(x) == len(y) == len(s):
         raise ValueError('x, y和s长度必须相同')
-    return [ax.text(xi, yi, si, **kwargs) for xi, yi, si in zip(x, y, s)]
+
+    kwargs = normalize_kwargs(kwargs, Text)
+    kwargs.setdefault('horizontalalignment', 'center')
+    kwargs.setdefault('verticalalignment', 'center')
+    kwargs.setdefault('clip_on', True)
+    texts = [ax.text(xi, yi, si, **kwargs) for xi, yi, si in zip(x, y, s)]
+
+    return texts
 
 
 def _add_cn_texts(ax: Axes, table: pd.DataFrame, **kwargs: Any) -> list[Text]:
     '''在Axes上用省或市的table添加文本.'''
     kwargs = normalize_kwargs(kwargs, Text)
     kwargs.setdefault('fontsize', 'x-small')
-    kwargs.setdefault('horizontalalignment', 'center')
-    kwargs.setdefault('verticalalignment', 'center')
-
-    # 加载精简的思源黑体.
-    filepath = DATA_DIRPATH / 'zh_font.otf'
-    if kwargs.get('fontname') is None and kwargs.get('fontfamily') is None:
-        kwargs.setdefault('fontproperties', filepath)
-
-    kwargs.setdefault('clip_on', True)
     if isinstance(ax, GeoAxes):
         kwargs.setdefault('clip_box', ax.bbox)
         kwargs.setdefault('transform', PlateCarree())
+
+    # 默认使用精简的思源黑体.
+    filepath = DATA_DIRPATH / 'zh_font.otf'
+    if kwargs.get('fontname') is None and kwargs.get('fontfamily') is None:
+        kwargs.setdefault('fontproperties', filepath)
 
     return add_texts(
         ax=ax,
@@ -1064,6 +1067,7 @@ def set_map_ticks(
     extents: Optional[Any] = None,
     xticks: Optional[Any] = None,
     yticks: Optional[Any] = None,
+    *,
     dx: float = 10,
     dy: float = 10,
     mx: int = 0,
@@ -1155,6 +1159,46 @@ def set_map_ticks(
         xformatter,
         yformatter,
     )
+
+
+def quick_cn_map(
+    extents: Optional[Any] = None,
+    use_geoaxes: bool = True,
+    figsize: Optional[tuple[float, float]] = None,
+) -> Axes:
+    '''
+    快速制作带省界和九段线的中国地图.
+
+    Parameters
+    ----------
+    extents : extents : (4,) array_like, optional
+        经纬度范围[lon0, lon1, lat0, lat1]. 默认为None, 表示[70, 140, 0, 60].
+
+    use_geoaxes : bool, optional
+        是否使用GeoAxes. 默认为True.
+
+    figsize : (2,) tuple of int, optional
+        Figure宽高. 默认为None, 表示(6.4, 4.8).
+
+    Returns
+    -------
+    ax : Axes
+        表示地图的Axes
+    '''
+    if extents is None:
+        extents = [70, 140, 10, 60]
+    fig = plt.figure(figsize=figsize)
+    if use_geoaxes:
+        crs = PlateCarree()
+        ax = fig.add_subplot(projection=crs)
+    else:
+        ax = fig.add_subplot()
+        ax.set_aspect(1)
+    set_map_ticks(ax, extents)
+    add_cn_province(ax)
+    add_nine_line(ax)
+
+    return ax
 
 
 def add_quiver_legend(
@@ -1460,7 +1504,7 @@ def add_side_axes(
     ax: Any,
     loc: Literal['left', 'right', 'bottom', 'top'],
     pad: float,
-    depth: float,
+    width: float,
 ) -> Axes:
     '''
     在原有的Axes旁边新添一个等高或等宽的Axes并返回该对象.
@@ -1476,8 +1520,8 @@ def add_side_axes(
     pad : float
         新旧Axes的间距. 基于Figure坐标系.
 
-    depth : float
-        新Axes的宽度或高度. 基于Figure坐标系.
+    width : float
+        新Axes的宽度(高度). 基于Figure坐标系.
 
     Returns
     -------
@@ -1490,25 +1534,25 @@ def add_side_axes(
 
     # 可选四个方向.
     if loc == 'left':
-        x0 = bbox.x0 - pad - depth
-        x1 = x0 + depth
+        x0 = bbox.x0 - pad - width
+        x1 = x0 + width
         y0 = bbox.y0
         y1 = bbox.y1
     elif loc == 'right':
         x0 = bbox.x1 + pad
-        x1 = x0 + depth
+        x1 = x0 + width
         y0 = bbox.y0
         y1 = bbox.y1
     elif loc == 'bottom':
         x0 = bbox.x0
         x1 = bbox.x1
-        y0 = bbox.y0 - pad - depth
-        y1 = y0 + depth
+        y0 = bbox.y0 - pad - width
+        y1 = y0 + width
     elif loc == 'top':
         x0 = bbox.x0
         x1 = bbox.x1
         y0 = bbox.y1 + pad
-        y1 = y0 + depth
+        y1 = y0 + width
     else:
         raise ValueError("loc只能取{'left', 'right', 'bottom', 'top'}")
     new_bbox = Bbox.from_extents(x0, y0, x1, y1)

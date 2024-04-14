@@ -17,11 +17,7 @@ def _read_image(image: ImageInput) -> Image.Image:
 
 
 def make_gif(
-    images: Sequence[ImageInput],
-    filepath: PathType,
-    duration: int = 500,
-    loop: int = 0,
-    optimize: bool = False,
+    images: Sequence[ImageInput], filepath: PathType, **kwargs: Any
 ) -> None:
     '''
     制作GIF图. 结果的mode和尺寸由第一张图决定.
@@ -34,18 +30,16 @@ def make_gif(
     filepath : PathType
         输出GIF图片的路径.
 
-    duration : int or list or tuple, optional
-        每一帧的持续时间, 单位为毫秒. 也可以用列表或元组分别指定每一帧的持续时间.
-        默认为500ms=0.5s.
-
-    loop : int, optional
-        GIF图片循环播放的次数. 默认无限循环.
-
-    optimize : bool, optional
-        尝试压缩GIF图片的调色板.
+    **kwargs
+        用pillow保存GIF时的参数.
+        例如duration, loop, disposal, transparency等.
+        https://pillow.readthedocs.io/en/stable/handbook/image-file-formats.html
     '''
     if not images:
         raise ValueError('至少需要一张图片')
+
+    kwargs.setdefault('duration', 500)
+    kwargs.setdefault('loop', 0)
 
     images = [_read_image(image) for image in images]
     images[0].save(
@@ -53,9 +47,7 @@ def make_gif(
         format='gif',
         save_all=True,
         append_images=images[1:],
-        duration=duration,
-        loop=loop,
-        optimize=optimize,
+        **kwargs
     )
 
 

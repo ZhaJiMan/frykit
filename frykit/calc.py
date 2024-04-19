@@ -2,7 +2,6 @@ from collections.abc import Sequence
 from typing import Any, Literal, Union
 
 import numpy as np
-import pandas as pd
 
 
 def lon_to_180(lon: Any) -> Any:
@@ -23,7 +22,7 @@ def month_to_season(month: Any) -> Any:
 def rt_to_xy(r: Any, t: Any, degrees: bool = False) -> tuple[Any, Any]:
     '''极坐标转直角坐标. 默认使用弧度.'''
     if degrees:
-        t = np.deg2rad(t)
+        t = np.radians(t)
     x = r * np.cos(t)
     y = r * np.sin(t)
 
@@ -35,7 +34,7 @@ def xy_to_rt(x: Any, y: Any, degrees: bool = False) -> tuple[Any, Any]:
     r = np.hypot(x, y)
     t = np.arctan2(y, x)
     if degrees:
-        t = np.rad2deg(t)
+        t = np.degrees(t)
 
     return r, t
 
@@ -65,19 +64,35 @@ def az_to_t(az: Any, degrees: bool = False) -> Any:
     return t
 
 
-def wswd_to_uv(ws: Any, wd: Any) -> tuple[Any, Any]:
+def lon_lat_to_xyz(lon: Any, lat: Any, r=1.0, degrees: bool = False) -> Any:
+    '''经纬度转为球面xyz坐标. 默认使用弧度.'''
+    if degrees:
+        lon = np.radians(lon)
+        lat = np.radians(lat)
+    cos_lat = np.cos(lat)
+    x = r * np.cos(lon) * cos_lat
+    y = r * np.sin(lon) * cos_lat
+    z = r * np.sin(lat)
+
+    return x, y, z
+
+
+def wswd_to_uv(ws: Any, wd: Any, degrees: bool = False) -> tuple[Any, Any]:
     '''风向风速转为uv.'''
-    wd = np.deg2rad(wd)
+    if degrees:
+        wd = np.radians(wd)
     u = -ws * np.sin(wd)
     v = -ws * np.cos(wd)
 
     return u, v
 
 
-def uv_to_wswd(u: Any, v: Any) -> tuple[Any, Any]:
+def uv_to_wswd(u: Any, v: Any, degrees: bool = False) -> tuple[Any, Any]:
     '''uv转为风向风速.'''
     ws = np.hypot(u, v)
-    wd = np.rad2deg(np.arctan2(u, v)) + 180
+    wd = np.arctan2(u, v) + np.pi
+    if degrees:
+        wd = np.degrees(wd)
 
     return ws, wd
 
@@ -89,6 +104,8 @@ def hms_to_degrees(hour: Any, minute: Any, second: Any) -> Any:
 
 def hms_to_degrees2(hms: Union[str, Sequence[str]]) -> Union[float, np.ndarray]:
     '''时分秒转为度数. 要求hms是形如43°08′20″的字符串.'''
+    import pandas as pd
+
     parts = (
         pd.Series(hms)
         .str.split(r'[^\d.]+', expand=True)
@@ -105,20 +122,25 @@ def hms_to_degrees2(hms: Union[str, Sequence[str]]) -> Union[float, np.ndarray]:
     return hms_to_degrees(hour, minute, second)
 
 
+def hav(x: Any) -> Any:
+    '''半正矢函数.'''
+    return np.sin(x / 2) ** 2
+
+
 def haversine(
     lon1: Any, lat1: Any, lon2: Any, lat2: Any, degrees: bool = False
 ) -> Any:
     '''利用haversine公式计算两点间的圆心角.'''
-    lon1, lat1, lon2, lat2 = map(np.deg2rad, [lon1, lat1, lon2, lat2])
+    if degrees:
+        lon1, lat1, lon2, lat2 = map(np.radians, [lon1, lat1, lon2, lat2])
     dlon = lon2 - lon1
     dlat = lat2 - lat1
 
-    hav = lambda x: np.sin(x / 2) ** 2
     a = hav(dlat)
     b = np.cos(lat1) * np.cos(lat2) * hav(dlon)
     dtheta = 2 * np.arcsin(np.sqrt(a + b))
     if degrees:
-        dtheta = np.rad2deg(dtheta)
+        dtheta = np.degrees(dtheta)
 
     return dtheta
 

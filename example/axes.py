@@ -4,7 +4,7 @@ import frykit.plot as fplt
 
 # Axes的比例应该为1:1
 fig, ax = plt.subplots()
-ax.set_aspect('equal')
+ax.set_aspect(1)
 
 # 添加要素和修饰.
 ax.set_facecolor('#c4e7fa')

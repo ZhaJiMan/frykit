@@ -21,14 +21,15 @@ from matplotlib.collections import PathCollection
 from matplotlib.colorbar import Colorbar
 from matplotlib.colors import BoundaryNorm, Colormap, ListedColormap, Normalize
 from matplotlib.contour import ContourSet
+from matplotlib.figure import Figure
 from matplotlib.patches import PathPatch
 from matplotlib.path import Path as Path
 from matplotlib.quiver import Quiver
 from matplotlib.text import Text
 from matplotlib.ticker import Formatter
 from matplotlib.transforms import Bbox
+from numpy.distutils.misc_util import is_sequence
 from numpy.lib.npyio import NpzFile
-from shapely.ops import unary_union
 
 import frykit.shp as fshp
 from frykit import DATA_DIRPATH
@@ -79,29 +80,22 @@ def _cached_transform_polygons(
     return values
 
 
-def _cached_transform_polygon(
-    polygon: fshp.PolygonType, crs_from: CRS, crs_to: CRS
-) -> fshp.PolygonType:
-    '''对一个多边形做坐标变换并缓存结果.'''
-    return _cached_transform_polygons([polygon], crs_from, crs_to)[0]
-
-
 def add_polygons(
     ax: Axes,
-    polygons: Sequence[fshp.PolygonType],
+    polygons: Union[fshp.PolygonType, Sequence[fshp.PolygonType]],
     crs: Optional[CRS] = None,
     **kwargs: Any,
 ) -> PathCollection:
     '''
-    将一组多边形添加到Axes上.
+    将多边形添加到Axes上.
 
     Parameters
     ----------
     ax : Axes
         目标Axes.
 
-    polygons : sequence of PolygonType
-        多边形构成的序列.
+    polygons : PolygonType or sequence of PolygonType
+        一个或一组多边形对象.
 
     crs : CRS, optional
         当ax是GeoAxes时会将多边形从crs表示的坐标系变换到ax所在的坐标系上.
@@ -115,8 +109,10 @@ def add_polygons(
     Returns
     -------
     pc : PathCollection
-        代表一组多边形的集合对象.
+        代表多边形的集合对象.
     '''
+    if not is_sequence(polygons):
+        polygons = [polygons]
     array = kwargs.get('array', None)
     if array is not None and len(array) != len(polygons):
         raise ValueError('array的长度与polygons不匹配')
@@ -132,47 +128,13 @@ def add_polygons(
             raise ValueError('ax不是GeoAxes时crs只能为None')
 
     # PathCollection比PathPatch更快.
-    paths = [fshp.polygon_to_path(polygon) for polygon in polygons]
+    paths = list(map(fshp.polygon_to_path, polygons))
     kwargs.setdefault('transform', ax.transData)
     pc = PathCollection(paths, **kwargs)
     ax.add_collection(pc)
     ax._request_autoscale_view()
 
     return pc
-
-
-def add_polygon(
-    ax: Axes,
-    polygon: fshp.PolygonType,
-    crs: Optional[CRS] = None,
-    **kwargs: Any,
-) -> PathCollection:
-    '''
-    将一个多边形添加到Axes上.
-
-    Parameters
-    ----------
-    ax : Axes
-        目标Axes.
-
-    polygon : PolygonType
-        多边形对象.
-
-    crs : CRS, optional
-        当ax是GeoAxes时会将多边形从crs表示的坐标系变换到ax所在的坐标系上.
-        默认为None, 表示PlateCarree().
-
-    **kwargs
-        PathCollection类的关键字参数.
-        例如edgecolor, facecolor, cmap, norm和array等.
-        https://matplotlib.org/stable/api/collections_api.html
-
-    Returns
-    -------
-    pc : PathCollection
-        只含一个多边形的集合对象.
-    '''
-    return add_polygons(ax, [polygon], crs, **kwargs)
 
 
 def _get_boundary(ax: GeoAxes) -> sgeom.Polygon:
@@ -220,7 +182,7 @@ def clip_by_polygon(
         为True时即便GeoAxes的边界不是矩形也能避免出界.
     '''
     artists = []
-    for a in artist if isinstance(artist, Sequence) else [artist]:
+    for a in artist if is_sequence(artist) else [artist]:
         if isinstance(a, ContourSet) and mpl.__version__ < '3.8.0':
             artists.extend(a.collections)
         else:
@@ -234,7 +196,7 @@ def clip_by_polygon(
         raise ValueError('ax不是Axes')
     if isinstance(ax, GeoAxes):
         crs = PlateCarree() if crs is None else crs
-        polygon = _cached_transform_polygon(polygon, crs, ax.projection)
+        polygon = _cached_transform_polygons([polygon], crs, ax.projection)[0]
         # TODO: 通过装饰Artist.draw方法实现.
         if strict:  # 在data坐标系求polygon和ax.patch的交集.
             polygon &= _get_boundary(ax)
@@ -257,42 +219,6 @@ def clip_by_polygon(
                 a.set_visible(False)
         else:
             a.set_clip_path(path, trans)
-
-
-def clip_by_polygons(
-    artist: ArtistType,
-    polygons: Sequence[fshp.PolygonType],
-    crs: Optional[CRS] = None,
-    strict: bool = False,
-) -> None:
-    '''
-    用一组多边形裁剪Artist, 只显示多边形内的内容.
-
-    该函数不能像clip_by_polygon一样利用缓存加快二次运行的速度.
-
-    Parameters
-    ----------
-    artist : ArtistType
-        被裁剪的Artist对象. 可以返回自以下方法:
-        - plot, scatter
-        - contour, contourf, clabel
-        - pcolor, pcolormesh
-        - imshow
-        - quiver
-
-    polygons : sequence of PolygonType
-        用于裁剪的一组多边形.
-
-    crs : CRS, optional
-        当Artist在GeoAxes里时会将多边形从crs表示的坐标系变换到Artist所在的坐标系上.
-        默认为None, 表示PlateCarree().
-
-    strict : bool, optional
-        是否使用更严格的裁剪方法. 默认为False.
-        为True时即便GeoAxes的边界不是矩形也能避免出界.
-    '''
-    polygon = unary_union(polygons)
-    clip_by_polygon(artist, polygon, crs, strict)
 
 
 # 缓存常用数据.
@@ -417,7 +343,7 @@ def add_cn_border(ax: Axes, **kwargs: Any) -> PathCollection:
     '''
     kwargs = _init_pc_kwargs(kwargs)
     polygon = _get_cached_cn_border()
-    pc = add_polygon(ax, polygon, **kwargs)
+    pc = add_polygons(ax, polygon, **kwargs)
 
     return pc
 
@@ -443,7 +369,7 @@ def add_nine_line(ax: Axes, **kwargs: Any) -> PathCollection:
     '''
     kwargs = _init_pc_kwargs(kwargs)
     polygon = _get_cached_nine_line()
-    pc = add_polygon(ax, polygon, **kwargs)
+    pc = add_polygons(ax, polygon, **kwargs)
 
     return pc
 
@@ -569,7 +495,7 @@ def add_land(ax: Axes, **kwargs: Any) -> PathCollection:
     '''
     kwargs = _init_pc_kwargs(kwargs)
     polygon = _get_cached_land()
-    pc = add_polygon(ax, polygon, **kwargs)
+    pc = add_polygons(ax, polygon, **kwargs)
 
     return pc
 
@@ -597,7 +523,7 @@ def add_ocean(ax: Axes, **kwargs: Any) -> PathCollection:
     '''
     kwargs = _init_pc_kwargs(kwargs)
     polygon = _get_cached_ocean()
-    pc = add_polygon(ax, polygon, **kwargs)
+    pc = add_polygons(ax, polygon, **kwargs)
 
     return pc
 
@@ -1420,6 +1346,7 @@ def add_box(
 def add_mini_axes(
     ax: Axes,
     shrink: float = 0.4,
+    aspect: float = 1,
     loc: Literal[
         'lower left', 'lower right', 'upper left', 'upper right'
     ] = 'lower right',
@@ -1436,6 +1363,9 @@ def add_mini_axes(
     shrink : float, optional
         缩小倍数. 默认为0.4.
 
+    aspect : float, optional
+        单位坐标的高宽比. 默认为 1, 与GeoAxes相同.
+
     loc : {'lower left', 'lower right', 'upper left', 'upper right'}, optional
         指定放置在哪个角落. 默认为'lower right'.
 
@@ -1451,6 +1381,7 @@ def add_mini_axes(
         if isinstance(ax, GeoAxes):
             projection = ax.projection
     new_ax = ax.figure.add_subplot(projection=projection)
+    new_ax.set_aspect(aspect)
     draw = new_ax.draw
 
     def new_draw(renderer: RendererBase) -> None:
@@ -1765,6 +1696,15 @@ def load_test_data() -> NpzFile:
     '''读取测试用的数据. 包含地表2m气温(K)和水平10m风速.'''
     filepath = DATA_DIRPATH / 'test.npz'
     return np.load(str(filepath))
+
+
+def savefig(fname: Any, fig: Optional[Figure] = None, **kwargs) -> None:
+    '''保存Figure为图片.'''
+    if fig is None:
+        fig = plt.gcf()
+    kwargs.setdefault('dpi', 300)
+    kwargs.setdefault('bbox_inches', 'tight')
+    fig.savefig(fname, **kwargs)
 
 
 @deprecator(add_scale_bar)

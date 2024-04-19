@@ -2,7 +2,7 @@ import cProfile
 import functools
 import time
 from collections.abc import Callable
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal, Optional
 
 from line_profiler import LineProfiler
 

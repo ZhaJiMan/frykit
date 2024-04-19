@@ -7,6 +7,7 @@ import pandas as pd  # 加载overhead还挺高.
 import shapely.geometry as sgeom
 from cartopy.crs import CRS
 from matplotlib.path import Path
+from numpy.distutils.misc_util import is_sequence
 from pyproj import Transformer
 from shapely.geometry.base import BaseGeometry, CoordinateSequence
 from shapely.prepared import prep
@@ -51,7 +52,7 @@ def _get_pr_locs(province: Optional[GetCNKeyword] = None) -> list[int]:
     '''查询PR_TABLE得到整数索引.'''
     if province is None:
         return list(range(PR_TABLE.shape[0]))
-    provinces = [province] if isinstance(province, str) else province
+    provinces = province if is_sequence(province) else [province]
     locs = list(map(PR_TABLE.index.get_loc, provinces))
 
     return locs

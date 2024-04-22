@@ -152,7 +152,6 @@ fplt.add_polygons(ax, reader.geometries(), fc='none', ec='k', lw=0.25)
 
 通过 `array`、 `cmap` 和 `norm` 参数还能实现类似分省填色的效果（详见 [fill.py](example/fill.py)）。
 
-> **note**
 > `add_polygons` 默认直接用 pyproj 做地图投影变换，如果出现了错误的效果，可以在代码最开头加上 `fplt.use_fast_transform(False)` 切换成效果更正确，但速度更慢的模式。
 
 ### 裁剪 Artist
@@ -192,7 +191,6 @@ plt.show()
 
 ![clip_by_cn_border](image/clip_by_cn_border.png)
 
-> **note**
 > `clip_by_cn_province` 只能指定单个省， `clip_by_cn_city` 只能指定单个市。如果想用多个多边形，例如京津冀地区进行裁剪，需要提前合并成单个多边形，然后用 `clip_by_polygon` 做裁剪。
 
 ### 制作掩膜
@@ -235,7 +233,6 @@ fplt.set_map_ticks(ax, [70, 140, 0, 60], dx=10, dy=10)
 * 用 `mx` 和 `my` 参数指定次刻度的数量。
 * 适用于非等经纬度投影。
 
-> **note**
 > 对于非等经纬度投影的 `GeoAxes`，如果显示范围不是矩形，或者范围跨越了 180 度经线，该函数可能产生错误的效果。
 
 ### 添加风矢量图例

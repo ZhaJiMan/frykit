@@ -16,7 +16,7 @@ with open(str(readme_filepath), encoding='utf-8') as f:
     long_description = f.read()
 
 requirements_filepath = root_dirpath / 'requirements.txt'
-with open(str(readme_filepath), encoding='utf-8') as f:
+with open(str(requirements_filepath), encoding='utf-8') as f:
     requirements = f.read().splitlines()
 
 setuptools.setup(

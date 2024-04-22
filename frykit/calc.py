@@ -78,7 +78,7 @@ def lon_lat_to_xyz(lon: Any, lat: Any, r=1.0, degrees: bool = False) -> Any:
 
 
 def wswd_to_uv(ws: Any, wd: Any, degrees: bool = False) -> tuple[Any, Any]:
-    '''风向风速转为uv.'''
+    '''风向风速转为uv. 默认使用弧度.'''
     if degrees:
         wd = np.radians(wd)
     u = -ws * np.sin(wd)
@@ -88,7 +88,7 @@ def wswd_to_uv(ws: Any, wd: Any, degrees: bool = False) -> tuple[Any, Any]:
 
 
 def uv_to_wswd(u: Any, v: Any, degrees: bool = False) -> tuple[Any, Any]:
-    '''uv转为风向风速.'''
+    '''uv转为风向风速. 默认使用弧度.'''
     ws = np.hypot(u, v)
     wd = np.arctan2(u, v) + np.pi
     if degrees:

@@ -1,3 +1,12 @@
+## `0.5.3`
+
+- 新增保存图片的 `savefig` 函数，相当于有默认参数的 `Figure.savefig`。
+- `add_mini_axes` 函数新增 `aspect` 参数，用于修改 `Axes` 的宽高。
+- 新增经纬度换算成球面 xyz 坐标的 `lon_lat_to_xyz` 函数。
+- 移除 `add_polygon` 函数，现在 `add_polygons` 函数也能绘制单个多边形。
+- 移除 `clip_by_polygons` 函数。
+- 更新 README。
+
 ## `0.5.2`
 
 - 新增快速创建中国地图的 `quick_cn_map` 函数。

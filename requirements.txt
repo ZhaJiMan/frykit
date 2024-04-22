@@ -1,0 +1,2 @@
+cartopy>=0.20.0
+pandas>=1.2.0

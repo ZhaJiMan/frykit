@@ -1,28 +1,34 @@
 # frykit
 
-一个配合 Matplotlib 和 Cartopy 使用的工具箱，主要由 `shp` 和 `plot` 模块组成。
+一个配合 Matplotlib 和 Cartopy 使用的地图工具箱，主要由 `shp` 和 `plot` 模块组成。
 
 `shp` 模块的功能是：
 
 - 读取中国行政区划数据
 - 创建多边形掩膜（mask）
-- 多边形在不同投影坐标系之间的变换
+- 对多边形做投影变换
 
 `plot` 模块的功能包括：
 
-- 读取中国行政区划数据
+- 绘制中国行政区划数据
 - 向地图添加中国国界、省界和市界
-- 利用国界和省界对填色图做裁剪（白化）
-- 标注省名和市名
-- 设置地图刻度
+- 利用行政区划做裁剪（clip）
+- 快速设置地图范围和刻度
+- 添加南海小图
 - 添加风矢量图的图例
 - 添加指北针
-- 添加地图比例尺
-- 制作离散色表
+- 添加比例尺
+
+特色是：
+
+- 自带高德地图行政区划数据
+- 可同时用于 `Axes` 或 `GeoAxes`
+- 对画图速度有优化
+- 对裁剪出界问题有优化
 
 暂无文档，但是每个函数都有详细的 docstring，可以在 Python 命令行中通过 `help` 函数查看，或者在 IDE 中查看。
 
-这个包只是作者自用的小工具集，函数编写粗糙，可能存在不少 bug，还请多多交流指正。类似的更完备的包还请移步 [gma](https://gma.luosgeo.com/) 或 [EOmaps](https://github.com/raphaelquast/EOmaps)。
+这个包只是作者自用的小工具集，函数编写粗糙，可能存在不少 bug，还请多多交流指正。类似的更完备的包还请移步 [cnmaps](https://github.com/cnmetlab/cnmaps)、[gma](https://gma.luosgeo.com/) 或 [EOmaps](https://github.com/raphaelquast/EOmaps)。
 
 ## 安装
 
@@ -38,119 +44,160 @@ cartopy>=0.20.0
 pandas>=1.2.0
 ```
 
-Python 版本较低时需要手动指定版本为 `frykit==0.2.5`，不过 API 跟最新版有很大区别。
+Python 版本较低时可以手动指定版本
+
+```
+pip install frykit==0.2.5
+```
+
+不过 API 跟最新版有很大区别。
 
 ## 更新记录
 
-[CHANGELOG.md](https://github.com/ZhaJiMan/frykit/blob/main/CHANGELOG.md)
+[CHANGELOG.md](CHANGELOG.md)
 
-## 示例
+## 使用指南
 
 ### 读取中国行政区划
+
+`get_cn_xxx` 系列函数能读取中国行政区划，返回 [Shapely](https://shapely.readthedocs.io/en/stable/manual.html) 多边形对象。具体来说：
+
+- `get_cn_border`：读取国界。
+- `get_nine_line`：读取九段线。
+- `get_cn_province`：读取省界。默认返回所有省，也可以通过省名指定单个省或多个省。
+- `get_cn_city`：读取市界。默认返回所有市。可以
+  - 通过市名指定单个市或多个市。
+  - 通过省名指定单个省或多个省包含的所有市。
 
 ```Python
 import frykit.shp as fshp
 
-# 读取国界.
 border = fshp.get_cn_border()
+nine_line = fshp.get_nine_line()
 
-# 读取省界.
 provinces = fshp.get_cn_province()
 anhui = fshp.get_cn_province('安徽省')
+anhui, jiangsu = fshp.get_cn_province(['安徽省', '江苏省'])
 
-# 读取市界.
 cities = fshp.get_cn_city()
 hefei = fshp.get_cn_city('合肥市')
+hefei, luan = fshp.get_cn_city(['合肥市', '六安市'])
+
 cities_of_anhui = fshp.get_cn_city(province='安徽省')
+cities_of_anhui_and_jiangsu = fshp.get_cn_city(province=['安徽省', '江苏省'])
 ```
 
-返回结果是 [Shapely](https://shapely.readthedocs.io/en/stable/manual.html) 的多边形对象，可以进行交并等几何运算。
+行政区划源数据来自 [高德地图行政区域查询接口](https://lbs.amap.com/api/webservice/guide/api/district)，已从 GCJ-02 坐标系处理到了 WGS84 坐标系上。文件都在 `frykit.DATA_DIRPATH` 指向的目录里。制作方法见 [amap-shp](https://github.com/ZhaJiMan/amap-shp)。
 
-行政区划源数据来自 [高德地图行政区域查询接口](https://lbs.amap.com/api/webservice/guide/api/district)，含国界、省界和市界三套数据，已从 GCJ-02 坐标系处理到了 WGS84 坐标系上。文件都在 `frykit.DATA_DIRPATH` 指向的目录里。制作方法见 [amap-shp](https://github.com/ZhaJiMan/amap-shp)。
+暂无县界，可以使用 [ChinaAdminDivisonSHP](https://github.com/GaryBikini/ChinaAdminDivisonSHP) 或 [CTAmap](https://www.shengshixian.com/) 的数据。
 
-暂无县界，可以去使用 [ChinaAdminDivisonSHP](https://github.com/GaryBikini/ChinaAdminDivisonSHP) 或 [CTAmap](https://www.shengshixian.com/) 的数据。
+### 绘制中国行政区划
 
-### 绘制中国国界、省界和市界
+- `add_cn_border`：绘制国界。
+- `add_nine_line`：绘制九段线。
+- `add_cn_province`：绘制省界。
+- `add_cn_city`：绘制市界。
+
+另外还提供两个标注名字的函数：
+
+- `label_cn_province`：标注省名。
+- `label_cn_city`：标注市名。
+
+画出所有省份，同时用颜色区分京津冀地区：
 
 ```Python
-# 绘制国界.
-fplt.add_cn_border(ax)
+import matplotlib.pyplot as plt
+import cartopy.crs as ccrs
+import frykit.plot as fplt
 
-# 绘制九段线
-fplt.add_nine_line(ax)
-
-# 绘制省界.
+plt.figure(figsize=(8, 8))
+ax = plt.axes(projection=ccrs.PlateCarree())
 fplt.add_cn_province(ax)
-fplt.add_cn_province(ax, ['安徽省', '江苏省'])
-
-# 绘制市界
-fplt.add_cn_city(ax)
-fplt.add_cn_city(ax, ['石家庄市', '保定市'])
-fplt.add_cn_city(ax, province='河南省')
-```
-
-`ax` 可以是 `Axes` 或 `GeoAxes`。
-
-### 标注省名和市名
-
-```Python
+fplt.add_cn_province(ax, ['北京市', '天津市', '河北省'], fc='dodgerblue')
+fplt.add_nine_line(ax)
 fplt.label_cn_province(ax)
-fplt.label_cn_city(ax, fontsize='xx-small')
+
+plt.show()
 ```
 
-默认采用 `Normal` 字重的思源黑体。
-
-### 绘制全球数据
-
-```Python
-fplt.add_land(ax)
-fplt.add_ocean(ax)
-fplt.add_countries(ax)
-```
-
-全球数据在跨越地图投影坐标系的边界时很容易产生问题，需要小心使用。
+![add_cn_province](image/add_cn_province.png)
 
 ### 绘制任意多边形
+
+`add_cn_border` 函数相当于
+
+```Python
+add_polygons(ax, get_cn_border())
+```
+
+底层的 `add_polygons` 可以用来绘制任意 Shapely 多边形对象。
+
+画一个半径为 10 的圆：
 
 ```Python
 import shapely.geometry as sgeom
 
-# 绘制一个多边形.
-polygon = sgeom.polygon(...)
-fplt.add_polygon(ax, polygon)
-
-# 绘制多个多边形并填色.
-pc = fplt.add_polygons(ax, polygons, array=data, cmap=cmap, norm=norm)
-cbar = fig.colorbar(pc, ax=ax)
-
-# 绘制自己的shapefile
-from cartopy.io.shapereader import Reader
-reader = Reader('2023年_CTAmap_1.12版/2023年县级/2023年县级.shp')
-geoms = list(reader.geometries())
-reader.close()
-fplt.add_polygons(ax, geoms, fc='none', ec='k', lw=0.25)
+circle = sgeom.Point(0, 0).buffer(10)
+fplt.add_polygons(ax, circle)
 ```
 
-Cartopy 的 `GeoAxes.add_geometries` 会自动去除不在 `GeoAxes` 显示范围内的 `polygons`，破坏 `polygons` 和 `array` 的一一对应关系，打乱填色的结果。工具箱中的 `add_polygons` 函数不会进行这一操作，能够产生正确的填色结果。
-
-### 裁剪填色图
+配合 Cartopy 的 `Reader` 画自己提供的 shapefile：
 
 ```Python
-cf = ax.contourf(lon, lat, data, transform=data_crs)
+from cartopy.io.shapereader import Reader
 
-# 用国界或省界裁剪.
-fplt.clip_by_cn_border(cf)
-fplt.clip_by_cn_province(cf, '河北省')
-
-# 用陆地裁剪.
-fplt.clip_by_land(cf)
+reader = Reader('2023年_CTAmap_1.12版/2023年县级/2023年县级.shp')
+fplt.add_polygons(ax, reader.geometries(), fc='none', ec='k', lw=0.25)
 ```
 
-被裁剪的对象还可以是 `contour`、`clabel`、`pcolormesh`、`quiver` 等方法的返回值。
+通过 `array`、 `cmap` 和 `norm` 参数还能实现类似分省填色的效果（详见 [fill.py](example/fill.py)）。
 
-当用于裁剪的多边形超出 `GeoAxes` 的显示范围时，直接用 `Artist.set_clip_path` 做裁剪会发生填色图出界的现象（[cartopy/issues/2052](https://github.com/SciTools/cartopy/issues/2052)）。工具箱内的 `clip_by_xxx` 系列函数对此进行了处理。
+> **note**
+> `add_polygons` 默认直接用 pyproj 做地图投影变换，如果出现了错误的效果，可以在代码最开头加上 `fplt.use_fast_transform(False)` 切换成效果更正确，但速度更慢的模式。
 
-### 填色图掩膜
+### 裁剪 Artist
+
+这里 Artist 泛指 Matplotlib 里 `contourf`、 `pcolormesh`、 `imshow`、 `quiver`、 `scatter` 等方法返回的对象。
+
+- `clip_by_cn_border`：用国界裁剪。
+- `clip_by_cn_province`：用省界裁剪。
+- `clip_by_cn_city`：用市界裁剪。
+- `clip_by_polygon`：用任意多边形裁剪。
+
+用国界裁剪 `contourf` 的例子：
+
+```Python
+import matplotlib.pyplot as plt
+import cartopy.crs as ccrs
+import frykit.plot as fplt
+
+crs = ccrs.PlateCarree()
+ax = plt.axes(projection=crs)
+fplt.add_cn_province(ax)
+fplt.add_nine_line(ax)
+
+data = fplt.load_test_data()
+cf = ax.contourf(
+    data['longitude'],
+    data['latitude'],
+    data['t2m'],
+    levels=20,
+    cmap='rainbow',
+    transform=crs
+)
+fplt.clip_by_cn_border(cf)
+
+plt.show()
+```
+
+![clip_by_cn_border](image/clip_by_cn_border.png)
+
+> **note**
+> `clip_by_cn_province` 只能指定单个省， `clip_by_cn_city` 只能指定单个市。如果想用多个多边形，例如京津冀地区进行裁剪，需要提前合并成单个多边形，然后用 `clip_by_polygon` 做裁剪。
+
+### 制作掩膜
+
+裁剪是在画图阶段从视觉效果上屏蔽多边形外的数据，而掩膜则是在数据处理阶段对多边形外的数据进行处理，例如设为缺测。
 
 ```Python
 border = fshp.get_cn_border()
@@ -159,33 +206,46 @@ data[~mask] = np.nan
 ax.contourf(lon, lat, data)
 ```
 
-类似于 Salem 的 `roi` 方法。
-
-### 加速绘制和裁剪
-
-绘制多边形和裁剪填色图过程中需要对多边形进行坐标变换，工具箱默认直接使用 pyproj 进行变换，速度快但可能在某些投影的边界产生错误的结果。为此可以手动切换回更正确的 Cartopy 的变换：
-
-```Python
-fplt.use_fast_transform(True)
-fplt.add_cn_city(ax)  # 耗时1.6s
-
-# 相当于ax.add_geometries
-fplt.use_fast_transform(False)
-fplt.add_cn_city(ax)  # 耗时31.6s
-```
-
-`add_cn_xxx` 系列函数在多次调用时会通过缓存节省读取国界和省界数据的时间开销。如果能维持对多边形对象的引用，`add_polygon`、`add_polygons` 和 `clip_by_polygon` 函数在多次调用时会通过缓存节省多边形坐标变换的时间开销。
-
 ### 设置地图范围和刻度
 
+
+`GeoAxes` 设置地图范围和刻度需要以下步骤：
+
 ```Python
-fplt.set_map_ticks(ax, extents=[-180, 180, -90, 90], dx=60, dy=30)
-fplt.set_map_ticks(ax, xticks=[90, 100, 110], yticks=[20, 30, 40])
+import numpy as np
+from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
+
+crs = ccrs.PlateCarree()
+ax.set_extent([70, 140, 0, 60], crs=crs)
+ax.set_xticks(np.arange(70, 141, 10), crs=crs)
+ax.set_yticks(np.arange(0, 61, 10), crs=crs)
+ax.xaxis.set_major_formatter(LongitudeFormatter())
+ax.yaxis.set_major_formatter(LatitudeFormatter())
 ```
 
-用 `dx` 和 `dy` 参数指定刻度间隔，或者通过数组直接指定刻度位置。
+`set_map_ticks` 函数可以将这段简化成一行：
 
-`mx` 和 `my` 参数指定小刻度的数量。
+```Python
+fplt.set_map_ticks(ax, [70, 140, 0, 60], dx=10, dy=10)
+```
+
+会自动根据经度间隔和纬度间隔生成刻度，并加上度数和东南西北的符号。另外还可以：
+
+* 用 `xticks` 和 `yticks` 显式指定刻度。
+* 用 `mx` 和 `my` 参数指定次刻度的数量。
+* 适用于非等经纬度投影。
+
+> **note**
+> 对于非等经纬度投影的 `GeoAxes`，如果显示范围不是矩形，或者范围跨越了 180 度经线，该函数可能产生错误的效果。
+
+### 添加风矢量图例
+
+在右下角添加一个白色矩形背景的风矢量图例：
+
+```Python
+Q = ax.quiver(x, y, u, v, transform=crs)
+fplt.add_quiver_legend(Q, U=10, width=0.15, height=0.12)
+```
 
 ### 添加指北针
 
@@ -193,7 +253,7 @@ fplt.set_map_ticks(ax, xticks=[90, 100, 110], yticks=[20, 30, 40])
 fplt.add_compass(ax, 0.95, 0.8, size=15)
 ```
 
-`ax` 是 `GeoAxes` 时指北针会自动指向所在位置处的北向，也可以通过 `angle` 参数手动指定角度。
+指北针的位置基于 `Axes` 坐标系。 `ax` 是 `GeoAxes` 时指北针会自动指向所在位置处的北向，也可以通过 `angle` 参数手动指定角度。
 
 ### 添加比例尺
 
@@ -202,33 +262,18 @@ scale_bar = fplt.add_scale_bar(ax1, 0.36, 0.8, length=1000)
 scale_bar.set_xticks([0, 500, 1000])
 ```
 
-比例尺的长度通过取样 `GeoAxes` 中心处单位长度对应的地理距离得到。比例尺对象类似 `Axes`，可以用 `set_xticks` 等方法进一步修改样式。
+比例尺的长度通过采样 `GeoAxes` 中心处单位长度对应的地理距离得出。比例尺对象类似 `Axes`，可以用 `set_xticks` 等方法进一步修改样式。
 
 ### 添加小地图
 
 ```Python
 mini_ax = fplt.add_mini_axes(ax)
-mini_ax.set_extent([105, 120, 2, 25], crs=data_crs)
+mini_ax.set_extent([105, 120, 2, 25], crs=crs)
 fplt.add_cn_province(mini_ax)
+fplt.add_nine_line(mini_ax)
 ```
 
-小地图默认使用大地图的投影，会自动定位到大地图的角落，无需手动反复调节。
-
-### 添加风矢量图例
-
-```Python
-fplt.add_quiver_legend(Q, U=10, width=0.15, height=0.12)
-```
-
-在 `Axes` 的角落添加一个白色矩形背景的风矢量图例。通过 `patch_kwargs` 字典控制背景的样式，`key_kwargs` 字典控制风箭头的样式。
-
-### 添加经纬度方框
-
-```Python
-fplt.add_box(ax, [lon0, lon1, lat0, lat1], transform=ccrs.PlateCarree())
-```
-
-当 `ax` 是 `GeoAxes` 时会对方框上的点插值，以保证方框在 `ax` 的坐标系里足够平滑。
+小地图默认使用大地图的投影，会自动定位到大地图的角落，无需像 `add_axes` 那样需要反复调整位置。
 
 ### GMT 风格边框
 
@@ -236,22 +281,30 @@ fplt.add_box(ax, [lon0, lon1, lat0, lat1], transform=ccrs.PlateCarree())
 fplt.add_frame(ax)
 ```
 
-使用类似 [GMT](https://www.generic-mapping-tools.org/) 黑白相间格子的边框。目前仅支持 `Axes`、等经纬度或墨卡托投影的 `GeoAxes`。
+添加类似 [GMT](https://www.generic-mapping-tools.org/) 风格的黑白相间格子的边框。目前仅支持等经纬度或墨卡托投影的 `GeoAxes`。
 
-### 离散 colorbar
+### 特殊 colorbar
+
+构造一个颜色对应一个刻度的 colorbar：
 
 ```Python
-# 一个颜色对应一个刻度的定性colorbar.
 colors = [
-    'orangered', 'orange', 'yellow',
-    'limegreen', 'royalblue', 'darkviolet'
+    'orangered',
+    'orange',
+    'yellow',
+    'limegreen',
+    'royalblue',
+    'darkviolet'
 ]
-cmap, norm, ticks = fplt.make_qualitative_cmap(colors)
+cmap, norm, ticks = fplt.get_qualitative_palette(colors)
 cbar = fplt.plot_colormap(cmap, norm)
 cbar.set_ticks(ticks)
 cbar.set_ticklabels(colors)
+```
 
-# 保证零值区间对应白色的离散colorbar.
+构造零值所在区间对应白色的 colorbar：
+
+```Python
 import cmaps
 boundaries = [-10, -5, -2, -1, 1, 2, 5, 10, 20, 50, 100]
 norm = fplt.CenteredBoundaryNorm(boundaries)
@@ -269,10 +322,11 @@ cbar.set_ticks(boundaries)
 - [Cartopy 系列：裁剪填色图出界问题](https://zhajiman.github.io/post/cartopy_clip_outside/)
 - [CALIPSO L2 VFM 产品的读取和绘制（with Python）](https://zhajiman.github.io/post/calipso_vfm/)
 - [Matplotlib 系列：colormap 的设置](https://zhajiman.github.io/post/matplotlib_colormap/)
+- [Cartopy 添加南海小地图的三种方法](https://mp.weixin.qq.com/s/-QMVN6MS-UuQ9lQjz9vqBQ)
 
 ### 示例效果
 
-`cd` 到包的 `example` 目录里可以执行示例脚本：
+包的 `example` 目录里有更复杂的示例脚本：
 
 - [在普通 `Axes` 上画地图](example/axes.py)
 
@@ -286,11 +340,11 @@ cbar.set_ticks(boundaries)
 
 ![fill](image/fill.png)
 
-- [剪裁 `contourf` 和 `quiver`](example/quiver.py)
+- [裁剪 `contourf` 和 `quiver`](example/quiver.py)
 
 ![quiver](image/quiver.png)
 
-- [剪裁主图和南海小图的 `contourf`](example/contourf.py)
+- [裁剪主图和南海小图的 `contourf`](example/contourf.py)
 
 ![contourf](image/contourf.png)
 

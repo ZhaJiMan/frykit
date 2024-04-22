@@ -26,7 +26,7 @@ ax.set_extent(extents, crs=data_crs)
 fplt.add_cn_province(ax, lw=0.4)
 
 # 绘制气温.
-cs = ax.contourf(
+cf = ax.contourf(
     X,
     Y,
     t2m,
@@ -36,7 +36,7 @@ cs = ax.contourf(
     transform=data_crs,
     transform_first=True,
 )
-fig.colorbar(cs, ax=ax, label='Temperature (℃)')
+fig.colorbar(cf, ax=ax, label='Temperature (℃)')
 
 # 绘制风场.
 Q = ax.quiver(
@@ -52,7 +52,7 @@ Q = ax.quiver(
 fplt.add_quiver_legend(Q, U=10, height=0.12)
 
 # 裁剪结果.
-fplt.clip_by_cn_border(cs)
+fplt.clip_by_cn_border(cf)
 fplt.clip_by_cn_border(Q)
 
 # 保存图片.

@@ -43,7 +43,7 @@ fplt.add_nine_line(ax1, lw=0.5)
 # 绘制填色图.
 levels = np.linspace(0, 32, 50)
 cticks = np.linspace(0, 32, 9)
-cs = ax1.contourf(
+cf = ax1.contourf(
     X,
     Y,
     Z,
@@ -53,11 +53,11 @@ cs = ax1.contourf(
     transform=data_crs,
     transform_first=True,
 )
-fplt.clip_by_cn_border(cs)
+fplt.clip_by_cn_border(cf)
 
 # 绘制colorbar.
 cbar = fig.colorbar(
-    cs,
+    cf,
     ax=ax1,
     orientation='horizontal',
     shrink=0.6,
@@ -94,7 +94,7 @@ fplt.add_cn_province(ax2, lw=0.3)
 fplt.add_nine_line(ax2, lw=0.5)
 
 # 绘制填色图.
-cs = ax2.contourf(
+cf = ax2.contourf(
     X,
     Y,
     Z,
@@ -104,7 +104,7 @@ cs = ax2.contourf(
     transform=data_crs,
     transform_first=True,
 )
-fplt.clip_by_cn_border(cs)
+fplt.clip_by_cn_border(cf)
 
 # 添加比例尺.
 scale_bar = fplt.add_scale_bar(ax2, 0.4, 0.15, length=500)

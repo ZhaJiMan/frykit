@@ -602,7 +602,7 @@ def clip_by_cn_city(
         是否使用更严格的裁剪方法. 默认为False.
         为True时即便GeoAxes的边界不是矩形也能避免出界.
     '''
-    if not isinstance(city, str):
+    if is_sequence(city):
         raise ValueError('只支持单个市')
     polygon = _get_cached_cn_cities(city)[0]
     clip_by_polygon(artist, polygon, strict=strict)

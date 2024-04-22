@@ -2,13 +2,26 @@ from pathlib import Path
 
 import setuptools
 
-readme_filepath = Path(__file__).parent / 'README.md'
-with open(str(readme_filepath), 'r', encoding='utf-8') as f:
+root_dirpath = Path(__file__).parent
+
+init_filepath = root_dirpath / 'frykit' / '__init__.py'
+with open(str(init_filepath), encoding='utf-8') as f:
+    for line in f:
+        if line.startswith('__version__'):
+            version = line.split('\'')[1]
+            break
+
+readme_filepath = root_dirpath / 'README.md'
+with open(str(readme_filepath), encoding='utf-8') as f:
     long_description = f.read()
+
+requirements_filepath = root_dirpath / 'requirements.txt'
+with open(str(readme_filepath), encoding='utf-8') as f:
+    requirements = f.read().splitlines()
 
 setuptools.setup(
     name='frykit',
-    version='0.5.3',
+    version=version,
     author='ZhaJiMan',
     author_email='915023793@qq.com',
     description='A simple toolbox for Matplotib and Cartopy',
@@ -17,6 +30,6 @@ setuptools.setup(
     url='https://github.com/ZhaJiMan/frykit',
     include_package_data=True,
     packages=setuptools.find_packages(),
-    install_requires=['cartopy>=0.20.0', 'pandas>=1.2.0'],
+    install_requires=requirements,
     python_requires='>=3.9',
 )

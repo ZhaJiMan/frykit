@@ -1,3 +1,8 @@
+## `0.5.4`
+
+- 新增生成圆的 `get_ellipse` 和 `get_circle` 函数。
+- 修改 `hms_to_degrees2` 函数的输出类型。
+
 ## `0.5.3`
 
 - 新增保存图片的 `savefig` 函数，相当于有默认参数的 `Figure.savefig`。

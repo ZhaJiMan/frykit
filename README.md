@@ -152,7 +152,7 @@ fplt.add_polygons(ax, reader.geometries(), fc='none', ec='k', lw=0.25)
 
 通过 `array`、 `cmap` 和 `norm` 参数还能实现类似分省填色的效果（详见 [fill.py](example/fill.py)）。
 
-> `add_polygons` 默认直接用 pyproj 做地图投影变换，如果出现了错误的效果，可以在代码最开头加上 `fplt.use_fast_transform(False)` 切换成效果更正确，但速度更慢的模式。
+> `add_polygons` 默认直接用 pyproj 做地图投影变换，如果出现了错误的效果，可以在代码最开头加上 `fplt.use_fast_transform(False)` 切换成效果更正确，但速度更慢的模式。或者直接换用 Cartopy 的 `add_geometries`。
 
 ### 裁剪 Artist
 

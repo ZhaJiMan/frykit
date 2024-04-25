@@ -126,33 +126,24 @@ class Compass(PathCollection):
         self.size = size
         self.style = style
 
-        # 箭头方向朝上.
         head = size / 72
         if style == 'arrow':
             width = axis = head * 2 / 3
-            verts1 = [(0, 0), (0, axis), (-width / 2, axis - head), (0, 0)]
-            verts2 = [(0, 0), (width / 2, axis - head), (0, axis), (0, 0)]
-            paths = [Path(verts1), Path(verts2)]
+            paths = self._make_paths(width, head, axis)
             colors = ['k', 'w']
         elif style == 'circle':
             width = axis = head * 2 / 3
             radius = head * 2 / 5
-            theta = np.linspace(0, 2 * np.pi, 100)
-            rx = radius * np.cos(theta)
-            ry = radius * np.sin(theta) + head / 9
-            verts1 = np.column_stack((rx, ry))
-            verts2 = [(0, 0), (0, axis), (-width / 2, axis - head), (0, 0)]
-            verts3 = [(0, 0), (width / 2, axis - head), (0, axis), (0, 0)]
-            paths = [Path(verts1), Path(verts2), Path(verts3)]
+            paths = [
+                Path.circle((0, head / 9), radius),
+                *self._make_paths(width, head, axis),
+            ]
             colors = ['none', 'k', 'w']
         elif style == 'star':
             width = head / 3
             axis = head + width / 2
-            verts1 = [(0, 0), (0, axis), (-width / 2, axis - head), (0, 0)]
-            verts2 = [(0, 0), (width / 2, axis - head), (0, axis), (0, 0)]
-            path1 = Path(verts1)
-            path2 = Path(verts2)
             paths = []
+            path1, path2 = self._make_paths(width, head, axis)
             for deg in range(0, 360, 90):
                 rotation = Affine2D().rotate_deg(deg)
                 paths.append(path1.transformed(rotation))
@@ -184,6 +175,16 @@ class Compass(PathCollection):
             transform=None,
             **text_kwargs,
         )
+
+    @staticmethod
+    def _make_paths(
+        width: float, head: float, axis: float
+    ) -> tuple[Path, Path]:
+        '''width: 箭头宽度, head: 箭头长度, axis: 箭头中轴长度. 且箭头方向朝上.'''
+        path1 = Path([(0, 0), (0, axis), (-width / 2, axis - head), (0, 0)])
+        path2 = Path([(0, 0), (width / 2, axis - head), (0, axis), (0, 0)])
+
+        return path1, path2
 
     def _init(self) -> None:
         # 计算指北针的方向.
@@ -304,14 +305,15 @@ class ScaleBar(_AxesBase):
         super().draw(renderer)
 
 
-def path_from_extents(
+def rectangle_path(
     x0: float, x1: float, y0: float, y1: float, ccw: bool = True
 ) -> Path:
-    '''根据方框范围构造Path对象. ccw表示逆时针.'''
+    '''构造矩形Path. ccw表示逆时针.'''
     verts = [(x0, y0), (x1, y0), (x1, y1), (x0, y1), (x0, y0)]
+    codes = [Path.MOVETO, Path.LINETO, Path.LINETO, Path.LINETO, Path.CLOSEPOLY]
     if not ccw:
         verts.reverse()
-    path = Path(verts)
+    path = Path(verts, codes)
 
     return path
 
@@ -373,7 +375,7 @@ class Frame(Artist):
         ny = len(yticks)
 
         top_paths = [
-            path_from_extents(xticks[i], xticks[i + 1], 1, 1 + dy)
+            rectangle_path(xticks[i], xticks[i + 1], 1, 1 + dy)
             for i in range(nx - 1)
         ]
         # 即便xaxis方向反转也维持边框的颜色顺序.
@@ -386,7 +388,7 @@ class Frame(Artist):
             return None
 
         bottom_paths = [
-            path_from_extents(xticks[i], xticks[i + 1], -dy, 0)
+            rectangle_path(xticks[i], xticks[i + 1], -dy, 0)
             for i in range(nx - 1)
         ]
         if self.axes.xaxis.get_inverted():
@@ -394,7 +396,7 @@ class Frame(Artist):
         self.pcs['bottom'].set_paths(bottom_paths)
 
         left_paths = [
-            path_from_extents(-dx, 0, yticks[i], yticks[i + 1])
+            rectangle_path(-dx, 0, yticks[i], yticks[i + 1])
             for i in range(ny - 1)
         ]
         if self.axes.yaxis.get_inverted():
@@ -402,7 +404,7 @@ class Frame(Artist):
         self.pcs['left'].set_paths(left_paths)
 
         right_paths = [
-            path_from_extents(1, 1 + dx, yticks[i], yticks[i + 1])
+            rectangle_path(1, 1 + dx, yticks[i], yticks[i + 1])
             for i in range(ny - 1)
         ]
         if self.axes.yaxis.get_inverted():
@@ -411,10 +413,10 @@ class Frame(Artist):
 
         # 单独画出四个角落的方块.
         corner_paths = [
-            path_from_extents(-dx, 0, -dy, 0),
-            path_from_extents(1, 1 + dx, -dy, 0),
-            path_from_extents(-dx, 0, 1, 1 + dy),
-            path_from_extents(1, 1 + dx, 1, 1 + dy),
+            rectangle_path(-dx, 0, -dy, 0),
+            rectangle_path(1, 1 + dx, -dy, 0),
+            rectangle_path(-dx, 0, 1, 1 + dy),
+            rectangle_path(1, 1 + dx, 1, 1 + dy),
         ]
         self.pcs['corner'].set_paths(corner_paths)
         fc = self.pcs['top'].get_facecolor()[-1]

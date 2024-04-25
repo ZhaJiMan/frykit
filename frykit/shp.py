@@ -209,13 +209,13 @@ def polygon_to_path(polygon: PolygonType, keep_empty: bool = True) -> Path:
             raise ValueError('polygon不能为空多边形')
 
     # 注意: 用户构造的多边形不一定满足内外环绕行方向相反的前提.
-    vertices, codes = [], []
+    verts, codes = [], []
     for polygon in getattr(polygon, 'geoms', [polygon]):
         for ring in [polygon.exterior, *polygon.interiors]:
-            vertices.append(np.asarray(ring.coords))
+            verts.append(np.asarray(ring.coords))
             codes.extend(_ring_codes(len(ring.coords)))
-    vertices = np.vstack(vertices)
-    path = Path(vertices, codes)
+    verts = np.vstack(verts)
+    path = Path(verts, codes)
 
     return path
 

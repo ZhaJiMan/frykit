@@ -893,7 +893,7 @@ def _set_complex_geoaxes_ticks(
         xticks = xticks[(xticks >= lon0) & (xticks <= lon1)]
         for xtick in xticks:
             lons = np.full_like(lats, xtick)
-            lon_line = sgeom.LineString(np.column_stack((lons, lats)))
+            lon_line = sgeom.LineString(np.c_[lons, lats])
             lon_line = ax.projection.project_geometry(lon_line, crs)
             pointB = lineB.intersection(lon_line)
             if isinstance(pointB, sgeom.Point) and not pointB.is_empty:
@@ -918,7 +918,7 @@ def _set_complex_geoaxes_ticks(
         yticks = yticks[(yticks >= lat0) & (yticks <= lat1)]
         for ytick in yticks:
             lats = np.full_like(lons, ytick)
-            lat_line = sgeom.LineString(np.column_stack((lons, lats)))
+            lat_line = sgeom.LineString(np.c_[lons, lats])
             lat_line = ax.projection.project_geometry(lat_line, crs)
             pointL = lineL.intersection(lat_line)
             if isinstance(pointL, sgeom.Point) and not pointL.is_empty:
@@ -1335,7 +1335,7 @@ def add_box(
     kwargs.setdefault('facecolor', 'none')
 
     # 添加Patch.
-    path = path_from_extents(*extents).interpolated(steps)
+    path = rectangle_path(*extents).interpolated(steps)
     patch = PathPatch(path, **kwargs)
     ax.add_patch(patch)
 

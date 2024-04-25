@@ -1,5 +1,7 @@
+import math
+import re
 from collections.abc import Sequence
-from typing import Any, Literal, Union
+from typing import Any, Literal, Optional, Union
 
 import numpy as np
 
@@ -102,24 +104,15 @@ def hms_to_degrees(hour: Any, minute: Any, second: Any) -> Any:
     return hour + minute / 60 + second / 3600
 
 
-def hms_to_degrees2(hms: Union[str, Sequence[str]]) -> Union[float, np.ndarray]:
+def hms_to_degrees2(hms: Union[str, Sequence[str]]) -> list[float]:
     '''时分秒转为度数. 要求hms是形如43°08′20″的字符串.'''
-    import pandas as pd
 
-    parts = (
-        pd.Series(hms)
-        .str.split(r'[^\d.]+', expand=True)
-        .iloc[:, :3]
-        .to_numpy(float)
-    )
-    if parts.shape[0] == 1:
-        hour, minute, second = parts[0]
-    else:
-        hour = parts[:, 0]
-        minute = parts[:, 1]
-        second = parts[:, 2]
+    def func(string: str) -> tuple[float, float, float]:
+        return map(float, re.split(r'[^\d.]+', string)[:3])
 
-    return hms_to_degrees(hour, minute, second)
+    if isinstance(hms, str):
+        return hms_to_degrees(*func(hms))
+    return list(map(func, hms))
 
 
 def hav(x: Any) -> Any:
@@ -143,6 +136,91 @@ def haversine(
         dtheta = np.degrees(dtheta)
 
     return dtheta
+
+
+def get_ellipse(
+    x: float = 0,
+    y: float = 0,
+    a: float = 1,
+    b: Optional[float] = None,
+    angle: float = 0,
+    npts: int = 100,
+    ccw: bool = True,
+) -> np.ndarray:
+    '''
+    生成椭圆的xy坐标序列.
+
+    Parameters
+    ----------
+    x, y : float, optional
+        中心的横纵坐标. 默认为(0, 0).
+
+    a : float, optional
+        半长轴长度. 默认为1
+
+    b : float, optional
+        半短轴长度. 默认为None, 表示和a相等.
+
+    angle : float, optional
+        半长轴和x轴成的角度. 默认为0度.
+
+    npts : int, optional
+        用linspace(0, 2pi, npts)生成npts个角度.
+        默认为100, 要求大于等于4
+
+    ccw : bool, optional
+        坐标序列是否沿逆时针方向. 默认为True.
+
+    Returns
+    -------
+    verts : (npts, 2) np.ndarray
+        xy坐标序列.
+    '''
+    if npts < 4:
+        raise ValueError('npts < 4')
+    t = np.linspace(0, 2 * np.pi, npts)
+    verts = np.c_[np.cos(t), np.sin(t), np.ones_like(t)]
+
+    # 对单位圆做仿射变换.
+    b = a if b is None else b
+    angle = math.radians(angle)
+    cos = math.cos(angle)
+    sin = math.sin(angle)
+    mtx = [[a * cos, a * sin], [-b * sin, b * cos], [x, y]]
+    verts = (verts @ mtx)[:, :2]
+    if not ccw:
+        verts = np.flipud(verts)
+
+    return verts
+
+
+def get_circle(
+    x: float = 0, y: float = 0, r: float = 1, npts: int = 100, ccw: bool = True
+) -> np.ndarray:
+    '''
+    生成圆的xy坐标序列.
+
+    Parameters
+    ----------
+    x, y : float, optional
+        中心的横纵坐标. 默认为(0, 0).
+
+    r : float, optional
+        圆的半径. 默认为1
+
+    npts : int, optional
+        用linspace(0, 2pi, npts)生成npts个角度.
+        默认为100, 要求大于等于4
+
+    ccw : bool, optional
+        坐标序列是否沿逆时针方向. 默认为True.
+
+    Returns
+    -------
+    verts : (npts, 2) np.ndarray
+        xy坐标序列.
+    '''
+    return get_ellipse(x, y, r, npts=npts, ccw=ccw)
 
 
 def region_ind(
@@ -307,9 +385,9 @@ def interp_nearest_2d(
     # 元组解包能避免出现多余的维度.
     band_shape = values.shape[x.ndim :]
     return interp_nearest_dd(
-        points=np.column_stack((x.ravel(), y.ravel())),
+        points=np.c_[x.ravel(), y.ravel()],
         values=values.reshape(-1, *band_shape),
-        xi=np.column_stack((xi.ravel(), yi.ravel())),
+        xi=np.c_[xi.ravel(), yi.ravel()],
         radius=radius,
         fill_value=fill_value,
     ).reshape(*xi.shape, *band_shape)

@@ -187,7 +187,7 @@ def get_ellipse(
     cos = math.cos(angle)
     sin = math.sin(angle)
     mtx = [[a * cos, a * sin], [-b * sin, b * cos], [x, y]]
-    verts = (verts @ mtx)[:, :2]
+    verts = verts @ mtx
     if not ccw:
         verts = np.flipud(verts)
 

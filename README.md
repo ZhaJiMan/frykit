@@ -191,7 +191,14 @@ plt.show()
 
 ![clip_by_cn_border](image/clip_by_cn_border.png)
 
-> `clip_by_cn_province` 只能指定单个省， `clip_by_cn_city` 只能指定单个市。如果想用多个多边形，例如京津冀地区进行裁剪，需要提前合并成单个多边形，然后用 `clip_by_polygon` 做裁剪。
+多省或多市裁剪需要提前合并成单个多边形，然后用 `clip_by_polygon` 裁剪：
+
+```Python
+from shapely.ops import unary_union
+
+jingjinji = unary_union(fshp.get_cn_province(['北京市', '天津市', '河北省']))
+fplt.clip_by_polygon(cf, jingjinji)
+```
 
 ### 制作掩膜
 

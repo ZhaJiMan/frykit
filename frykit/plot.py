@@ -88,47 +88,47 @@ def add_polygons(
     **kwargs: Any,
 ) -> PathCollection:
     '''
-    将多边形添加到Axes上.
+    将多边形添加到 Axes 上
 
     Parameters
     ----------
     ax : Axes
-        目标Axes.
+        目标 Axes
 
     polygons : PolygonType or sequence of PolygonType
-        一个或一组多边形对象.
+        一个或一组多边形对象
 
     crs : CRS, optional
-        当ax是GeoAxes时会将多边形从crs表示的坐标系变换到ax所在的坐标系上.
-        默认为None, 表示PlateCarree().
+        当 ax 是 GeoAxes 时会将多边形从 crs 表示的坐标系变换到 ax 所在的坐标系上。
+        默认为 None，表示 PlateCarree()。
 
     **kwargs
-        PathCollection类的关键字参数.
-        例如edgecolor, facecolor, cmap, norm和array等.
+        PathCollection 类的关键字参数。
+        例如 edgecolor、facecolor、cmap、norm 和 array 等。
         https://matplotlib.org/stable/api/collections_api.html
 
     Returns
     -------
     pc : PathCollection
-        代表多边形的集合对象.
+        表示多边形的集合对象
     '''
     if not is_sequence(polygons):
         polygons = [polygons]
     array = kwargs.get('array', None)
     if array is not None and len(array) != len(polygons):
-        raise ValueError('array的长度与polygons不匹配')
+        raise ValueError('array 的长度与 polygons 不匹配')
 
-    # GeoAxes会对多边形做坐标变换.
+    # GeoAxes 会对多边形做坐标变换
     if not isinstance(ax, Axes):
-        raise ValueError('ax不是Axes')
+        raise ValueError('ax 不是 Axes')
     elif isinstance(ax, GeoAxes):
         crs = PlateCarree() if crs is None else crs
         polygons = _cached_transform_polygons(polygons, crs, ax.projection)
     else:
         if crs is not None:
-            raise ValueError('ax不是GeoAxes时crs只能为None')
+            raise ValueError('ax 不是 GeoAxes 时 crs 只能为 None')
 
-    # PathCollection比PathPatch更快.
+    # PathCollection 比 PathPatch 更快
     paths = list(map(fshp.polygon_to_path, polygons))
     kwargs.setdefault('transform', ax.transData)
     pc = PathCollection(paths, **kwargs)
@@ -139,7 +139,7 @@ def add_polygons(
 
 
 def _get_boundary(ax: GeoAxes) -> sgeom.Polygon:
-    '''将GeoAxes.patch转为data坐标系下的多边形.'''
+    '''将 GeoAxes.patch 转为 data 坐标系里的多边形'''
     patch = ax.patch
     patch._adjust_location()
     trans = patch.get_transform() - ax.transData
@@ -159,12 +159,12 @@ def clip_by_polygon(
     strict: bool = False,
 ) -> None:
     '''
-    用多边形裁剪Artist, 只显示多边形内的内容.
+    用多边形裁剪 Artist，只显示多边形内的内容。
 
     Parameters
     ----------
     artist : ArtistType
-        被裁剪的Artist对象. 可以返回自以下方法:
+        被裁剪的Artist对象。可以返回自以下方法：
         - plot, scatter
         - contour, contourf, clabel
         - pcolor, pcolormesh
@@ -172,15 +172,15 @@ def clip_by_polygon(
         - quiver
 
     polygon : PolygonType
-        用于裁剪的多边形对象.
+        用于裁剪的多边形对象
 
     crs : CRS, optional
-        当Artist在GeoAxes里时会将多边形从crs表示的坐标系变换到Artist所在的坐标系上.
-        默认为None, 表示PlateCarree().
+        当 Artist 在 GeoAxes 里时会将多边形从 crs 表示的坐标系变换到 Artist
+        所在的坐标系上。默认为 None，表示 PlateCarree()。
 
     strict : bool, optional
-        是否使用更严格的裁剪方法. 默认为False.
-        为True时即便GeoAxes的边界不是矩形也能避免出界.
+        是否使用更严格的裁剪方法。默认为 False。
+        为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
     '''
     artists = []
     for a in artist if is_sequence(artist) else [artist]:
@@ -191,26 +191,26 @@ def clip_by_polygon(
     ax = artists[0].axes
     for i in range(1, len(artists)):
         if artists[i].axes is not ax:
-            raise ValueError('一组Artist必须属于同一个Axes')
+            raise ValueError('一组 Artist 必须属于同一个 Axes')
 
     if not isinstance(ax, Axes):
-        raise ValueError('ax不是Axes')
+        raise ValueError('ax 不是 Axes')
     if isinstance(ax, GeoAxes):
         crs = PlateCarree() if crs is None else crs
         polygon = _cached_transform_polygons([polygon], crs, ax.projection)[0]
-        # TODO: 通过装饰Artist.draw方法实现.
-        if strict:  # 在data坐标系求polygon和ax.patch的交集.
+        # TODO: 通过装饰 Artist.draw 方法实现
+        if strict:  # 在 data 坐标系求 polygon 和 ax.patch 的交集
             polygon &= _get_boundary(ax)
     else:
-        # Axes会自动给Artist设置clipbox, 所以不会出界.
+        # Axes 会自动给 Artist 设置 clipbox，所以不会出界
         if crs is not None:
-            raise ValueError('ax不是GeoAxes时crs只能为None')
+            raise ValueError('ax 不是 GeoAxes 时 crs 只能为 None')
     path = fshp.polygon_to_path(polygon)
     trans = ax.transData
 
     # TODO:
-    # 用字体位置来判断仍然会有出界的情况.
-    # 用t.get_window_extent()的结果和polygon做运算.
+    # 用字体位置来判断仍然会有出界的情况
+    # 用 t.get_window_extent() 的结果和 polygon 做运算
     for a in artists:
         a.set_clip_on(True)
         a.set_clip_box(ax.bbox)
@@ -222,89 +222,8 @@ def clip_by_polygon(
             a.set_clip_path(path, trans)
 
 
-# 缓存常用数据.
-_data_cache = {}
-
-
-def _get_cached_cn_border() -> fshp.PolygonType:
-    '''获取缓存的中国国界.'''
-    polygon = _data_cache.get('cn_border')
-    if polygon is None:
-        polygon = fshp.get_cn_border()
-        _data_cache['cn_border'] = polygon
-
-    return polygon
-
-
-def _get_cached_nine_line() -> fshp.PolygonType:
-    '''获取缓存的九段线.'''
-    polygon = _data_cache.get('nine_line')
-    if polygon is None:
-        polygon = fshp.get_nine_line()
-        _data_cache['nine_line'] = polygon
-
-    return polygon
-
-
-def _get_cached_cn_provinces(
-    province: Optional[StrOrSeq] = None,
-) -> list[fshp.PolygonType]:
-    '''获取缓存的中国省界.'''
-    polygons = _data_cache.get('cn_province')
-    if polygons is None:
-        polygons = fshp.get_cn_province()
-        _data_cache['cn_province'] = polygons
-    polygons = [polygons[i] for i in fshp._get_pr_locs(province)]
-
-    return polygons
-
-
-def _get_cached_cn_cities(
-    city: Optional[StrOrSeq] = None,
-    province: Optional[StrOrSeq] = None,
-) -> list[fshp.PolygonType]:
-    '''获取缓存的中国市界.'''
-    polygons = _data_cache.get('cn_city')
-    if polygons is None:
-        polygons = fshp.get_cn_city()
-        _data_cache['cn_city'] = polygons
-    polygons = [polygons[i] for i in fshp._get_ct_locs(city, province)]
-
-    return polygons
-
-
-def _get_cached_countries() -> list[fshp.PolygonType]:
-    '''获取缓存的所有国家的国界.'''
-    polygons = _data_cache.get('countries')
-    if polygons is None:
-        polygons = fshp.get_countries()
-        _data_cache['countries'] = polygons
-
-    return polygons
-
-
-def _get_cached_land() -> fshp.PolygonType:
-    '''获取缓存的陆地.'''
-    polygon = _data_cache.get('land')
-    if polygon is None:
-        polygon = fshp.get_land()
-        _data_cache['land'] = polygon
-
-    return polygon
-
-
-def _get_cached_ocean() -> fshp.PolygonType:
-    '''获取缓存的海洋.'''
-    polygon = _data_cache.get('ocean')
-    if polygon is None:
-        polygon = fshp.get_ocean()
-        _data_cache['ocean'] = polygon
-
-    return polygon
-
-
 def _init_pc_kwargs(kwargs: dict) -> dict:
-    '''初始化传给PathCollection的参数.'''
+    '''初始化传给 PathCollection 的参数'''
     kwargs = normalize_kwargs(kwargs, PathCollection)
     kwargs.setdefault('linewidth', 0.5)
     kwargs.setdefault('edgecolor', 'k')
@@ -314,36 +233,39 @@ def _init_pc_kwargs(kwargs: dict) -> dict:
     return kwargs
 
 
-# 竖版中国标准地图的投影.
-# http://gi.m.mnr.gov.cn/202103/t20210312_2617069.html
+'''
+竖版中国标准地图的投影
+http://gi.m.mnr.gov.cn/202103/t20210312_2617069.html
+'''
 CN_AZIMUTHAL_EQUIDISTANT = AzimuthalEquidistant(
     central_longitude=105, central_latitude=35
 )
-# 网络墨卡托投影.
+
+# 网络墨卡托投影
 WEB_MERCATOR = Mercator.GOOGLE
 
 
 def add_cn_border(ax: Axes, **kwargs: Any) -> PathCollection:
     '''
-    在Axes上添加中国国界.
+    在 Axes 上添加中国国界
 
     Parameters
     ----------
     ax : Axes
-        目标Axes.
+        目标 Axes
 
     **kwargs
-        PathCollection类的关键字参数.
-        例如edgecolor, facecolor, cmap, norm和array等.
+        PathCollection 类的关键字参数。
+        例如 edgecolor、facecolor、cmap、norm 和 array 等。
         https://matplotlib.org/stable/api/collections_api.html
 
     Returns
     -------
     pc : PathCollection
-        表示国界的集合对象.
+        表示国界的集合对象
     '''
     kwargs = _init_pc_kwargs(kwargs)
-    polygon = _get_cached_cn_border()
+    polygon = fshp.get_cn_border()
     pc = add_polygons(ax, polygon, **kwargs)
 
     return pc
@@ -351,25 +273,25 @@ def add_cn_border(ax: Axes, **kwargs: Any) -> PathCollection:
 
 def add_nine_line(ax: Axes, **kwargs: Any) -> PathCollection:
     '''
-    在Axes上添加九段线.
+    在 Axes 上添加九段线
 
     Parameters
     ----------
     ax : Axes
-        目标Axes.
+        目标 Axes
 
     **kwargs
-        PathCollection类的关键字参数.
-        例如edgecolor, facecolor, cmap, norm和array等.
+        PathCollection 类的关键字参数。
+        例如 edgecolor、facecolor、cmap、norm 和 array 等。
         https://matplotlib.org/stable/api/collections_api.html
 
     Returns
     -------
     pc : PathCollection
-        表示九段线的集合对象.
+        表示九段线的集合对象
     '''
     kwargs = _init_pc_kwargs(kwargs)
-    polygon = _get_cached_nine_line()
+    polygon = fshp.get_nine_line()
     pc = add_polygons(ax, polygon, **kwargs)
 
     return pc
@@ -379,28 +301,28 @@ def add_cn_province(
     ax: Axes, province: Optional[StrOrSeq] = None, **kwargs: Any
 ) -> PathCollection:
     '''
-    在Axes上添加中国省界.
+    在 Axes 上添加中国省界
 
     Parameters
     ----------
     ax : Axes
-        目标Axes.
+        目标 Axes
 
     province : StrOrSeq, optional
-        单个省名或一组省名. 默认为None, 表示添加所有省.
+        单个或一组省名。默认为 None，表示获取所有省。
 
     **kwargs
-        PathCollection类的关键字参数.
-        例如edgecolor, facecolor, cmap, norm和array等.
+        PathCollection 类的关键字参数。
+        例如 edgecolor、facecolor、cmap、norm 和 array 等。
         https://matplotlib.org/stable/api/collections_api.html
 
     Returns
     -------
     pc : PathCollection
-        表示省界的集合对象.
+        表示省界的集合对象
     '''
     kwargs = _init_pc_kwargs(kwargs)
-    polygons = _get_cached_cn_provinces(province)
+    polygons = fshp.get_cn_province(province)
     pc = add_polygons(ax, polygons, **kwargs)
 
     return pc
@@ -413,33 +335,33 @@ def add_cn_city(
     **kwargs: Any,
 ) -> PathCollection:
     '''
-    在Axes上添加中国市界.
+    在 Axes 上添加中国市界
 
     Parameters
     ----------
     ax : Axes
-        目标Axes.
+        目标 Axes
 
     city : StrOrSeq, optional
-        单个市名或一组市名. 默认为None, 表示添加所有市.
+        单个或一组市名。默认为 None，表示获取所有市。
 
     province : StrOrSeq, optional
-        单个省名或一组省名, 添加属于某个省的所有市.
-        默认为None, 表示不使用省名添加.
-        不能同时指定city和province.
+        单个或一组省名，获取属于某个省的所有市。
+        默认为 None，表示不指定省名。
+        不能同时指定 city 和 province。
 
     **kwargs
-        PathCollection类的关键字参数.
-        例如edgecolor, facecolor, cmap, norm和array等.
+        PathCollection 类的关键字参数。
+        例如 edgecolor、facecolor、cmap、norm 和 array 等。
         https://matplotlib.org/stable/api/collections_api.html
 
     Returns
     -------
     pc : PathCollection
-        表示市界的集合对象.
+        表示市界的集合对象
     '''
     kwargs = _init_pc_kwargs(kwargs)
-    polygons = _get_cached_cn_cities(city, province)
+    polygons = fshp.get_cn_city(city, province)
     pc = add_polygons(ax, polygons, **kwargs)
 
     return pc
@@ -447,27 +369,27 @@ def add_cn_city(
 
 def add_countries(ax: Axes, **kwargs: Any) -> PathCollection:
     '''
-    在Axes上添加所有国家的国界.
+    在 Axes 上添加所有国家的国界
 
-    注意全球数据可能因为地图边界产生错误的结果.
+    注意全球数据可能在地图边界出现错误的结果。
 
     Parameters
     ----------
     ax : Axes
-        目标Axes.
+        目标 Axes
 
     **kwargs
-        PathCollection类的关键字参数.
-        例如edgecolor, facecolor, cmap, norm和array等.
+        PathCollection 类的关键字参数。
+        例如 edgecolor、facecolor、cmap、norm 和 array 等。
         https://matplotlib.org/stable/api/collections_api.html
 
     Returns
     -------
     pc : PathCollection
-        表示国界的集合对象.
+        表示国界的集合对象
     '''
     kwargs = _init_pc_kwargs(kwargs)
-    polygons = _get_cached_countries()
+    polygons = fshp.get_countries()
     pc = add_polygons(ax, polygons, **kwargs)
 
     return pc
@@ -475,27 +397,27 @@ def add_countries(ax: Axes, **kwargs: Any) -> PathCollection:
 
 def add_land(ax: Axes, **kwargs: Any) -> PathCollection:
     '''
-    在Axes上添加陆地.
+    在 Axes 上添加陆地
 
-    注意全球数据可能因为地图边界产生错误的结果.
+    注意全球数据可能在地图边界出现错误的结果。
 
     Parameters
     ----------
     ax : Axes
-        目标Axes.
+        目标 Axes
 
     **kwargs
-        PathCollection类的关键字参数.
-        例如edgecolor, facecolor, cmap, norm和array等.
+        PathCollection 类的关键字参数。
+        例如 edgecolor、facecolor、cmap、norm 和 array 等。
         https://matplotlib.org/stable/api/collections_api.html
 
     Returns
     -------
     pc : PathCollection
-        表示陆地的集合对象.
+        表示陆地的集合对象
     '''
     kwargs = _init_pc_kwargs(kwargs)
-    polygon = _get_cached_land()
+    polygon = fshp.get_land()
     pc = add_polygons(ax, polygon, **kwargs)
 
     return pc
@@ -503,27 +425,27 @@ def add_land(ax: Axes, **kwargs: Any) -> PathCollection:
 
 def add_ocean(ax: Axes, **kwargs: Any) -> PathCollection:
     '''
-    在Axes上添加海洋.
+    在 Axes 上添加海洋
 
-    注意全球数据可能因为地图边界产生错误的结果.
+    注意全球数据可能在地图边界出现错误的结果。
 
     Parameters
     ----------
     ax : Axes
-        目标Axes.
+        目标 Axes
 
     **kwargs
-        PathCollection类的关键字参数.
-        例如edgecolor, facecolor, cmap, norm和array等.
+        PathCollection 类的关键字参数。
+        例如 edgecolor、facecolor、cmap、norm 和 array 等。
         https://matplotlib.org/stable/api/collections_api.html
 
     Returns
     -------
     pc : PathCollection
-        表示海洋的集合对象.
+        表示海洋的集合对象
     '''
     kwargs = _init_pc_kwargs(kwargs)
-    polygon = _get_cached_ocean()
+    polygon = fshp.get_ocean()
     pc = add_polygons(ax, polygon, **kwargs)
 
     return pc
@@ -531,12 +453,12 @@ def add_ocean(ax: Axes, **kwargs: Any) -> PathCollection:
 
 def clip_by_cn_border(artist: ArtistType, strict: bool = False) -> None:
     '''
-    用中国国界裁剪Artist.
+    用中国国界裁剪 Artist
 
     Parameters
     ----------
     artist : ArtistType
-        被裁剪的Artist对象. 可以返回自以下方法:
+        被裁剪的Artist对象。可以返回自以下方法：
         - plot, scatter
         - contour, contourf, clabel
         - pcolor, pcolormesh
@@ -544,10 +466,10 @@ def clip_by_cn_border(artist: ArtistType, strict: bool = False) -> None:
         - quiver
 
     strict : bool, optional
-        是否使用更严格的裁剪方法. 默认为False.
-        为True时即便GeoAxes的边界不是矩形也能避免出界.
+        是否使用更严格的裁剪方法。默认为 False。
+        为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
     '''
-    polygon = _get_cached_cn_border()
+    polygon = fshp.get_cn_border()
     clip_by_polygon(artist, polygon, strict=strict)
 
 
@@ -555,12 +477,12 @@ def clip_by_cn_province(
     artist: ArtistType, province: str, strict: bool = False
 ) -> None:
     '''
-    用中国省界裁剪Artist.
+    用中国省界裁剪 Artist
 
     Parameters
     ----------
     artist : ArtistType
-        被裁剪的Artist对象. 可以返回自以下方法:
+        被裁剪的Artist对象。可以返回自以下方法：
         - plot, scatter
         - contour, contourf, clabel
         - pcolor, pcolormesh
@@ -568,15 +490,15 @@ def clip_by_cn_province(
         - quiver
 
     province : str
-        单个省名.
+        单个省名
 
     strict : bool, optional
-        是否使用更严格的裁剪方法. 默认为False.
-        为True时即便GeoAxes的边界不是矩形也能避免出界.
+        是否使用更严格的裁剪方法。默认为 False。
+        为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
     '''
     if not isinstance(province, str):
         raise ValueError('只支持单个省')
-    polygon = _get_cached_cn_provinces(province)[0]
+    polygon = fshp.get_cn_province(province)
     clip_by_polygon(artist, polygon, strict=strict)
 
 
@@ -584,12 +506,12 @@ def clip_by_cn_city(
     artist: ArtistType, city: str = None, strict: bool = False
 ) -> None:
     '''
-    用中国市界裁剪Artist.
+    用中国市界裁剪 Artist
 
     Parameters
     ----------
     artist : ArtistType
-        被裁剪的Artist对象. 可以返回自以下方法:
+        被裁剪的Artist对象。可以返回自以下方法：
         - plot, scatter
         - contour, contourf, clabel
         - pcolor, pcolormesh
@@ -597,28 +519,28 @@ def clip_by_cn_city(
         - quiver
 
     city : str
-        单个市名.
+        单个市名
 
     strict : bool, optional
-        是否使用更严格的裁剪方法. 默认为False.
-        为True时即便GeoAxes的边界不是矩形也能避免出界.
+        是否使用更严格的裁剪方法。默认为 False。
+        为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
     '''
     if is_sequence(city):
         raise ValueError('只支持单个市')
-    polygon = _get_cached_cn_cities(city)[0]
+    polygon = fshp.get_cn_city(city)
     clip_by_polygon(artist, polygon, strict=strict)
 
 
 def clip_by_land(artist: ArtistType, strict: bool = False) -> None:
     '''
-    用陆地边界裁剪Artist.
+    用陆地边界裁剪 Artist
 
-    注意全球数据可能因为地图边界产生错误的结果.
+    注意全球数据可能在地图边界出现错误的结果。
 
     Parameters
     ----------
     artist : ArtistType
-        被裁剪的Artist对象. 可以返回自以下方法:
+        被裁剪的Artist对象。可以返回自以下方法：
         - plot, scatter
         - contour, contourf, clabel
         - pcolor, pcolormesh
@@ -626,22 +548,23 @@ def clip_by_land(artist: ArtistType, strict: bool = False) -> None:
         - quiver
 
     strict : bool, optional
-        是否使用更严格的裁剪方法. 默认为False.
-        为True时即便GeoAxes的边界不是矩形也能避免出界.
+        是否使用更严格的裁剪方法。默认为 False。
+        为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
     '''
-    clip_by_polygon(artist, _get_cached_land(), strict=strict)
+    polygon = fshp.get_land()
+    clip_by_polygon(artist, polygon, strict=strict)
 
 
 def clip_by_ocean(artist: ArtistType, strict: bool = False) -> None:
     '''
-    用海洋边界裁剪Artist.
+    用海洋边界裁剪 Artist
 
-    注意全球数据可能因为地图边界产生错误的结果.
+    注意全球数据可能在地图边界出现错误的结果。
 
     Parameters
     ----------
     artist : ArtistType
-        被裁剪的Artist对象. 可以返回自以下方法:
+        被裁剪的Artist对象。可以返回自以下方法：
         - plot, scatter
         - contour, contourf, clabel
         - pcolor, pcolormesh
@@ -649,43 +572,47 @@ def clip_by_ocean(artist: ArtistType, strict: bool = False) -> None:
         - quiver
 
     strict : bool, optional
-        是否使用更严格的裁剪方法. 默认为False.
-        为True时即便GeoAxes的边界不是矩形也能避免出界.
+        是否使用更严格的裁剪方法。默认为 False。
+        为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
     '''
-    clip_by_polygon(artist, _get_cached_ocean(), strict=strict)
+    polygon = fshp.get_ocean()
+    clip_by_polygon(artist, polygon, strict=strict)
 
 
 def add_texts(
     ax: Axes, x: Any, y: Any, s: Sequence[str], **kwargs: Any
 ) -> list[Text]:
     '''
-    在Axes上添加一组文本.
+    在 Axes 上添加一组文本
 
     Parameters
     ----------
     ax : Axes
-        目标Axes.
+        目标Axes
 
     x : (n,) array_like
-        文本的横坐标数组.
+        文本的横坐标数组
 
     y : (n,) array_like
-        文本的纵坐标数组.
+        文本的纵坐标数组
 
     s : (n,) sequence of str
-        一组字符串文本.
+        一组字符串文本
 
     **kwargs
-        Axes.text方法的关键字参数.
+        Axes.text 方法的关键字参数
         https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.text.html
 
     Returns
     -------
     texts : (n,) list of Text
-        一组Text对象.
+        一组 Text 对象
     '''
+    x = x if is_sequence(x) else [x]
+    y = y if is_sequence(y) else [y]
+    s = s if is_sequence(s) else [s]
     if not len(x) == len(y) == len(s):
-        raise ValueError('x, y和s长度必须相同')
+        raise ValueError('x、y 和 s 长度必须相同')
 
     kwargs = normalize_kwargs(kwargs, Text)
     kwargs.setdefault('horizontalalignment', 'center')
@@ -696,26 +623,26 @@ def add_texts(
     return texts
 
 
-def _add_cn_texts(ax: Axes, table: pd.DataFrame, **kwargs: Any) -> list[Text]:
-    '''在Axes上用省或市的table添加文本.'''
+def _add_cn_texts(
+    ax: Axes,
+    lons: Any,
+    lats: Any,
+    names: Sequence[str],
+    **kwargs: Any,
+) -> list[Text]:
+    '''在 Axes 上标注中国地名'''
     kwargs = normalize_kwargs(kwargs, Text)
     kwargs.setdefault('fontsize', 'x-small')
     if isinstance(ax, GeoAxes):
         kwargs.setdefault('clip_box', ax.bbox)
         kwargs.setdefault('transform', PlateCarree())
 
-    # 默认使用精简的思源黑体.
+    # 默认使用精简的思源黑体
     filepath = DATA_DIRPATH / 'zh_font.otf'
     if kwargs.get('fontname') is None and kwargs.get('fontfamily') is None:
         kwargs.setdefault('fontproperties', filepath)
 
-    return add_texts(
-        ax=ax,
-        x=table.iloc[:, 0],
-        y=table.iloc[:, 1],
-        s=table.iloc[:, 2],
-        **kwargs,
-    )
+    return add_texts(ax, lons, lats, names, **kwargs)
 
 
 def label_cn_province(
@@ -725,32 +652,34 @@ def label_cn_province(
     **kwargs: Any,
 ) -> list[Text]:
     '''
-    在Axes上标注中国省名.
+    在 Axes 上标注中国省名
 
     Parameters
     ----------
     ax : Axes
-        目标Axes.
+        目标 Axes
 
     province : StrOrSeq, optional
-        单个省名或一组省名. 默认为None, 表示标注所有省.
+        单个或一组省名。默认为 None，表示获取所有省。
 
     short : bool, optional
-        是否使用缩短的省名. 默认为True.
+        是否使用缩短的省名。默认为 True。
 
     **kwargs
-        Axes.text方法的关键字参数.
+        Axes.text 方法的关键字参数
         https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.text.html
 
     Returns
     -------
     texts : list of Text
-        表示省名的Text对象.
+        表示省名的 Text 对象
     '''
     locs = fshp._get_pr_locs(province)
-    key = 'short_name' if short else 'pr_name'
-    table = fshp.PR_TABLE[['lon', 'lat', key]].iloc[locs]
-    texts = _add_cn_texts(ax, table, **kwargs)
+    table = fshp._PR_TABLE.iloc[locs]
+    lons = table['lon']
+    lats = table['lat']
+    names = table['short_name' if short else 'pr_name']
+    texts = _add_cn_texts(ax, lons, lats, names, **kwargs)
 
     return texts
 
@@ -763,37 +692,39 @@ def label_cn_city(
     **kwargs: Any,
 ) -> list[Text]:
     '''
-    在Axes上标注中国市名.
+    在 Axes 上标注中国市名
 
     Parameters
     ----------
     ax : Axes
-        目标Axes.
+        目标 Axes
 
     city : StrOrSeq, optional
-        单个市名或一组市名. 默认为None, 表示标注所有市.
+        单个或一组市名。默认为 None，表示获取所有市。
 
-    province: StrOrSeq, optional
-        单个省名或一组省名, 标注属于某个省的所有市.
-        默认为None, 表示不使用省名标注.
-        不能同时指定name和province.
+    province : StrOrSeq, optional
+        单个或一组省名，获取属于某个省的所有市。
+        默认为 None，表示不指定省名。
+        不能同时指定 city 和 province。
 
     short : bool, optional
-        是否使用缩短的市名. 默认为True.
+        是否使用缩短的市名。默认为 True。
 
     **kwargs
-        Axes.text方法的关键字参数.
+        Axes.text 方法的关键字参数
         https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.text.html
 
     Returns
     -------
     texts : list of Text
-        表示市名的Text对象.
+        表示市名的 Text 对象
     '''
     locs = fshp._get_ct_locs(city, province)
-    key = 'short_name' if short else 'ct_name'
-    table = fshp.CT_TABLE[['lon', 'lat', key]].iloc[locs]
-    texts = _add_cn_texts(ax, table, **kwargs)
+    table = fshp._CT_TABLE.iloc[locs]
+    lons = table['lon']
+    lats = table['lat']
+    names = table['short_name' if short else 'ct_name']
+    texts = _add_cn_texts(ax, lons, lats, names, **kwargs)
 
     return texts
 

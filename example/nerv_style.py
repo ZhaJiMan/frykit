@@ -10,9 +10,11 @@ linecolor = '#a3ffc2'
 boxcolor = '#f29305'
 fontcolor = '#ffc292'
 
+
 # 繁体化省名.
 converter = opencc.OpenCC('s2t.json')
-names = fshp.get_cn_province_names(short=True)
+table = fshp.get_cn_province_table()
+names = table['short_name'].tolist()
 for i, name in enumerate(names):
     if name == '香港' or name == '澳门':
         name = ''
@@ -79,8 +81,7 @@ ax.text(
 )
 
 # 添加省名.
-lonlats = fshp.get_cn_province_lonlats()
-for name, (lon, lat) in zip(names, lonlats):
+for name, lon, lat in zip(names, table['lon'], table['lat']):
     ax.text(
         x=lon,
         y=lat,

@@ -137,7 +137,7 @@ class Timer:
         self.start()
         return self
 
-    def __exit__(self, *exc):
+    def __exit__(self, *exc: Any) -> None:
         self.stop()
 
 

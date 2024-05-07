@@ -34,6 +34,7 @@ from numpy.lib.npyio import NpzFile
 import frykit.shp as fshp
 from frykit import DATA_DIRPATH
 from frykit._artist import *
+from frykit._typing import StrOrSeq
 from frykit.help import deprecator
 
 # 当polygon的引用计数为零时, 弱引用会自动清理缓存.
@@ -246,7 +247,7 @@ def _get_cached_nine_line() -> fshp.PolygonType:
 
 
 def _get_cached_cn_provinces(
-    province: Optional[fshp.GetCNKeyword] = None,
+    province: Optional[StrOrSeq] = None,
 ) -> list[fshp.PolygonType]:
     '''获取缓存的中国省界.'''
     polygons = _data_cache.get('cn_province')
@@ -259,8 +260,8 @@ def _get_cached_cn_provinces(
 
 
 def _get_cached_cn_cities(
-    city: Optional[fshp.GetCNKeyword] = None,
-    province: Optional[fshp.GetCNKeyword] = None,
+    city: Optional[StrOrSeq] = None,
+    province: Optional[StrOrSeq] = None,
 ) -> list[fshp.PolygonType]:
     '''获取缓存的中国市界.'''
     polygons = _data_cache.get('cn_city')
@@ -375,7 +376,7 @@ def add_nine_line(ax: Axes, **kwargs: Any) -> PathCollection:
 
 
 def add_cn_province(
-    ax: Axes, province: Optional[fshp.GetCNKeyword] = None, **kwargs: Any
+    ax: Axes, province: Optional[StrOrSeq] = None, **kwargs: Any
 ) -> PathCollection:
     '''
     在Axes上添加中国省界.
@@ -385,7 +386,7 @@ def add_cn_province(
     ax : Axes
         目标Axes.
 
-    province : GetCNKeyword, optional
+    province : StrOrSeq, optional
         单个省名或一组省名. 默认为None, 表示添加所有省.
 
     **kwargs
@@ -407,8 +408,8 @@ def add_cn_province(
 
 def add_cn_city(
     ax: Axes,
-    city: Optional[fshp.GetCNKeyword] = None,
-    province: Optional[fshp.GetCNKeyword] = None,
+    city: Optional[StrOrSeq] = None,
+    province: Optional[StrOrSeq] = None,
     **kwargs: Any,
 ) -> PathCollection:
     '''
@@ -419,10 +420,10 @@ def add_cn_city(
     ax : Axes
         目标Axes.
 
-    city : GetCNKeyword, optional
+    city : StrOrSeq, optional
         单个市名或一组市名. 默认为None, 表示添加所有市.
 
-    province : GetCNKeyword, optional
+    province : StrOrSeq, optional
         单个省名或一组省名, 添加属于某个省的所有市.
         默认为None, 表示不使用省名添加.
         不能同时指定city和province.
@@ -719,7 +720,7 @@ def _add_cn_texts(ax: Axes, table: pd.DataFrame, **kwargs: Any) -> list[Text]:
 
 def label_cn_province(
     ax: Axes,
-    province: Optional[fshp.GetCNKeyword] = None,
+    province: Optional[StrOrSeq] = None,
     short: bool = True,
     **kwargs: Any,
 ) -> list[Text]:
@@ -731,7 +732,7 @@ def label_cn_province(
     ax : Axes
         目标Axes.
 
-    province : GetCNKeyword, optional
+    province : StrOrSeq, optional
         单个省名或一组省名. 默认为None, 表示标注所有省.
 
     short : bool, optional
@@ -756,8 +757,8 @@ def label_cn_province(
 
 def label_cn_city(
     ax: Axes,
-    city: Optional[fshp.GetCNKeyword] = None,
-    province: Optional[fshp.GetCNKeyword] = None,
+    city: Optional[StrOrSeq] = None,
+    province: Optional[StrOrSeq] = None,
     short: bool = True,
     **kwargs: Any,
 ) -> list[Text]:
@@ -769,10 +770,10 @@ def label_cn_city(
     ax : Axes
         目标Axes.
 
-    city : GetCNKeyword, optional
+    city : StrOrSeq, optional
         单个市名或一组市名. 默认为None, 表示标注所有市.
 
-    province: GetCNKeyword, optional
+    province: StrOrSeq, optional
         单个省名或一组省名, 标注属于某个省的所有市.
         默认为None, 表示不使用省名标注.
         不能同时指定name和province.

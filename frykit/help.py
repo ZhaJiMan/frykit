@@ -3,9 +3,9 @@ import warnings
 from collections.abc import Iterator, Sequence
 from functools import wraps
 from pathlib import Path
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Optional
 
-PathType = Union[str, Path]
+from frykit._typing import PathType
 
 
 def new_dir(dirpath: PathType) -> None:

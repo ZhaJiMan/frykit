@@ -4,7 +4,7 @@ from typing import Any, Optional, Union
 import numpy as np
 from PIL import Image
 
-from frykit.help import PathType
+from frykit._typing import PathType
 
 ImageInput = Union[PathType, Image.Image]
 

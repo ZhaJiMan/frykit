@@ -5,6 +5,8 @@ from typing import Any, Literal, Optional, Union
 
 import numpy as np
 
+from frykit._typing import StrOrSeq
+
 
 def lon_to_180(lon: Any) -> Any:
     '''将经度换算到(-180, 180]范围内.'''
@@ -104,7 +106,7 @@ def hms_to_degrees(hour: Any, minute: Any, second: Any) -> Any:
     return hour + minute / 60 + second / 3600
 
 
-def hms_to_degrees2(hms: Union[str, Sequence[str]]) -> list[float]:
+def hms_to_degrees2(hms: StrOrSeq) -> list[float]:
     '''时分秒转为度数. 要求hms是形如43°08′20″的字符串.'''
 
     def func(string: str) -> tuple[float, float, float]:

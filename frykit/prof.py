@@ -6,7 +6,7 @@ from typing import Any, Literal, Optional
 
 from line_profiler import LineProfiler
 
-from frykit.help import PathType
+from frykit._typing import PathType
 
 TimeUnits = Literal['ns', 'us', 'ms', 's', 'min']
 
@@ -137,7 +137,7 @@ class Timer:
         self.start()
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, *exc):
         self.stop()
 
 

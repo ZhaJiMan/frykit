@@ -6,7 +6,7 @@ import numpy as np
 import shapefile
 import shapely.geometry as sgeom
 
-from frykit.help import PathType
+from frykit._typing import PathType
 
 '''
 利用类似NetCDF的有损压缩方式, 将64-bit的shapefile转换成32-bit的整数.

@@ -1,5 +1,5 @@
 import math
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from typing import Any, Optional, Union
 
 import numpy as np
@@ -13,7 +13,8 @@ from shapely.geometry.base import BaseGeometry, CoordinateSequence
 from shapely.prepared import prep
 
 from frykit import DATA_DIRPATH
-from frykit._shp import BinaryReader, PolygonType
+from frykit._shp import BinaryReader
+from frykit._typing import StrOrSeq
 from frykit.help import deprecator
 
 '''
@@ -25,8 +26,8 @@ from frykit.help import deprecator
 - 海陆: https://www.naturalearthdata.com/downloads/50m-physical-vectors/
 '''
 
-GetCNKeyword = Union[str, Sequence[str]]
-GetCNResult = Union[PolygonType, list[PolygonType]]
+PolygonType = Union[sgeom.Polygon, sgeom.MultiPolygon]
+PolygonOrList = Union[PolygonType, list[PolygonType]]
 
 # 省界和市界的表格.
 shp_dirpath = DATA_DIRPATH / 'shp'
@@ -36,19 +37,19 @@ PR_TABLE = pd.read_csv(str(pr_filepath), index_col='pr_name')
 CT_TABLE = pd.read_csv(str(ct_filepath), index_col=['pr_name', 'ct_name'])
 
 
-def get_cn_border() -> PolygonType:
+def get_cn_border() -> sgeom.MultiPolygon:
     '''获取中国国界的多边形.'''
     with BinaryReader(shp_dirpath / 'cn_border.bin') as reader:
         return reader.shape(0)
 
 
-def get_nine_line() -> PolygonType:
+def get_nine_line() -> sgeom.MultiPolygon:
     '''获取九段线的多边形.'''
     with BinaryReader(shp_dirpath / 'nine_line.bin') as reader:
         return reader.shape(0)
 
 
-def _get_pr_locs(province: Optional[GetCNKeyword] = None) -> list[int]:
+def _get_pr_locs(province: Optional[StrOrSeq] = None) -> list[int]:
     '''查询PR_TABLE得到整数索引.'''
     if province is None:
         return list(range(PR_TABLE.shape[0]))
@@ -59,7 +60,7 @@ def _get_pr_locs(province: Optional[GetCNKeyword] = None) -> list[int]:
 
 
 def _get_ct_locs(
-    city: Optional[GetCNKeyword] = None, province: Optional[GetCNKeyword] = None
+    city: Optional[StrOrSeq] = None, province: Optional[StrOrSeq] = None
 ) -> list[int]:
     '''查询CT_TABLE得到整数索引.'''
     if city is not None and province is not None:
@@ -73,18 +74,18 @@ def _get_ct_locs(
     return locs
 
 
-def get_cn_province(province: Optional[GetCNKeyword] = None) -> GetCNResult:
+def get_cn_province(province: Optional[StrOrSeq] = None) -> PolygonOrList:
     '''
     获取中国省界的多边形.
 
     Parameters
     ----------
-    province : GetCNKeyword, optional
+    province : StrOrSeq, optional
         单个省名或一组省名. 默认为None, 表示获取所有省.
 
     Returns
     -------
-    result : GetCNResult
+    result : PolygonOrList
         表示省界的多边形. province不是字符串时返回列表.
     '''
     with BinaryReader(shp_dirpath / 'cn_province.bin') as reader:
@@ -96,24 +97,24 @@ def get_cn_province(province: Optional[GetCNKeyword] = None) -> GetCNResult:
 
 
 def get_cn_city(
-    city: Optional[GetCNKeyword] = None, province: Optional[GetCNKeyword] = None
-) -> GetCNResult:
+    city: Optional[StrOrSeq] = None, province: Optional[StrOrSeq] = None
+) -> PolygonOrList:
     '''
     获取中国市界的多边形.
 
     Parameters
     ----------
-    city : GetCNKeyword, optional
+    city : StrOrSeq, optional
         单个市名或一组市名. 默认为None, 表示获取所有市.
 
-    province : GetCNKeyword, optional
+    province : StrOrSeq, optional
         单个省名或一组省名, 获取属于某个省的所有市.
         默认为None, 表示不使用省名获取.
         不能同时指定city和province.
 
     Returns
     -------
-    result : GetCNResult
+    result : PolygonOrList
         表示市界的多边形. city不是字符串时返回列表.
     '''
     with BinaryReader(shp_dirpath / 'cn_city.bin') as reader:
@@ -160,13 +161,13 @@ def get_countries() -> list[PolygonType]:
         return reader.shapes()
 
 
-def get_land() -> PolygonType:
+def get_land() -> sgeom.MultiPolygon:
     '''获取陆地多边形.'''
     with BinaryReader(shp_dirpath / 'land.bin') as reader:
         return reader.shape(0)
 
 
-def get_ocean() -> PolygonType:
+def get_ocean() -> sgeom.MultiPolygon:
     '''获取海洋多边形.'''
     with BinaryReader(shp_dirpath / 'ocean.bin') as reader:
         return reader.shape(0)

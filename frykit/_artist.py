@@ -22,7 +22,7 @@ from frykit.calc import t_to_az
 
 
 class QuiverLegend(QuiverKey):
-    '''Quiver图例.'''
+    '''Quiver 图例'''
 
     def __init__(
         self,
@@ -56,7 +56,7 @@ class QuiverLegend(QuiverKey):
             Y = 1 - height / 2
         else:
             raise ValueError(
-                "loc只能取{'lower left', 'lower right', 'upper left', 'upper right'}"
+                "loc 只能取 {'lower left', 'lower right', 'upper left', 'upper right'}"
             )
 
         qk_kwargs = normalize_kwargs(qk_kwargs)
@@ -70,11 +70,11 @@ class QuiverLegend(QuiverKey):
             coordinates='axes',
             **qk_kwargs,
         )
-        # zorder必须在初始化后设置.
+        # zorder 必须在初始化后设置
         zorder = qk_kwargs.get('zorder', 5)
         self.set_zorder(zorder)
 
-        # 将qk调整至patch的中心.
+        # 将 qk 调整至 patch 的中心
         fontsize = self.text.get_fontsize() / 72
         dy = (self._labelsep_inches + fontsize) / 2
         trans = offset_copy(Q.axes.transAxes, Q.figure.figure, 0, dy)
@@ -93,7 +93,7 @@ class QuiverLegend(QuiverKey):
         )
 
     def _set_transform(self) -> None:
-        # 无效化QuiveKey的同名方法.
+        # 无效化 QuiveKey 的同名方法
         pass
 
     def set_figure(self, fig: Figure) -> None:
@@ -106,9 +106,9 @@ class QuiverLegend(QuiverKey):
         super().draw(renderer)
 
 
-# TODO: Geodetic配合Mercator.GOOGLE时速度很慢?
+# TODO: Geodetic 配合 Mercator.GOOGLE 时速度很慢？
 class Compass(PathCollection):
-    '''地图指北针.'''
+    '''地图指北针'''
 
     def __init__(
         self,
@@ -150,7 +150,7 @@ class Compass(PathCollection):
                 paths.append(path2.transformed(rotation))
             colors = ['k', 'w']
         else:
-            raise ValueError("style只能取{'arrow', 'circle', 'star'}")
+            raise ValueError("style只能取 {'arrow', 'circle', 'star'}")
 
         pc_kwargs = normalize_kwargs(pc_kwargs, PathCollection)
         pc_kwargs.setdefault('linewidth', 1)
@@ -158,10 +158,10 @@ class Compass(PathCollection):
         pc_kwargs.setdefault('facecolor', colors)
         pc_kwargs.setdefault('clip_on', False)
         pc_kwargs.setdefault('zorder', 5)
-        # 当pc_kwargs中也有transform时会报错.
+        # 当 pc_kwargs 中也有transform 时会报错
         super().__init__(paths, transform=None, **pc_kwargs)
 
-        # 文字在箭头上方.
+        # 文字在箭头上方
         pad = head / 2.5
         text_kwargs = normalize_kwargs(text_kwargs, Text)
         text_kwargs.setdefault('fontsize', size / 1.5)
@@ -180,14 +180,14 @@ class Compass(PathCollection):
     def _make_paths(
         width: float, head: float, axis: float
     ) -> tuple[Path, Path]:
-        '''width: 箭头宽度, head: 箭头长度, axis: 箭头中轴长度. 且箭头方向朝上.'''
+        '''width：箭头宽度，head：箭头长度，axis：箭头中轴长度。且箭头方向朝上。'''
         path1 = Path([(0, 0), (0, axis), (-width / 2, axis - head), (0, 0)])
         path2 = Path([(0, 0), (width / 2, axis - head), (0, axis), (0, 0)])
 
         return path1, path2
 
     def _init(self) -> None:
-        # 计算指北针的方向.
+        # 计算指北针的方向
         if self.angle is None:
             if isinstance(self.axes, GeoAxes):
                 crs = PlateCarree()
@@ -223,7 +223,7 @@ class Compass(PathCollection):
 
 
 class ScaleBar(_AxesBase):
-    '''地图比例尺.'''
+    '''地图比例尺'''
 
     def __init__(
         self,
@@ -243,14 +243,14 @@ class ScaleBar(_AxesBase):
         elif units == 'km':
             self._units = 1000
         else:
-            raise ValueError("units只能取{'m', 'km'}")
+            raise ValueError("units 只能取 {'m', 'km'}")
 
-        # 避免全局rc设置影响刻度样式.
+        # 避免全局 rc 设置影响刻度样式
         with plt.style.context('default'):
             super().__init__(ax.figure, (0, 0, 1, 1), zorder=5)
         ax.add_child_axes(self)
 
-        # 只显示上边框的刻度.
+        # 只显示上边框的刻度
         self.set_xlabel(units, fontsize='medium')
         self.set_xlim(0, length)
         self.tick_params(
@@ -265,9 +265,9 @@ class ScaleBar(_AxesBase):
         )
 
     def _init(self) -> None:
-        # 在data坐标系取一条直线, 计算单位长度对应的地理长度.
+        # 在 data 坐标系取一条直线，计算单位长度对应的地理长度。
         if isinstance(self.axes, GeoAxes):
-            # GeoAxes取地图中心一段横线.
+            # GeoAxes 取地图中心一段横线
             crs = PlateCarree()
             geod = crs.get_geod()
             xmin, xmax = self.axes.get_xlim()
@@ -282,7 +282,7 @@ class ScaleBar(_AxesBase):
             dr = geod.inv(lon0, lat0, lon1, lat1)[2] / self._units
             dxdr = dx / dr
         else:
-            # Axes认为是PlateCarree投影, 取中心纬度.
+            # Axes 认为是 PlateCarree 投影，取中心纬度。
             Re = 6371e3
             L = 2 * np.pi * Re / 360
             lat0, lat1 = self.axes.get_ylim()
@@ -290,7 +290,7 @@ class ScaleBar(_AxesBase):
             drdx = L * math.cos(math.radians(lat))
             dxdr = self._units / drdx
 
-        # 重新设置比例尺的大小和位置.
+        # 重新设置比例尺的大小和位置
         axes_to_data = self.axes.transAxes - self.axes.transData
         data_to_figure = self.axes.transData - self.figure.transSubfigure
         x, y = axes_to_data.transform((self.x, self.y))
@@ -305,21 +305,17 @@ class ScaleBar(_AxesBase):
         super().draw(renderer)
 
 
-def rectangle_path(
-    x0: float, x1: float, y0: float, y1: float, ccw: bool = True
-) -> Path:
-    '''构造矩形Path. ccw表示逆时针.'''
+def rectangle_path(x0: float, x1: float, y0: float, y1: float) -> Path:
+    '''构造矩形 Path'''
     verts = [(x0, y0), (x1, y0), (x1, y1), (x0, y1), (x0, y0)]
     codes = [Path.MOVETO, Path.LINETO, Path.LINETO, Path.LINETO, Path.CLOSEPOLY]
-    if not ccw:
-        verts.reverse()
     path = Path(verts, codes)
 
     return path
 
 
 class Frame(Artist):
-    '''GMT风格的边框.'''
+    '''GMT风格的边框'''
 
     def __init__(self, width: float = 5, **kwargs: Any) -> None:
         self.width = width
@@ -332,7 +328,7 @@ class Frame(Artist):
         kwargs.setdefault('edgecolor', 'k')
         kwargs.setdefault('facecolor', ['k', 'w'])
 
-        # 暂时用空paths占位.
+        # 暂时用空 paths 占位
         self.pcs = {}
         for key in ['left', 'right', 'top', 'bottom', 'corner']:
             self.pcs[key] = PathCollection([], transform=None, **kwargs)
@@ -341,9 +337,9 @@ class Frame(Artist):
         if isinstance(self.axes, GeoAxes) and not isinstance(
             self.axes.projection, (PlateCarree, Mercator)
         ):
-            raise ValueError('只支持PlateCarree和Mercator投影')
+            raise ValueError('只支持 PlateCarree 和 Mercator 投影')
 
-        # 将inches坐标系的width转为axes坐标系里的dx和dy.
+        # 将 inches 坐标系的 width 转为 axes 坐标系里的 dx 和 dy
         inches_to_axes = self.axes.figure.dpi_scale_trans - self.axes.transAxes
         mtx = inches_to_axes.get_matrix()
         dx = self._width * mtx[0, 0]
@@ -357,7 +353,7 @@ class Frame(Artist):
         self.pcs['right'].set_transform(ytrans)
         self.pcs['corner'].set_transform(self.axes.transAxes)
 
-        # 收集xlim和ylim范围内所有刻度并去重.
+        # 收集 xlim 和 ylim 范围内所有刻度并去重
         major_xticks = self.axes.xaxis.get_majorticklocs()
         minor_xticks = self.axes.xaxis.get_minorticklocs()
         major_yticks = self.axes.yaxis.get_majorticklocs()
@@ -368,7 +364,7 @@ class Frame(Artist):
         yticks = np.array([ymin, ymax, *major_yticks, *minor_yticks])
         xticks = xticks[(xticks >= xmin) & (xticks <= xmax)]
         yticks = yticks[(yticks >= ymin) & (yticks <= ymax)]
-        # 通过round抵消central_longitude导致的浮点误差.
+        # 通过 round 抵消 central_longitude 导致的浮点误差
         xticks = np.unique(xticks.round(9))
         yticks = np.unique(yticks.round(9))
         nx = len(xticks)
@@ -378,12 +374,12 @@ class Frame(Artist):
             rectangle_path(xticks[i], xticks[i + 1], 1, 1 + dy)
             for i in range(nx - 1)
         ]
-        # 即便xaxis方向反转也维持边框的颜色顺序.
+        # 即便 xaxis 方向反转也维持边框的颜色顺序
         if self.axes.xaxis.get_inverted():
             top_paths.reverse()
         self.pcs['top'].set_paths(top_paths)
 
-        # 比例尺对象只设置上边框.
+        # 比例尺对象只设置上边框
         if isinstance(self.axes, ScaleBar):
             return None
 
@@ -411,7 +407,7 @@ class Frame(Artist):
             right_paths.reverse()
         self.pcs['right'].set_paths(right_paths)
 
-        # 单独画出四个角落的方块.
+        # 单独画出四个角落的方块
         corner_paths = [
             rectangle_path(-dx, 0, -dy, 0),
             rectangle_path(1, 1 + dx, -dy, 0),

@@ -9,7 +9,7 @@ data_crs = ccrs.PlateCarree()
 
 
 def plot_province_map():
-    '''绘制省界地图.'''
+    '''绘制省界地图'''
     fig = plt.figure(figsize=(8, 8))
     ax = fig.add_subplot(projection=map_crs)
     ax.set_extent([80, 126, 15, 54], crs=data_crs)
@@ -21,7 +21,7 @@ def plot_province_map():
 
 
 def plot_city_map():
-    '''绘制市界地图.'''
+    '''绘制市界地图'''
     fig = plt.figure(figsize=(15, 15))
     ax = fig.add_subplot(projection=map_crs)
     ax.set_extent([80, 126, 15, 54], crs=data_crs)

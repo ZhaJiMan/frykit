@@ -1,6 +1,5 @@
 import math
 import re
-from collections.abc import Sequence
 from typing import Any, Literal, Optional, Union
 
 import numpy as np
@@ -9,22 +8,22 @@ from frykit._typing import StrOrSeq
 
 
 def lon_to_180(lon: Any) -> Any:
-    '''将经度换算到(-180, 180]范围内.'''
+    '''将经度换算到 (-180, 180] 范围内'''
     return (lon - 540) % -360 + 180
 
 
 def lon_to_360(lon: Any) -> Any:
-    '''将经度换算到[0, 360)范围内.'''
+    '''将经度换算到 [0, 360) 范围内'''
     return lon % 360
 
 
 def month_to_season(month: Any) -> Any:
-    '''将月份换算为季节. 月份用[1, 12]表示, 季节用[1, 4]表示.'''
+    '''将月份换算为季节。月份用 [1, 12] 表示，季节用 [1, 4] 表示。'''
     return (month - 3) % 12 // 3 + 1
 
 
 def rt_to_xy(r: Any, t: Any, degrees: bool = False) -> tuple[Any, Any]:
-    '''极坐标转直角坐标. 默认使用弧度.'''
+    '''极坐标转直角坐标。默认使用弧度。'''
     if degrees:
         t = np.radians(t)
     x = r * np.cos(t)
@@ -34,7 +33,7 @@ def rt_to_xy(r: Any, t: Any, degrees: bool = False) -> tuple[Any, Any]:
 
 
 def xy_to_rt(x: Any, y: Any, degrees: bool = False) -> tuple[Any, Any]:
-    '''直角坐标转极坐标. 默认使用弧度, 角度范围(-180, 180].'''
+    '''直角坐标转极坐标。默认使用弧度，角度范围 (-180, 180]。'''
     r = np.hypot(x, y)
     t = np.arctan2(y, x)
     if degrees:
@@ -44,7 +43,7 @@ def xy_to_rt(x: Any, y: Any, degrees: bool = False) -> tuple[Any, Any]:
 
 
 def t_to_az(t: Any, degrees: bool = False) -> Any:
-    '''x轴夹角转方位角. 默认使用弧度, az范围[0, 360).'''
+    '''x 轴夹角转方位角。默认使用弧度，az 范围 [0, 360)。'''
     if degrees:
         az = (90 - t) % 360
     else:
@@ -56,7 +55,7 @@ def t_to_az(t: Any, degrees: bool = False) -> Any:
 
 
 def az_to_t(az: Any, degrees: bool = False) -> Any:
-    '''方位角转x轴夹角. 默认使用弧度, t范围(-180, 180].'''
+    '''方位角转 x 轴夹角。默认使用弧度，t 范围 (-180, 180]。'''
     if degrees:
         t = -(az + 90) % -360 + 180
     else:
@@ -69,7 +68,7 @@ def az_to_t(az: Any, degrees: bool = False) -> Any:
 
 
 def lon_lat_to_xyz(lon: Any, lat: Any, r=1.0, degrees: bool = False) -> Any:
-    '''经纬度转为球面xyz坐标. 默认使用弧度.'''
+    '''经纬度转为球面 xyz 坐标。默认使用弧度。'''
     if degrees:
         lon = np.radians(lon)
         lat = np.radians(lat)
@@ -82,7 +81,7 @@ def lon_lat_to_xyz(lon: Any, lat: Any, r=1.0, degrees: bool = False) -> Any:
 
 
 def wswd_to_uv(ws: Any, wd: Any, degrees: bool = False) -> tuple[Any, Any]:
-    '''风向风速转为uv. 默认使用弧度.'''
+    '''风向风速转为 uv。默认使用弧度。'''
     if degrees:
         wd = np.radians(wd)
     u = -ws * np.sin(wd)
@@ -92,7 +91,7 @@ def wswd_to_uv(ws: Any, wd: Any, degrees: bool = False) -> tuple[Any, Any]:
 
 
 def uv_to_wswd(u: Any, v: Any, degrees: bool = False) -> tuple[Any, Any]:
-    '''uv转为风向风速. 默认使用弧度.'''
+    '''uv 转为风向风速。默认使用弧度。'''
     ws = np.hypot(u, v)
     wd = np.arctan2(u, v) + np.pi
     if degrees:
@@ -102,12 +101,12 @@ def uv_to_wswd(u: Any, v: Any, degrees: bool = False) -> tuple[Any, Any]:
 
 
 def hms_to_degrees(hour: Any, minute: Any, second: Any) -> Any:
-    '''时分秒转为度数.'''
+    '''时分秒转为度数'''
     return hour + minute / 60 + second / 3600
 
 
 def hms_to_degrees2(hms: StrOrSeq) -> list[float]:
-    '''时分秒转为度数. 要求hms是形如43°08′20″的字符串.'''
+    '''时分秒转为度数。要求 hms 是形如 43°08′20″ 的字符串。'''
 
     def func(string: str) -> tuple[float, float, float]:
         return map(float, re.split(r'[^\d.]+', string)[:3])
@@ -118,14 +117,14 @@ def hms_to_degrees2(hms: StrOrSeq) -> list[float]:
 
 
 def hav(x: Any) -> Any:
-    '''半正矢函数.'''
+    '''半正矢函数'''
     return np.sin(x / 2) ** 2
 
 
 def haversine(
     lon1: Any, lat1: Any, lon2: Any, lat2: Any, degrees: bool = False
 ) -> Any:
-    '''利用haversine公式计算两点间的圆心角.'''
+    '''利用 haversine 公式计算两点间的圆心角'''
     if degrees:
         lon1, lat1, lon2, lat2 = map(np.radians, [lon1, lat1, lon2, lat2])
     dlon = lon2 - lon1
@@ -150,40 +149,40 @@ def get_ellipse(
     ccw: bool = True,
 ) -> np.ndarray:
     '''
-    生成椭圆的xy坐标序列.
+    生成椭圆的xy坐标序列
 
     Parameters
     ----------
     x, y : float, optional
-        中心的横纵坐标. 默认为(0, 0).
+        中心的横纵坐标。默认为 (0, 0)。
 
     a : float, optional
-        半长轴长度. 默认为1
+        半长轴长度。默认为 1。
 
     b : float, optional
-        半短轴长度. 默认为None, 表示和a相等.
+        半短轴长度。默认为 None，表示和 a 相等。
 
     angle : float, optional
-        半长轴和x轴成的角度. 默认为0度.
+        半长轴和 x 轴成的角度。默认为 0 度。
 
     npts : int, optional
-        用linspace(0, 2pi, npts)生成npts个角度.
-        默认为100, 要求大于等于4
+        用 linspace(0, 2pi, npts) 生成 npts 个角度。
+        默认为 100，要求大于等于 4。
 
     ccw : bool, optional
-        坐标序列是否沿逆时针方向. 默认为True.
+        坐标序列是否沿逆时针方向。默认为 True。
 
     Returns
     -------
     verts : (npts, 2) np.ndarray
-        xy坐标序列.
+        xy 坐标序列
     '''
     if npts < 4:
         raise ValueError('npts < 4')
     t = np.linspace(0, 2 * np.pi, npts)
     verts = np.c_[np.cos(t), np.sin(t), np.ones_like(t)]
 
-    # 对单位圆做仿射变换.
+    # 对单位圆做仿射变换
     b = a if b is None else b
     angle = math.radians(angle)
     cos = math.cos(angle)
@@ -200,27 +199,27 @@ def get_circle(
     x: float = 0, y: float = 0, r: float = 1, npts: int = 100, ccw: bool = True
 ) -> np.ndarray:
     '''
-    生成圆的xy坐标序列.
+    生成圆的 xy 坐标序列
 
     Parameters
     ----------
     x, y : float, optional
-        中心的横纵坐标. 默认为(0, 0).
+        中心的横纵坐标。默认为 (0, 0)。
 
     r : float, optional
-        圆的半径. 默认为1
+        圆的半径。默认为 1。
 
     npts : int, optional
-        用linspace(0, 2pi, npts)生成npts个角度.
-        默认为100, 要求大于等于4
+        用 linspace(0, 2pi, npts) 生成 npts 个角度。
+        默认为 100，要求大于等于 4。
 
     ccw : bool, optional
-        坐标序列是否沿逆时针方向. 默认为True.
+        坐标序列是否沿逆时针方向。默认为 True。
 
     Returns
     -------
     verts : (npts, 2) np.ndarray
-        xy坐标序列.
+        xy 坐标序列
     '''
     return get_ellipse(x, y, r, npts=npts, ccw=ccw)
 
@@ -229,28 +228,28 @@ def region_ind(
     lon: Any, lat: Any, extents: Any, form: Literal['mask', 'ix'] = 'mask'
 ) -> Union[np.ndarray, tuple[np.ndarray, np.ndarray]]:
     '''
-    返回落入给定经纬度方框范围内的索引.
+    返回落入给定经纬度方框范围内的索引
 
     Parameters
     ----------
     lon : array_like
-        经度. 若form='mask'则要求形状与lat一致.
+        经度。若 form='mask' 则要求形状与 lat 一致。
 
     lat : array_like
-        纬度. 若form='mask'则要求形状与lon一致.
+        纬度。若 form='mask' 则要求形状与 lon 一致。
 
     extents : (4,) array_like
-        经纬度方框的范围[lon0, lon1, lat0, lat1].
+        经纬度方框的范围 [lon0, lon1, lat0, lat1]
 
     form : {'mask', 'ix'}
-        索引的形式.
-        'mask': 使用与lon和lat同形状的布尔数组进行索引.
-        'ix': 使用下标构成的开放网格进行索引.
+        索引的形式。
+        'mask'：使用与 lon 和 lat 同形状的布尔数组进行索引。
+        'ix'：使用下标构成的开放网格进行索引。
 
     Returns
     -------
     ind : ndarray or 2-tuple of ndarray
-        索引的布尔数组, 或者两个下标数组构成的元组.
+        索引的布尔数组，或者两个下标数组构成的元组。
 
     Examples
     --------
@@ -268,12 +267,12 @@ def region_ind(
     lat_mask = (lat >= lat0) & (lat <= lat1)
     if form == 'mask':
         if lon.shape != lat.shape:
-            raise ValueError('lon和lat的形状应该一样')
+            raise ValueError('lon 和 lat 的形状应该一样')
         ind = lon_mask & lat_mask
     elif form == 'ix':
         ind = np.ix_(lon_mask, lat_mask)
     else:
-        raise ValueError('form不支持')
+        raise ValueError(f'不支持 {form}')
 
     return ind
 
@@ -286,43 +285,43 @@ def interp_nearest_dd(
     fill_value: float = np.nan,
 ) -> np.ndarray:
     '''
-    可以限制搜索半径的多维最近邻插值.
+    可以限制搜索半径的多维最近邻插值
 
     Parameters
     ----------
     points : (n, d) array_like
-        n个数据点的坐标, 每个点有d个坐标分量.
+        n 个数据点的坐标。每个点有 d 个坐标分量。
 
     values : (n, ...) array_like
-        n个数据点的变量值, 可以有多个波段.
+        n 个数据点的变量值。可以有多个波段。
 
     xi: (m, d) array_like
-        m个插值点的坐标. 每个点有d个坐标分量.
+        m 个插值点的坐标。每个点有d个坐标分量。
 
     radius : float, optional
-        插值点能匹配到数据点的最大距离(半径). 默认为Inf.
+        插值点能匹配到数据点的最大距离（半径）。默认为 Inf。
 
     fill_value : float, optional
-        距离超出radius的插值点用fill_value填充. 默认为NaN.
+        距离超出 radius 的插值点用 fill_value 填充。默认为 NaN。
 
     Returns
     -------
     result : (m, ...) ndarray
-        插值点处变量值的数组(浮点型).
+        插值点处变量值的数组（浮点型）
     '''
     points = np.asarray(points)
     values = np.asarray(values, dtype=float)
     xi = np.asarray(xi)
     if points.ndim != 2:
-        raise ValueError('points的维度应该为2')
+        raise ValueError('points 的维度应该为 2')
     if xi.ndim != 2:
-        raise ValueError('xi的维度应该为2')
+        raise ValueError('xi 的维度应该为 2')
     if values.shape[0] != points.shape[0]:
-        raise ValueError('values和points的形状不匹配')
+        raise ValueError('values 和 points 的形状不匹配')
 
     from scipy.spatial import KDTree
 
-    # 利用KDTree搜索最近点.
+    # 利用 KDTree 搜索最近点
     tree = KDTree(points)
     dd, ii = tree.query(xi)
     result = values[ii]
@@ -341,35 +340,35 @@ def interp_nearest_2d(
     fill_value: float = np.nan,
 ) -> np.ndarray:
     '''
-    可以限制搜索半径的二维最近邻插值.
+    可以限制搜索半径的二维最近邻插值
 
     Parameters
     ----------
     x : array_like
-        数据点的横坐标. 要求形状与y相同.
+        数据点的横坐标。要求形状与y相同。
 
     y : array_like
-        数据点的纵坐标. 要求形状与x相同.
+        数据点的纵坐标。要求形状与x相同。
 
     values : array_like
-        数据点的变量值, 可以有多个波段. 要求前面维度的形状与x相同.
+        数据点的变量值。可以有多个波段，要求前面维度的形状与x相同。
 
     xi: array_like
-        插值点的横坐标. 要求形状与yi相同.
+        插值点的横坐标。要求形状与yi相同。
 
     yi: array_like
-        插值点的纵坐标. 要求形状与xi相同.
+        插值点的纵坐标。要求形状与xi相同。
 
     radius : float, optional
-        插值点能匹配到数据点的最大距离(半径). 默认为Inf.
+        插值点能匹配到数据点的最大距离（半径）。默认为 Inf。
 
     fill_value : float, optional
-        距离超出radius的插值点用fill_value填充. 默认为NaN.
+        距离超出 radius 的插值点用 fill_value 填充。默认为 NaN。
 
     Returns
     -------
     result : ndarray
-        插值点处变量值的数组(浮点型).
+        插值点处变量值的数组（浮点型）。
     '''
     x = np.asarray(x)
     y = np.asarray(y)
@@ -378,13 +377,13 @@ def interp_nearest_2d(
     yi = np.asarray(yi)
 
     if x.shape != y.shape:
-        raise ValueError('x和y的形状应该一样')
+        raise ValueError('x 和 y 的形状应该一样')
     if values.shape[: x.ndim] != x.shape:
-        raise ValueError('values和x的形状不匹配')
+        raise ValueError('values 和 x 的形状不匹配')
     if xi.shape != yi.shape:
-        raise ValueError('xi和yi的形状应该一样')
+        raise ValueError('xi 和 yi 的形状应该一样')
 
-    # 元组解包能避免出现多余的维度.
+    # 元组解包能避免出现多余的维度
     band_shape = values.shape[x.ndim :]
     return interp_nearest_dd(
         points=np.c_[x.ravel(), y.ravel()],
@@ -399,46 +398,46 @@ def binned_average_2d(
     x: Any, y: Any, values: Any, xbins: Any, ybins: Any
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     '''
-    用平均的方式对数据做二维binning.
+    用平均的方式对数据做二维binning
 
     Parameters
     ----------
     x : (n,) array_like
-        数据点的横坐标.
+        数据点的横坐标
 
     y : (n,) array_like
-        数据点的纵坐标.
+        数据点的纵坐标
 
     values : (n,) array_like or (m,) sequence of array_like
-        数据点的变量值, 也可以是一组变量.
+        数据点的变量值，也可以是一组变量。
 
     xbins : (nx + 1,) array_like
-        用于划分横坐标的bins.
+        用于划分横坐标的 bins
 
     ybins : (ny + 1,) array_like
-        用于划分纵坐标的bins.
+        用于划分纵坐标的 bins
 
     Returns
     -------
     xc : (nx,) ndarray
-        xbins每个bin中心的横坐标.
+        xbins 每个 bin 中心的横坐标
 
     yc : (ny,) ndarray
-        ybins每个bin中心的纵坐标.
+        ybins 每个 bin 中心的纵坐标
 
     avg : (ny, nx) or (m, ny, nx) ndarray
-        xbins和ybins构成的网格内的变量平均值.
-        为了便于画图, 采取(ny, nx)的形状.
+        xbins 和 ybins 构成的网格内的变量平均值。
+        为了便于画图，采取 (ny, nx) 的形状。
     '''
 
     def nanmean(arr):
-        '''避免空切片警告的nanmean.'''
+        '''避免空切片警告的 nanmean'''
         arr = arr[~np.isnan(arr)]
         return np.nan if arr.size == 0 else arr.mean()
 
     from scipy.stats import binned_statistic_2d
 
-    # 参数检查由scipy的函数负责. 注意x和y的顺序.
+    # 参数检查由 scipy 的函数负责。注意 x 和 y 的顺序。
     avg, ybins, xbins, _ = binned_statistic_2d(
         y, x, values, bins=[ybins, xbins], statistic=nanmean
     )

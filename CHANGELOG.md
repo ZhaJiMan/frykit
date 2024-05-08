@@ -1,7 +1,17 @@
-## `0.5.4`
+## `0.6.0`
 
+- 新增 `_typing` 模块。
+- `BinaryConverter` 类更名为 `BinaryPacker`。
+- `BinaryPacker` 和 `BinaryReader` 类现支持多种几何对象。
+- `shp` 模块中获取行政区划的函数新增缓存功能。
+- 移除 `get_cn_province_names`、`get_cn_province_lonlats`、`get_cn_city_names`、`get_cn_city_lonlats` 函数。
+- 新增 `get_cn_province_table` 和 `get_cn_city_table` 函数。
+- 新增 `path_to_polygon` 函数，修改 `polygon_to_path` 函数的行为。
+- 提高 `plot` 模块中绘制行政区划函数多次调用的效率。
+- 移除 `use_fast_transform` 函数，绘制行政区划和做裁剪的函数新增 `fast_transform` 参数，手动选择是否快速变换。
 - 新增生成圆的 `get_ellipse` 和 `get_circle` 函数。
 - 修改 `hms_to_degrees2` 函数的输出类型。
+- 修改 docstring。
 
 ## `0.5.3`
 

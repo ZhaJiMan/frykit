@@ -12,7 +12,7 @@ TimeUnits = Literal['ns', 'us', 'ms', 's', 'min']
 
 
 def _convert_seconds(seconds, unit: TimeUnits = 's') -> float:
-    '''将时间秒数转换为其它单位.'''
+    '''将时间秒数转换为其它单位'''
     if unit == 'ns':
         scale = 1e9
     if unit == 'us':
@@ -38,25 +38,25 @@ def timer(
     out: Optional[list] = None
 ) -> Callable:
     '''
-    给函数或方法计时的装饰器.
+    给函数或方法计时的装饰器
 
     Parameters
     ----------
     func : callable
-        需要被计时的函数或方法.
+        需要被计时的函数或方法
 
     unit : {'ns', 'us', 'ms', 's', 'min'}, optional
-        时间单位. 默认为s.
+        时间单位。默认为 's'。
 
     verbose : bool, optional
-        是否打印计时结果. 默认为True.
+        是否打印计时结果。默认为 True。
 
     fmt : str, optional
-        打印格式. 默认为'[{name}] {time:.3f} {unit}'.
-        其中name对应函数名, time对应耗时, unit对应时间单位.
+        打印格式。默认为 '[{name}] {time:.3f} {unit}'。
+        其中 name 对应函数名，time 对应耗时，unit 对应时间单位。
 
     out : list, optional
-        收集耗时的列表, 装饰器会将耗时添加到列表中. 默认不收集结果.
+        收集耗时的列表，装饰器会将耗时添加到列表中。默认不收集结果。
     '''
     if fmt is None:
         fmt = '[{name}] {time:.3f} {unit}'
@@ -85,12 +85,12 @@ def timer(
 
 class Timer:
     '''
-    给代码块计时的类.
+    给代码块计时的类
 
     Attributes
     ----------
     dt : float or None
-        代码块的耗时. 单位由unit决定, 初始值为None.
+        代码块的耗时。单位由 unit 决定，初始值为 None。
     '''
 
     def __init__(
@@ -103,14 +103,14 @@ class Timer:
         Parameters
         ----------
         unit : {'ns', 'us', 'ms', 's', 'min'}, optional
-            时间单位. 默认为s.
+            时间单位。默认为 's'。
 
         verbose : bool, optional
-            是否打印计时结果. 默认为True.
+            是否打印计时结果。默认为 True。
 
         fmt : str, optional
-            打印格式. 默认为'{time:.3f} {unit}'.
-            其中time对应耗时, unit对应时间单位.
+            打印格式。默认为 '{time:.3f} {unit}'。
+            其中 time 对应耗时，unit 对应时间单位。
         '''
         if fmt is None:
             fmt = '{time:.3f} {unit}'
@@ -122,11 +122,11 @@ class Timer:
         self.dt = None
 
     def start(self) -> None:
-        '''开始计时.'''
+        '''开始计时'''
         self._t0 = time.perf_counter()
 
     def stop(self) -> None:
-        '''停止计时.'''
+        '''停止计时'''
         self._t1 = time.perf_counter()
         self.dt = _convert_seconds(self._t1 - self._t0, self.unit)
         if self.verbose:
@@ -142,7 +142,7 @@ class Timer:
 
 
 def cprofiler(filepath: PathType) -> Callable:
-    '''cProfile的装饰器. 保存结果到指定路径.'''
+    '''cProfile 的装饰器。保存结果到指定路径。'''
 
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
@@ -158,7 +158,7 @@ def cprofiler(filepath: PathType) -> Callable:
 
 
 def lprofiler(filepath: PathType) -> Callable:
-    '''line_profiler的装饰器. 保存结果到指定路径.'''
+    '''line_profiler 的装饰器。保存结果到指定路径。'''
 
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)

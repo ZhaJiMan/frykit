@@ -1,4 +1,4 @@
-'''运行example目录下的所有脚本.'''
+'''运行example目录下的所有脚本'''
 
 # TODO: 换用pytest
 import subprocess

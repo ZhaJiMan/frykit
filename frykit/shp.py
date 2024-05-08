@@ -364,8 +364,7 @@ def _transform(func: Callable, geom: BaseGeometry) -> BaseGeometry:
         coords = func(geom.coords)
         if np.isfinite(coords).all():
             return type(geom)(coords)
-        else:
-            return type(geom)()
+        return type(geom)()
     elif geom.geom_type == 'Polygon':
         shell = func(geom.exterior.coords)
         if not np.isfinite(shell).all():
@@ -387,8 +386,7 @@ def _transform(func: Callable, geom: BaseGeometry) -> BaseGeometry:
                 parts.append(part)
         if parts:
             return type(geom)(parts)
-        else:
-            return type(geom)()
+        return type(geom)()
     else:
         raise TypeError('geom 不是几何对象')
 

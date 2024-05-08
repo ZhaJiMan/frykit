@@ -5,13 +5,13 @@ import opencc
 import frykit.plot as fplt
 import frykit.shp as fshp
 
-# 线条颜色.
+# 线条颜色
 linecolor = '#a3ffc2'
 boxcolor = '#f29305'
 fontcolor = '#ffc292'
 
 
-# 繁体化省名.
+# 繁体化省名
 converter = opencc.OpenCC('s2t.json')
 table = fshp.get_cn_province_table()
 names = table['short_name'].tolist()
@@ -20,23 +20,23 @@ for i, name in enumerate(names):
         name = ''
     names[i] = converter.convert(name)
 
-# 设置投影.
+# 设置投影
 map_crs = fplt.CN_AZIMUTHAL_EQUIDISTANT
 data_crs = ccrs.PlateCarree()
 
-# 创建画布.
+# 创建画布
 fig = plt.figure(facecolor='k')
 ax = fig.add_subplot(111, projection=map_crs)
 ax.set_extent([76, 134, 2, 55], crs=data_crs)
 ax.set_facecolor('k')
 ax.axis('off')
 
-# 绘制省界和市界.
+# 绘制省界和市界
 fplt.add_cn_province(ax, lw=0.6, ec=linecolor)
 fplt.add_cn_city(ax, lw=0.2, ec=linecolor)
 fplt.add_nine_line(ax, lw=0.6, ec=linecolor)
 
-# 两种风格的方框.
+# 两种风格的方框
 hollow_props = {
     'boxstyle': 'round, rounding_size=0.2',
     'fc': 'none',
@@ -51,7 +51,7 @@ solid_props = {
     'alpha': 0.8,
 }
 
-# 添加说明框.
+# 添加说明框
 ax.text(
     x=0.2,
     y=0.2,
@@ -80,7 +80,7 @@ ax.text(
     transform=ax.transAxes,
 )
 
-# 添加省名.
+# 添加省名
 for name, lon, lat in zip(names, table['lon'], table['lat']):
     ax.text(
         x=lon,
@@ -95,6 +95,6 @@ for name, lon, lat in zip(names, table['lon'], table['lat']):
         transform=data_crs,
     )
 
-# 保存图片.
+# 保存图片
 fig.savefig('../image/nerv_style.png', dpi=300, bbox_inches='tight')
 plt.close(fig)

@@ -190,56 +190,68 @@ def get_ocean() -> sgeom.MultiPolygon:
     return polygon
 
 
-def _ring_codes(n: int) -> list[np.uint8]:
-    '''为长度为n的环生成codes.'''
+def _poly_codes(n: int) -> list[np.uint8]:
+    '''生成适用于多边形的长度为 n 的 codes'''
     codes = [Path.LINETO] * n
-    codes[0] = Path.MOVETO
-    codes[-1] = Path.CLOSEPOLY
+    if codes:
+        codes[0] = Path.MOVETO
+        codes[-1] = Path.CLOSEPOLY
 
     return codes
 
 
-def polygon_to_path(polygon: PolygonType, keep_empty: bool = True) -> Path:
-    '''
-    将多边形转为Path.
-
-    Parameters
-    ----------
-    polygon : PolygonType
-        多边形对象.
-
-    keep_empty : bool, optional
-        是否用只含(0, 0)点的Path表示空多边形. 默认为True.
-        这样在占位的同时不会影响Matplotlib的画图效果.
-
-    Returns
-    -------
-    path : Path
-        Path对象.
-    '''
+def polygon_to_path(polygon: PolygonType) -> Path:
+    '''多边形转为 Path。空多边形对应空 Path。'''
     if not isinstance(polygon, (sgeom.Polygon, sgeom.MultiPolygon)):
-        raise TypeError('polygon不是多边形对象')
+        raise TypeError('polygon 不是多边形')
 
     if polygon.is_empty:
-        if keep_empty:
-            return Path([(0, 0)])
-        else:
-            raise ValueError('polygon不能为空多边形')
+        return Path(np.zeros((0, 2)), [])
 
-    # 注意: 用户构造的多边形不一定满足内外环绕行方向相反的前提.
-    verts, codes = [], []
+    verts = []
+    codes = []
     for polygon in getattr(polygon, 'geoms', [polygon]):
-        for ring in [polygon.exterior, *polygon.interiors]:
-            verts.append(np.asarray(ring.coords))
-            codes.extend(_ring_codes(len(ring.coords)))
+        coords = polygon.exterior.coords
+        if polygon.exterior.is_ccw:
+            coords = coords[::-1]
+        verts.append(coords)
+        codes.extend(_poly_codes(len(coords)))
+
+        for ring in polygon.interiors:
+            coords = ring.coords
+            if not ring.is_ccw:
+                coords = coords[::-1]
+            verts.append(coords)
+            codes.extend(_poly_codes(len(coords)))
+
     verts = np.vstack(verts)
     path = Path(verts, codes)
 
     return path
 
 
+def path_to_polygon(path: Path) -> PolygonType:
+    '''Path 转为多边形。注意只适用于 polygon_to_path 的返回值。'''
+    if len(path.vertices) == 0:
+        return sgeom.Polygon()
+
+    collection = []
+    inds = np.nonzero(path.codes == Path.MOVETO)[0][1:]
+    for verts in np.vsplit(path.vertices, inds):
+        ring = sgeom.LinearRing(verts)
+        if ring.is_ccw:
+            collection[-1][1].append(ring)
+        else:
+            collection.append((ring, []))
+
+    polygons = [sgeom.Polygon(shell, holes) for shell, holes in collection]
+    if len(polygons) > 1:
+        return sgeom.MultiPolygon(polygons)
+    return polygons[0]
+
+
 def polygon_to_polys(polygon: PolygonType) -> list[list[tuple[float, float]]]:
-    '''多边形对象转为适用于shapefile的坐标序列. 但不保证绕行方向.'''
+    '''多边形转为适用于 shapefile 的坐标序列。不保证绕行方向。'''
     polys = []
     for polygon in getattr(polygon, 'geoms', [polygon]):
         for ring in [polygon.exterior, *polygon.interiors]:
@@ -250,42 +262,44 @@ def polygon_to_polys(polygon: PolygonType) -> list[list[tuple[float, float]]]:
 
 def polygon_to_mask(polygon: PolygonType, x: Any, y: Any) -> np.ndarray:
     '''
-    用多边形制作掩膜(mask)数组.
+    用多边形制作掩膜（mask）数组
 
     Parameters
     ----------
     polygon : PolygonType
-        多边形对象.
+        多边形对象
 
     x : array_like
-        数据点的横坐标. 要求形状与y相同.
+        数据点的横坐标。要求形状与y相同。
 
     y : array_like
-        数据点的纵坐标. 要求形状与x相同.
+        数据点的纵坐标。要求形状与x相同。
 
     Returns
     -------
     mask : ndarray
-        布尔类型的掩膜数组, 真值表示数据点落入多边形内部. 形状与x和y相同.
+        布尔类型的掩膜数组，真值表示数据点落入多边形内部。形状与x和y相同。
     '''
     if not isinstance(polygon, (sgeom.Polygon, sgeom.MultiPolygon)):
-        raise TypeError('polygon不是多边形对象')
-    x, y = np.asarray(x), np.asarray(y)
+        raise TypeError('polygon 不是多边形')
+
+    x = np.asarray(x)
+    y = np.asarray(y)
     if x.shape != y.shape:
-        raise ValueError('x和y的形状不匹配')
+        raise ValueError('x 和 y 的形状不匹配')
     if x.ndim == 0 and y.ndim == 0:
         return polygon.contains(sgeom.Point(x, y))
     prepared = prep(polygon)
 
     def recursion(x: np.ndarray, y: np.ndarray) -> np.ndarray:
-        '''递归判断坐标为x和y的点集是否落入多边形中.'''
+        '''递归判断坐标为 x 和 y 的点集是否落入多边形中'''
         xmin, xmax = x.min(), x.max()
         ymin, ymax = y.min(), y.max()
         xflag = math.isclose(xmin, xmax)
         yflag = math.isclose(ymin, ymax)
         mask = np.zeros(x.shape, dtype=bool)
 
-        # 散点重合为单点的情况.
+        # 散点重合为单点的情况
         if xflag and yflag:
             point = sgeom.Point(xmin, ymin)
             if prepared.contains(point):
@@ -297,7 +311,7 @@ def polygon_to_mask(polygon: PolygonType, x: Any, y: Any) -> np.ndarray:
         xmid = (xmin + xmax) / 2
         ymid = (ymin + ymax) / 2
 
-        # 散点落在水平和垂直直线上的情况.
+        # 散点落在水平和垂直直线上的情况
         if xflag or yflag:
             line = sgeom.LineString([(xmin, ymin), (xmax, ymax)])
             if prepared.contains(line):
@@ -317,7 +331,7 @@ def polygon_to_mask(polygon: PolygonType, x: Any, y: Any) -> np.ndarray:
                 mask[:] = False
             return mask
 
-        # 散点可以张成矩形的情况.
+        # 散点可以张成矩形的情况
         box = sgeom.box(xmin, ymin, xmax, ymax)
         if prepared.contains(box):
             mask[:] = True
@@ -342,10 +356,8 @@ def polygon_to_mask(polygon: PolygonType, x: Any, y: Any) -> np.ndarray:
     return recursion(x, y)
 
 
-def _transform(
-    func: Callable[[CoordinateSequence], np.ndarray], geom: BaseGeometry
-) -> BaseGeometry:
-    '''shapely.ops.transform的修改版, 会将坐标含无效值的对象设为空对象.'''
+def _transform(func: Callable, geom: BaseGeometry) -> BaseGeometry:
+    '''shapely.ops.transform 的修改版，会将坐标含无效值的对象设为空对象。'''
     if geom.is_empty:
         return type(geom)()
     if geom.geom_type in ('Point', 'LineString', 'LinearRing'):
@@ -378,14 +390,14 @@ def _transform(
         else:
             return type(geom)()
     else:
-        raise TypeError('geom不是几何对象')
+        raise TypeError('geom 不是几何对象')
 
 
 class GeometryTransformer:
     '''
-    对几何对象做坐标变换的类.
+    对几何对象做坐标变换的类
 
-    基于pyproj.Transformer实现, 当几何对象跨越坐标系边界时可能产生错误的连线.
+    基于 pyproj.Transformer 实现，可能在地图边界出现错误的结果。
     '''
 
     def __init__(self, crs_from: CRS, crs_to: CRS) -> None:
@@ -393,20 +405,20 @@ class GeometryTransformer:
         Parameters
         ----------
         crs_from : CRS
-            源坐标系.
+            源坐标系
 
         crs_to : CRS
-            目标坐标系.
+            目标坐标系
         '''
         self.crs_from = crs_from
         self.crs_to = crs_to
 
-        # 坐标系相同时直接复制.
+        # 坐标系相同时直接复制
         if crs_from == crs_to:
             self._func = lambda x: type(x)(x)
             return None
 
-        # 避免反复创建Transformer的开销.
+        # 避免反复创建Transformer的开销
         transformer = Transformer.from_crs(crs_from, crs_to, always_xy=True)
 
         def func(coords: CoordinateSequence) -> np.ndarray:
@@ -419,17 +431,17 @@ class GeometryTransformer:
 
     def __call__(self, geom: BaseGeometry) -> BaseGeometry:
         '''
-        对几何对象做变换.
+        对几何对象做变换
 
         Parameters
         ----------
         geom : BaseGeometry
-            源坐标系上的几何对象.
+            源坐标系上的几何对象
 
         Returns
         -------
         geom : BaseGeometry
-            目标坐标系上的几何对象.
+            目标坐标系上的几何对象
         '''
         return self._func(geom)
 

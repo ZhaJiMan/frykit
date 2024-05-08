@@ -6,7 +6,6 @@ from weakref import WeakKeyDictionary, WeakValueDictionary
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import shapely.geometry as sgeom
 from cartopy.crs import CRS, AzimuthalEquidistant, Mercator, PlateCarree
 from cartopy.mpl.feature_artist import _GeomKey

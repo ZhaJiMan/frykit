@@ -36,54 +36,61 @@ from frykit._artist import *
 from frykit._typing import StrOrSeq
 from frykit.help import deprecator
 
-# 当polygon的引用计数为零时, 弱引用会自动清理缓存.
-# cartopy是直接缓存Path, 但测试后发现差距不大.
+# polygon 的引用计数为零时弱引用会自动清理缓存
 _key_to_polygon = WeakValueDictionary()
-_key_to_crs_to_transformed_polygon = WeakKeyDictionary()
-
-_USE_FAST_TRANSFORM = True
-
-
-def use_fast_transform(b: bool) -> None:
-    '''
-    是否启用快速变换.
-
-    快速变换基于pyproj.Transformer, 速度更快但可能在地图边界产生错误的连线.
-    普通变换基于cartopy.crs.Projection.project_geometry, 速度更慢但结果更正确.
-    '''
-    global _USE_FAST_TRANSFORM
-    _USE_FAST_TRANSFORM = b
-    _key_to_polygon.clear()
-    _key_to_crs_to_transformed_polygon.clear()
+_key_to_path = WeakKeyDictionary()
+_key_to_crs_to_transformed_path = WeakKeyDictionary()
 
 
-def _cached_transform_polygons(
-    polygons: Sequence[fshp.PolygonType], crs_from: CRS, crs_to: CRS
-) -> list[fshp.PolygonType]:
-    '''对一组多边形做坐标变换并缓存结果.'''
-    if _USE_FAST_TRANSFORM:
-        transform_polygon = fshp.GeometryTransformer(crs_from, crs_to)
-    else:
-        transform_polygon = lambda x: crs_to.project_geometry(x, crs_from)
-
-    values = []
+def _polygons_to_paths(polygons: Sequence[fshp.PolygonType]) -> list[Path]:
+    '''将一组多边形转为 Path 并缓存结果'''
+    paths = []
     for polygon in polygons:
         key = _GeomKey(polygon)
         _key_to_polygon.setdefault(key, polygon)
-        mapping = _key_to_crs_to_transformed_polygon.setdefault(key, {})
-        value = mapping.get(crs_to)
-        if value is None:
-            value = transform_polygon(polygon)
-            mapping[crs_to] = value
-        values.append(value)
+        path = _key_to_path.get(key)
+        if path is None:
+            path = fshp.polygon_to_path(polygon)
+            _key_to_path[key] = path
+        paths.append(path)
 
-    return values
+    return paths
+
+
+def _transform_polygons_to_paths(
+    polygons: Sequence[fshp.PolygonType],
+    crs_from: CRS,
+    crs_to: CRS,
+    use_pyproj: bool = True,
+) -> list[Path]:
+    '''对一组多边形做坐标变换再转为 Path，并缓存结果。'''
+    if use_pyproj:
+        transform = fshp.GeometryTransformer(crs_from, crs_to)
+    else:
+        transform = lambda x: crs_to.project_geometry(x, crs_from)
+
+    paths = []
+    for polygon in polygons:
+        key = _GeomKey(polygon)
+        _key_to_polygon.setdefault(key, polygon)
+        mapping = _key_to_crs_to_transformed_path.setdefault(key, {})
+        value = mapping.get(crs_to)
+        if value is None or value[0] != use_pyproj:
+            polygon = transform(polygon)
+            path = fshp.polygon_to_path(polygon)
+            mapping[crs_to] = (use_pyproj, path)
+        else:
+            path = value[1]
+        paths.append(path)
+
+    return paths
 
 
 def add_polygons(
     ax: Axes,
     polygons: Union[fshp.PolygonType, Sequence[fshp.PolygonType]],
     crs: Optional[CRS] = None,
+    use_pyproj: bool = True,
     **kwargs: Any,
 ) -> PathCollection:
     '''
@@ -95,11 +102,14 @@ def add_polygons(
         目标 Axes
 
     polygons : PolygonType or sequence of PolygonType
-        一个或一组多边形对象
+        一个或一组多边形
 
     crs : CRS, optional
         当 ax 是 GeoAxes 时会将多边形从 crs 表示的坐标系变换到 ax 所在的坐标系上。
         默认为 None，表示 PlateCarree()。
+
+    use_pyproj : bool, optional
+        是否直接用 pyproj 做坐标变换。默认为 True，速度更快但也效果也容易出错。
 
     **kwargs
         PathCollection 类的关键字参数。
@@ -117,18 +127,22 @@ def add_polygons(
     if array is not None and len(array) != len(polygons):
         raise ValueError('array 的长度与 polygons 不匹配')
 
-    # GeoAxes 会对多边形做坐标变换
     if not isinstance(ax, Axes):
         raise ValueError('ax 不是 Axes')
     elif isinstance(ax, GeoAxes):
-        crs = PlateCarree() if crs is None else crs
-        polygons = _cached_transform_polygons(polygons, crs, ax.projection)
+        if crs is None:
+            crs = PlateCarree()
+        paths = _transform_polygons_to_paths(
+            polygons=polygons,
+            crs_from=crs,
+            crs_to=ax.projection,
+            use_pyproj=use_pyproj,
+        )
     else:
         if crs is not None:
             raise ValueError('ax 不是 GeoAxes 时 crs 只能为 None')
+        paths = _polygons_to_paths(polygons)
 
-    # PathCollection 比 PathPatch 更快
-    paths = list(map(fshp.polygon_to_path, polygons))
     kwargs.setdefault('transform', ax.transData)
     pc = PathCollection(paths, **kwargs)
     ax.add_collection(pc)
@@ -148,13 +162,14 @@ def _get_boundary(ax: GeoAxes) -> sgeom.Polygon:
     return boundary
 
 
-ArtistType = Union[Artist, Sequence[Artist]]
+ArtistOrSeq = Union[Artist, Sequence[Artist]]
 
 
 def clip_by_polygon(
-    artist: ArtistType,
+    artist: ArtistOrSeq,
     polygon: fshp.PolygonType,
     crs: Optional[CRS] = None,
+    use_pyproj: bool = True,
     strict: bool = False,
 ) -> None:
     '''
@@ -162,8 +177,8 @@ def clip_by_polygon(
 
     Parameters
     ----------
-    artist : ArtistType
-        被裁剪的Artist对象。可以返回自以下方法：
+    artist : ArtistOrSeq
+        被裁剪的 Artist对象。可以返回自以下方法：
         - plot, scatter
         - contour, contourf, clabel
         - pcolor, pcolormesh
@@ -177,6 +192,9 @@ def clip_by_polygon(
         当 Artist 在 GeoAxes 里时会将多边形从 crs 表示的坐标系变换到 Artist
         所在的坐标系上。默认为 None，表示 PlateCarree()。
 
+    use_pyproj : bool, optional
+        是否直接用 pyproj 做坐标变换。默认为 True，速度更快但也效果也容易出错。
+
     strict : bool, optional
         是否使用更严格的裁剪方法。默认为 False。
         为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
@@ -187,6 +205,7 @@ def clip_by_polygon(
             artists.extend(a.collections)
         else:
             artists.append(a)
+
     ax = artists[0].axes
     for i in range(1, len(artists)):
         if artists[i].axes is not ax:
@@ -194,31 +213,38 @@ def clip_by_polygon(
 
     if not isinstance(ax, Axes):
         raise ValueError('ax 不是 Axes')
-    if isinstance(ax, GeoAxes):
-        crs = PlateCarree() if crs is None else crs
-        polygon = _cached_transform_polygons([polygon], crs, ax.projection)[0]
-        # TODO: 通过装饰 Artist.draw 方法实现
-        if strict:  # 在 data 坐标系求 polygon 和 ax.patch 的交集
-            polygon &= _get_boundary(ax)
+    is_geoaxes = isinstance(ax, GeoAxes)
+    if is_geoaxes:
+        if crs is None:
+            crs = PlateCarree()
+        path = _transform_polygons_to_paths(
+            polygons=[polygon],
+            crs_from=crs,
+            crs_to=ax.projection,
+            use_pyproj=use_pyproj,
+        )[0]
+        if strict:
+            polygon = fshp.path_to_polygon(path)
+            boudnary = _get_boundary(ax)
+            path = fshp.polygon_to_path(polygon & boudnary)
     else:
-        # Axes 会自动给 Artist 设置 clipbox，所以不会出界
         if crs is not None:
             raise ValueError('ax 不是 GeoAxes 时 crs 只能为 None')
-    path = fshp.polygon_to_path(polygon)
-    trans = ax.transData
+        path = _polygons_to_paths([polygon])[0]
 
     # TODO:
     # 用字体位置来判断仍然会有出界的情况
     # 用 t.get_window_extent() 的结果和 polygon 做运算
     for a in artists:
         a.set_clip_on(True)
-        a.set_clip_box(ax.bbox)
+        if is_geoaxes:
+            a.set_clip_box(ax.bbox)
         if isinstance(a, Text):
             point = sgeom.Point(a.get_position())
             if not polygon.contains(point):
                 a.set_visible(False)
         else:
-            a.set_clip_path(path, trans)
+            a.set_clip_path(path, ax.transData)
 
 
 def _init_pc_kwargs(kwargs: dict) -> dict:
@@ -244,7 +270,9 @@ CN_AZIMUTHAL_EQUIDISTANT = AzimuthalEquidistant(
 WEB_MERCATOR = Mercator.GOOGLE
 
 
-def add_cn_border(ax: Axes, **kwargs: Any) -> PathCollection:
+def add_cn_border(
+    ax: Axes, use_pyproj: bool = True, **kwargs: Any
+) -> PathCollection:
     '''
     在 Axes 上添加中国国界
 
@@ -252,6 +280,9 @@ def add_cn_border(ax: Axes, **kwargs: Any) -> PathCollection:
     ----------
     ax : Axes
         目标 Axes
+
+    use_pyproj : bool, optional
+        是否直接用 pyproj 做坐标变换。默认为 True，速度更快但也效果也容易出错。
 
     **kwargs
         PathCollection 类的关键字参数。
@@ -263,14 +294,17 @@ def add_cn_border(ax: Axes, **kwargs: Any) -> PathCollection:
     pc : PathCollection
         表示国界的集合对象
     '''
-    kwargs = _init_pc_kwargs(kwargs)
-    polygon = fshp.get_cn_border()
-    pc = add_polygons(ax, polygon, **kwargs)
+    return add_polygons(
+        ax=ax,
+        polygons=fshp.get_cn_border(),
+        use_pyproj=use_pyproj,
+        **_init_pc_kwargs(kwargs),
+    )
 
-    return pc
 
-
-def add_nine_line(ax: Axes, **kwargs: Any) -> PathCollection:
+def add_nine_line(
+    ax: Axes, use_pyproj: bool = True, **kwargs: Any
+) -> PathCollection:
     '''
     在 Axes 上添加九段线
 
@@ -278,6 +312,9 @@ def add_nine_line(ax: Axes, **kwargs: Any) -> PathCollection:
     ----------
     ax : Axes
         目标 Axes
+
+    use_pyproj : bool, optional
+        是否直接用 pyproj 做坐标变换。默认为 True，速度更快但也效果也容易出错。
 
     **kwargs
         PathCollection 类的关键字参数。
@@ -289,15 +326,19 @@ def add_nine_line(ax: Axes, **kwargs: Any) -> PathCollection:
     pc : PathCollection
         表示九段线的集合对象
     '''
-    kwargs = _init_pc_kwargs(kwargs)
-    polygon = fshp.get_nine_line()
-    pc = add_polygons(ax, polygon, **kwargs)
-
-    return pc
+    return add_polygons(
+        ax=ax,
+        polygons=fshp.get_nine_line(),
+        use_pyproj=use_pyproj,
+        **_init_pc_kwargs(kwargs),
+    )
 
 
 def add_cn_province(
-    ax: Axes, province: Optional[StrOrSeq] = None, **kwargs: Any
+    ax: Axes,
+    province: Optional[StrOrSeq] = None,
+    use_pyproj: bool = True,
+    **kwargs: Any,
 ) -> PathCollection:
     '''
     在 Axes 上添加中国省界
@@ -310,6 +351,9 @@ def add_cn_province(
     province : StrOrSeq, optional
         单个或一组省名。默认为 None，表示获取所有省。
 
+    use_pyproj : bool, optional
+        是否直接用 pyproj 做坐标变换。默认为 True，速度更快但也效果也容易出错。
+
     **kwargs
         PathCollection 类的关键字参数。
         例如 edgecolor、facecolor、cmap、norm 和 array 等。
@@ -320,17 +364,19 @@ def add_cn_province(
     pc : PathCollection
         表示省界的集合对象
     '''
-    kwargs = _init_pc_kwargs(kwargs)
-    polygons = fshp.get_cn_province(province)
-    pc = add_polygons(ax, polygons, **kwargs)
-
-    return pc
+    return add_polygons(
+        ax=ax,
+        polygons=fshp.get_cn_province(province),
+        use_pyproj=use_pyproj,
+        **_init_pc_kwargs(kwargs),
+    )
 
 
 def add_cn_city(
     ax: Axes,
     city: Optional[StrOrSeq] = None,
     province: Optional[StrOrSeq] = None,
+    use_pyproj: bool = True,
     **kwargs: Any,
 ) -> PathCollection:
     '''
@@ -349,6 +395,9 @@ def add_cn_city(
         默认为 None，表示不指定省名。
         不能同时指定 city 和 province。
 
+    use_pyproj : bool, optional
+        是否直接用 pyproj 做坐标变换。默认为 True，速度更快但也效果也容易出错。
+
     **kwargs
         PathCollection 类的关键字参数。
         例如 edgecolor、facecolor、cmap、norm 和 array 等。
@@ -359,14 +408,17 @@ def add_cn_city(
     pc : PathCollection
         表示市界的集合对象
     '''
-    kwargs = _init_pc_kwargs(kwargs)
-    polygons = fshp.get_cn_city(city, province)
-    pc = add_polygons(ax, polygons, **kwargs)
+    return add_polygons(
+        ax=ax,
+        polygons=fshp.get_cn_city(city, province),
+        use_pyproj=use_pyproj,
+        **_init_pc_kwargs(kwargs),
+    )
 
-    return pc
 
-
-def add_countries(ax: Axes, **kwargs: Any) -> PathCollection:
+def add_countries(
+    ax: Axes, use_pyproj: bool = True, **kwargs: Any
+) -> PathCollection:
     '''
     在 Axes 上添加所有国家的国界
 
@@ -376,6 +428,9 @@ def add_countries(ax: Axes, **kwargs: Any) -> PathCollection:
     ----------
     ax : Axes
         目标 Axes
+
+    use_pyproj : bool, optional
+        是否直接用 pyproj 做坐标变换。默认为 True，速度更快但也效果也容易出错。
 
     **kwargs
         PathCollection 类的关键字参数。
@@ -387,14 +442,17 @@ def add_countries(ax: Axes, **kwargs: Any) -> PathCollection:
     pc : PathCollection
         表示国界的集合对象
     '''
-    kwargs = _init_pc_kwargs(kwargs)
-    polygons = fshp.get_countries()
-    pc = add_polygons(ax, polygons, **kwargs)
+    return add_polygons(
+        ax=ax,
+        polygons=fshp.get_countries(),
+        use_pyproj=use_pyproj,
+        **_init_pc_kwargs(kwargs),
+    )
 
-    return pc
 
-
-def add_land(ax: Axes, **kwargs: Any) -> PathCollection:
+def add_land(
+    ax: Axes, use_pyproj: bool = True, **kwargs: Any
+) -> PathCollection:
     '''
     在 Axes 上添加陆地
 
@@ -404,6 +462,9 @@ def add_land(ax: Axes, **kwargs: Any) -> PathCollection:
     ----------
     ax : Axes
         目标 Axes
+
+    use_pyproj : bool, optional
+        是否直接用 pyproj 做坐标变换。默认为 True，速度更快但也效果也容易出错。
 
     **kwargs
         PathCollection 类的关键字参数。
@@ -415,14 +476,17 @@ def add_land(ax: Axes, **kwargs: Any) -> PathCollection:
     pc : PathCollection
         表示陆地的集合对象
     '''
-    kwargs = _init_pc_kwargs(kwargs)
-    polygon = fshp.get_land()
-    pc = add_polygons(ax, polygon, **kwargs)
+    return add_polygons(
+        ax=ax,
+        polygons=fshp.get_land(),
+        use_pyproj=use_pyproj,
+        **_init_pc_kwargs(kwargs),
+    )
 
-    return pc
 
-
-def add_ocean(ax: Axes, **kwargs: Any) -> PathCollection:
+def add_ocean(
+    ax: Axes, use_pyproj: bool = True, **kwargs: Any
+) -> PathCollection:
     '''
     在 Axes 上添加海洋
 
@@ -432,6 +496,9 @@ def add_ocean(ax: Axes, **kwargs: Any) -> PathCollection:
     ----------
     ax : Axes
         目标 Axes
+
+    use_pyproj : bool, optional
+        是否直接用 pyproj 做坐标变换。默认为 True，速度更快但也效果也容易出错。
 
     **kwargs
         PathCollection 类的关键字参数。
@@ -443,20 +510,23 @@ def add_ocean(ax: Axes, **kwargs: Any) -> PathCollection:
     pc : PathCollection
         表示海洋的集合对象
     '''
-    kwargs = _init_pc_kwargs(kwargs)
-    polygon = fshp.get_ocean()
-    pc = add_polygons(ax, polygon, **kwargs)
+    return add_polygons(
+        ax=ax,
+        polygons=fshp.get_ocean(),
+        use_pyproj=use_pyproj,
+        **_init_pc_kwargs(kwargs),
+    )
 
-    return pc
 
-
-def clip_by_cn_border(artist: ArtistType, strict: bool = False) -> None:
+def clip_by_cn_border(
+    artist: ArtistOrSeq, use_pyproj: bool = True, strict: bool = False
+) -> None:
     '''
     用中国国界裁剪 Artist
 
     Parameters
     ----------
-    artist : ArtistType
+    artist : ArtistOrSeq
         被裁剪的Artist对象。可以返回自以下方法：
         - plot, scatter
         - contour, contourf, clabel
@@ -464,23 +534,33 @@ def clip_by_cn_border(artist: ArtistType, strict: bool = False) -> None:
         - imshow
         - quiver
 
+    use_pyproj : bool, optional
+        是否直接用 pyproj 做坐标变换。默认为 True，速度更快但也效果也容易出错。
+
     strict : bool, optional
         是否使用更严格的裁剪方法。默认为 False。
         为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
     '''
-    polygon = fshp.get_cn_border()
-    clip_by_polygon(artist, polygon, strict=strict)
+    clip_by_polygon(
+        artist=artist,
+        polygon=fshp.get_cn_border(),
+        use_pyproj=use_pyproj,
+        strict=strict,
+    )
 
 
 def clip_by_cn_province(
-    artist: ArtistType, province: str, strict: bool = False
+    artist: ArtistOrSeq,
+    province: str,
+    use_pyproj: bool = True,
+    strict: bool = False,
 ) -> None:
     '''
     用中国省界裁剪 Artist
 
     Parameters
     ----------
-    artist : ArtistType
+    artist : ArtistOrSeq
         被裁剪的Artist对象。可以返回自以下方法：
         - plot, scatter
         - contour, contourf, clabel
@@ -491,25 +571,35 @@ def clip_by_cn_province(
     province : str
         单个省名
 
+    use_pyproj : bool, optional
+        是否直接用 pyproj 做坐标变换。默认为 True，速度更快但也效果也容易出错。
+
     strict : bool, optional
         是否使用更严格的裁剪方法。默认为 False。
         为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
     '''
     if not isinstance(province, str):
         raise ValueError('只支持单个省')
-    polygon = fshp.get_cn_province(province)
-    clip_by_polygon(artist, polygon, strict=strict)
+    clip_by_polygon(
+        artist=artist,
+        polygon=fshp.get_cn_province(province),
+        use_pyproj=use_pyproj,
+        strict=strict,
+    )
 
 
 def clip_by_cn_city(
-    artist: ArtistType, city: str = None, strict: bool = False
+    artist: ArtistOrSeq,
+    city: str = None,
+    use_pyproj: bool = True,
+    strict: bool = False,
 ) -> None:
     '''
     用中国市界裁剪 Artist
 
     Parameters
     ----------
-    artist : ArtistType
+    artist : ArtistOrSeq
         被裁剪的Artist对象。可以返回自以下方法：
         - plot, scatter
         - contour, contourf, clabel
@@ -520,17 +610,26 @@ def clip_by_cn_city(
     city : str
         单个市名
 
+    use_pyproj : bool, optional
+        是否直接用 pyproj 做坐标变换。默认为 True，速度更快但也效果也容易出错。
+
     strict : bool, optional
         是否使用更严格的裁剪方法。默认为 False。
         为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
     '''
     if is_sequence(city):
         raise ValueError('只支持单个市')
-    polygon = fshp.get_cn_city(city)
-    clip_by_polygon(artist, polygon, strict=strict)
+    clip_by_polygon(
+        artist=artist,
+        polygon=fshp.get_cn_city(city),
+        use_pyproj=use_pyproj,
+        strict=strict,
+    )
 
 
-def clip_by_land(artist: ArtistType, strict: bool = False) -> None:
+def clip_by_land(
+    artist: ArtistOrSeq, use_pyproj: bool = True, strict: bool = False
+) -> None:
     '''
     用陆地边界裁剪 Artist
 
@@ -538,7 +637,7 @@ def clip_by_land(artist: ArtistType, strict: bool = False) -> None:
 
     Parameters
     ----------
-    artist : ArtistType
+    artist : ArtistOrSeq
         被裁剪的Artist对象。可以返回自以下方法：
         - plot, scatter
         - contour, contourf, clabel
@@ -546,15 +645,24 @@ def clip_by_land(artist: ArtistType, strict: bool = False) -> None:
         - imshow
         - quiver
 
+    use_pyproj : bool, optional
+        是否直接用 pyproj 做坐标变换。默认为 True，速度更快但也效果也容易出错。
+
     strict : bool, optional
         是否使用更严格的裁剪方法。默认为 False。
         为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
     '''
-    polygon = fshp.get_land()
-    clip_by_polygon(artist, polygon, strict=strict)
+    clip_by_polygon(
+        artist=artist,
+        polygon=fshp.get_land(),
+        use_pyproj=use_pyproj,
+        strict=strict,
+    )
 
 
-def clip_by_ocean(artist: ArtistType, strict: bool = False) -> None:
+def clip_by_ocean(
+    artist: ArtistOrSeq, use_pyproj: bool = True, strict: bool = False
+) -> None:
     '''
     用海洋边界裁剪 Artist
 
@@ -562,7 +670,7 @@ def clip_by_ocean(artist: ArtistType, strict: bool = False) -> None:
 
     Parameters
     ----------
-    artist : ArtistType
+    artist : ArtistOrSeq
         被裁剪的Artist对象。可以返回自以下方法：
         - plot, scatter
         - contour, contourf, clabel
@@ -570,12 +678,19 @@ def clip_by_ocean(artist: ArtistType, strict: bool = False) -> None:
         - imshow
         - quiver
 
+    use_pyproj : bool, optional
+        是否直接用 pyproj 做坐标变换。默认为 True，速度更快但也效果也容易出错。
+
     strict : bool, optional
         是否使用更严格的裁剪方法。默认为 False。
         为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
     '''
-    polygon = fshp.get_ocean()
-    clip_by_polygon(artist, polygon, strict=strict)
+    clip_by_polygon(
+        artist=artist,
+        polygon=fshp.get_ocean(),
+        use_pyproj=use_pyproj,
+        strict=strict,
+    )
 
 
 def add_texts(

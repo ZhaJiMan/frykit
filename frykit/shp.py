@@ -267,7 +267,7 @@ def polygon_to_mask(polygon: PolygonType, x: Any, y: Any) -> np.ndarray:
     Parameters
     ----------
     polygon : PolygonType
-        多边形对象
+        用于裁剪的多边形
 
     x : array_like
         数据点的横坐标。要求形状与y相同。

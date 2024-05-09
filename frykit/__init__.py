@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 
-__version__ = '0.6.1'
+__version__ = '0.6.2'
 
 DATA_DIRPATH = Path(__file__).parent / 'data'
 SHP_DIRPATH = DATA_DIRPATH / 'shp'

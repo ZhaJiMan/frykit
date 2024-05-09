@@ -1,3 +1,8 @@
+## `0.6.2`
+
+- 修正 `clip_by_poylgon` 对 `clabel` 的返回值和任意 `Text` 的处理。
+- 新增同时裁剪 `contour` 和 `contourf` 的例子 `clabel.py`。
+
 ## `0.6.1`
 
 - 把 `get_cn_province_names` 和 `get_cn_city_names` 函数又加回来了。

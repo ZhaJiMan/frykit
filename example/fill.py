@@ -3,7 +3,7 @@ import matplotlib.colors as mcolors
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib import patheffects
+from matplotlib.patheffects import Normal, Stroke
 
 import frykit.plot as fplt
 import frykit.shp as fshp
@@ -43,10 +43,7 @@ norm = mcolors.BoundaryNorm(bins, nbin)
 cmap = mcolors.ListedColormap(colors)
 
 # 字体描边
-path_effects = [
-    patheffects.Stroke(linewidth=1.5, foreground='w'),
-    patheffects.Normal(),
-]
+path_effects = [Stroke(linewidth=1.5, foreground='w'), Normal()]
 
 # 绘制填色多边形，标注省名。
 for ax in [ax1, ax2]:

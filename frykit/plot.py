@@ -240,16 +240,16 @@ def clip_by_polygon(
             raise ValueError('ax 不是 GeoAxes 时 crs 只能为 None')
         path = _polygons_to_paths([polygon])[0]
 
-    # TODO:
-    # 用字体位置来判断仍然会有出界的情况
-    # 用 t.get_window_extent() 的结果和 polygon 做运算
+    # TODO: 严格防文字出界的方案
+    # fig.canvas.draw + t.get_window_extent
     for a in artists:
         a.set_clip_on(True)
         if is_geoaxes:
             a.set_clip_box(ax.bbox)
         if isinstance(a, Text):
-            point = sgeom.Point(a.get_position())
-            if not polygon.contains(point):
+            trans = a.get_transform() - ax.transData
+            point = trans.transform(a.get_position())
+            if not path.contains_point(point):
                 a.set_visible(False)
         else:
             a.set_clip_path(path, ax.transData)

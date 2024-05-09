@@ -348,6 +348,10 @@ cbar.set_ticks(boundaries)
 
 ![quiver](image/quiver.png)
 
+- [裁剪出界处理](example/strict_clip.py)
+
+![strict_clip](image/strict_clip.png)
+
 - [裁剪主图和南海小图的 `contourf`](example/contourf.py)
 
 ![contourf](image/contourf.png)

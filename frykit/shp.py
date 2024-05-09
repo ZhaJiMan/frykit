@@ -96,6 +96,30 @@ def _get_ct_locs(
     return locs
 
 
+def get_cn_province_names(short: bool = False) -> list[str]:
+    '''获取所有中国省名'''
+    if short:
+        names = _PR_TABLE['short_name']
+    else:
+        names = _PR_TABLE.index
+
+    return names.tolist()
+
+
+def get_cn_city_names(
+    province: Optional[StrOrSeq] = None, short=False
+) -> list[str]:
+    '''获取所有中国市名。可以指定获取某个省的所有市名。'''
+    locs = _get_ct_locs(province=province)
+    table = _CT_TABLE.iloc[locs]
+    if short:
+        names = table['short_name']
+    else:
+        names = table.index.get_level_values(1)
+
+    return names.tolist()
+
+
 def get_cn_province(province: Optional[StrOrSeq] = None) -> PolygonOrList:
     '''
     获取中国省界的多边形

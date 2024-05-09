@@ -1,3 +1,7 @@
+## `0.6.1`
+
+- 把 `get_cn_province_names` 和 `get_cn_city_names` 函数又加回来了……
+
 ## `0.6.0`
 
 - 新增 `_typing` 模块。

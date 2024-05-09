@@ -23,7 +23,12 @@ lat = data['latitude']
 t2m = data['t2m']
 
 crs = ccrs.PlateCarree()
-fig, axes = plt.subplots(1, 2, figsize=(10, 5), subplot_kw={'projection': fplt.CN_AZIMUTHAL_EQUIDISTANT})
+fig, axes = plt.subplots(
+    nrows=1,
+    ncols=2,
+    figsize=(10, 5),
+    subplot_kw={'projection': fplt.CN_AZIMUTHAL_EQUIDISTANT},
+)
 for i, ax in enumerate(axes):
     fplt.add_cn_province(ax)
     ax.set_extent(extents, crs=crs)

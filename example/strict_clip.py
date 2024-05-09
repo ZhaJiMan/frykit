@@ -1,21 +1,11 @@
 import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
-from matplotlib.path import Path
 
 import frykit.plot as fplt
 
 extents = [100, 125, 15, 40]
 lon0, lon1, lat0, lat1 = extents
-
-path = Path(
-    [
-        (lon0, lat0),
-        (lon1, lat0),
-        (lon1, lat1),
-        (lon0, lat1),
-        (lon0, lat0),
-    ]
-).interpolated(100)
+path = fplt.rectangle_path(*extents).interpolated(100)
 
 data = fplt.load_test_data()
 lon = data['longitude']

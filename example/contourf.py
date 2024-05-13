@@ -21,17 +21,22 @@ yticks = np.arange(-90, 91, 10)
 map_crs = fplt.CN_AZIMUTHAL_EQUIDISTANT
 data_crs = ccrs.PlateCarree()
 
-# 设置刻度风格
-plt.rc('xtick.major', size=8, width=0.9)
-plt.rc('ytick.major', size=8, width=0.9)
-plt.rc('xtick', labelsize=8, top=True, labeltop=True)
-plt.rc('ytick', labelsize=8, right=True, labelright=True)
-
 # 准备主地图
 fig = plt.figure(figsize=(10, 6))
 ax1 = fig.add_subplot(projection=map_crs)
 fplt.set_map_ticks(ax1, extents1, xticks, yticks)
 ax1.gridlines(xlocs=xticks, ylocs=yticks, lw=0.5, ls='--', color='gray')
+
+# 类似 NCL 的刻度风格
+ax1.tick_params(
+    length=8,
+    width=0.9,
+    labelsize=8,
+    top=True,
+    right=True,
+    labeltop=True,
+    labelright=True,
+)
 
 # 添加要素
 land = LAND.with_scale('50m')

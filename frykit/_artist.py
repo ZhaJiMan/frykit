@@ -1,7 +1,6 @@
 import math
 from typing import Any, Literal, Optional
 
-import matplotlib.pyplot as plt
 import numpy as np
 from cartopy.crs import Mercator, PlateCarree
 from cartopy.mpl.geoaxes import GeoAxes
@@ -245,9 +244,7 @@ class ScaleBar(_AxesBase):
         else:
             raise ValueError("units 只能取 {'m', 'km'}")
 
-        # 避免全局 rc 设置影响刻度样式
-        with plt.style.context('default'):
-            super().__init__(ax.figure, (0, 0, 1, 1), zorder=5)
+        super().__init__(ax.figure, (0, 0, 1, 1), zorder=5)
         ax.add_child_axes(self)
 
         # 只显示上边框的刻度

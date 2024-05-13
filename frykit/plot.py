@@ -1321,7 +1321,7 @@ def add_scale_bar(
     Returns
     -------
     scale_bar : ScaleBar
-        比例尺对象。刻度可以通过 set_xticks 方法修改。
+        比例尺对象。刻度可以通过 set_xticks、tick_params 等方法修改。
     '''
     return ScaleBar(ax, x, y, length, units)
 

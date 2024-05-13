@@ -318,10 +318,15 @@ cbar.set_ticks(boundaries)
 
 ![colorbar](image/colorbar.png)
 
+### 模块结构
+
+![structure](image/structure.jpg)
+
 ### 详细介绍
 
 工具箱的原理和使用场景可见下面几篇博文：
 
+- [Cartopy 系列：画中国地图的工具箱 frykit](https://zhajiman.github.io/post/frykit/)
 - [Cartopy 系列：探索 shapefile](https://zhajiman.github.io/post/cartopy_shapefile/)
 - [Cartopy 系列：裁剪填色图出界问题](https://zhajiman.github.io/post/cartopy_clip_outside/)
 - [CALIPSO L2 VFM 产品的读取和绘制（with Python）](https://zhajiman.github.io/post/calipso_vfm/)

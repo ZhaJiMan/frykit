@@ -1,3 +1,7 @@
+## `0.6.3`
+
+- 去除 `Frame` 中的默认 style，让外部的 style sheets 和 rcParams 能影响到 `Frame`。
+
 ## `0.6.2`
 
 - 修正 `clip_by_poylgon` 对 `clabel` 的返回值和任意 `Text` 的处理。
@@ -5,7 +9,7 @@
 
 ## `0.6.1`
 
-- 把 `get_cn_province_names` 和 `get_cn_city_names` 函数又加回来了。
+- 把 `get_cn_province_names` 和 `get_cn_city_names` 函数又加回来了，同时修改了用法。
 
 ## `0.6.0`
 

@@ -24,6 +24,8 @@ from frykit.help import deprecator
 - 九段线: https://datav.aliyun.com/portal/school/atlas/area_selector
 - 所有国家: http://meteothink.org/downloads/index.html
 - 海陆: https://www.naturalearthdata.com/downloads/50m-physical-vectors/
+
+TODO: 高德或天地图的县级数据
 '''
 
 PolygonType = Union[sgeom.Polygon, sgeom.MultiPolygon]

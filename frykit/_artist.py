@@ -311,7 +311,7 @@ def rectangle_path(x0: float, x1: float, y0: float, y1: float) -> Path:
     return path
 
 
-# TODO: https://github.com/SciTools/cartopy/issues/1830
+# TODO: 非矩形边框
 class Frame(Artist):
     '''GMT风格的边框'''
 

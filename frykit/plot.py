@@ -1330,6 +1330,8 @@ def add_frame(ax: Axes, width: float = 5, **kwargs: Any) -> Frame:
     '''
     在 Axes 上添加 GMT 风格的边框
 
+    需要先设置好 Axes 的刻度，再调用该函数。
+
     Parameters
     ----------
     ax : Axes

@@ -329,9 +329,9 @@ cbar.set_ticks(boundaries)
 - [Cartopy 系列：画中国地图的工具箱 frykit](https://zhajiman.github.io/post/frykit/)
 - [Cartopy 系列：探索 shapefile](https://zhajiman.github.io/post/cartopy_shapefile/)
 - [Cartopy 系列：裁剪填色图出界问题](https://zhajiman.github.io/post/cartopy_clip_outside/)
-- [CALIPSO L2 VFM 产品的读取和绘制（with Python）](https://zhajiman.github.io/post/calipso_vfm/)
-- [Matplotlib 系列：colormap 的设置](https://zhajiman.github.io/post/matplotlib_colormap/)
 - [Cartopy 添加南海小地图的三种方法](https://mp.weixin.qq.com/s/-QMVN6MS-UuQ9lQjz9vqBQ)
+- [Matplotlib 系列：colormap 的设置](https://zhajiman.github.io/post/matplotlib_colormap/)
+- [CALIPSO L2 VFM 产品的读取和绘制（with Python）](https://zhajiman.github.io/post/calipso_vfm/)
 
 ### 示例效果
 

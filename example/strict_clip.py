@@ -39,5 +39,5 @@ fplt.clip_by_cn_border(pc2, strict=True)
 axes[0].set_title('strict=False', fontsize='large', color='r')
 axes[1].set_title('strcit=True', fontsize='large', color='r')
 
-plt.savefig('../image/strict_clip.png', dpi=300, bbox_inches='tight')
+fplt.savefig('../image/strict_clip.png')
 plt.close(fig)

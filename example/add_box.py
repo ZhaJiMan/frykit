@@ -53,5 +53,5 @@ for i in range(len(xlocs - 1)):
                 )
 
 # 保存图片
-fig.savefig('../image/add_box.png', dpi=300, bbox_inches='tight')
+fplt.savefig('../image/add_box.png')
 plt.close(fig)

@@ -1,3 +1,20 @@
+## `0.6.4`
+
+- 增加中国区县数据。相关函数：
+  - `get_cn_district`
+  - `get_cn_district_table`
+  - `get_cn_district_names`
+  - `add_cn_distict`
+  - `label_cn_district`
+- `get_cn_xxx` 系列函数重新添加 `as_dict` 参数（没有还是不太方便）。
+- `get_cn_xxx` 系列函数现支持用整型的 adcode 查询。
+- `get_cn_xxx_names` 系列函数新增查询参数。
+- 直辖市名称发生改变：
+  - 北京市 -> 北京城区
+  - 天津市 -> 天津城区
+  - 上海市 -> 上海城区
+  - 重庆市 -> 重庆城区、重庆郊县
+
 ## `0.6.3`
 
 - 去除 `Frame` 中的默认 style，让外部的 style sheets 和 rcParams 能影响到 `Frame`。

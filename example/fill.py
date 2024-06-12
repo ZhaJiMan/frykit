@@ -76,5 +76,5 @@ scale_bar.set_xticks([0, 500, 1000])
 scale_bar.set_xticks([250, 750], minor=True)
 
 # 保存图片
-fig.savefig('../image/fill.png', dpi=300, bbox_inches='tight')
+fplt.savefig('../image/fill.png')
 plt.close(fig)

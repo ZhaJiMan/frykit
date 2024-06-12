@@ -13,8 +13,8 @@ fontcolor = '#ffc292'
 
 # 繁体化省名
 converter = opencc.OpenCC('s2t.json')
-table = fshp.get_cn_province_table()
-names = table['short_name'].tolist()
+df = fshp.get_cn_province_table()
+names = df['short_name'].tolist()
 for i, name in enumerate(names):
     if name == '香港' or name == '澳门':
         name = ''
@@ -81,7 +81,7 @@ ax.text(
 )
 
 # 添加省名
-for name, lon, lat in zip(names, table['lon'], table['lat']):
+for name, lon, lat in zip(names, df['lon'], df['lat']):
     ax.text(
         x=lon,
         y=lat,
@@ -96,5 +96,5 @@ for name, lon, lat in zip(names, table['lon'], table['lat']):
     )
 
 # 保存图片
-fig.savefig('../image/nerv_style.png', dpi=300, bbox_inches='tight')
+fplt.savefig('../image/nerv_style.png')
 plt.close(fig)

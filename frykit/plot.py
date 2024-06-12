@@ -33,7 +33,6 @@ from numpy.lib.npyio import NpzFile
 import frykit.shp as fshp
 from frykit import DATA_DIRPATH
 from frykit._artist import *
-from frykit._typing import StrOrSeq
 from frykit.help import deprecator
 
 # polygon 的引用计数为零时弱引用会自动清理缓存
@@ -344,7 +343,7 @@ def add_nine_line(
 
 def add_cn_province(
     ax: Axes,
-    province: Optional[StrOrSeq] = None,
+    province: Optional[fshp.GetCnKey] = None,
     fast_transform: bool = True,
     **kwargs: Any,
 ) -> PathCollection:
@@ -356,8 +355,9 @@ def add_cn_province(
     ax : Axes
         目标 Axes
 
-    province : StrOrSeq, optional
-        单个或一组省名。默认为 None，表示获取所有省。
+    province : GetCnKey, optional
+        省名或 adcode。可以是复数个省。
+        默认为 None，表示获取所有省。
 
     fast_transform : bool, optional
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
@@ -382,8 +382,8 @@ def add_cn_province(
 
 def add_cn_city(
     ax: Axes,
-    city: Optional[StrOrSeq] = None,
-    province: Optional[StrOrSeq] = None,
+    city: Optional[fshp.GetCnKey] = None,
+    province: Optional[fshp.GetCnKey] = None,
     fast_transform: bool = True,
     **kwargs: Any,
 ) -> PathCollection:
@@ -395,13 +395,13 @@ def add_cn_city(
     ax : Axes
         目标 Axes
 
-    city : StrOrSeq, optional
-        单个或一组市名。默认为 None，表示获取所有市。
+    city : GetCnKey, optional
+        市名或 adcode。可以是复数个市。
+        默认为 None，表示获取所有市。
 
-    province : StrOrSeq, optional
-        单个或一组省名，获取属于某个省的所有市。
-        默认为 None，表示不指定省名。
-        不能同时指定 city 和 province。
+    province : GetCnKey, optional
+        省名或 adcode，表示获取某个省的所有市。可以是复数个省。
+        默认为 None，表示不指定省。
 
     fast_transform : bool, optional
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
@@ -419,6 +419,55 @@ def add_cn_city(
     return add_polygons(
         ax=ax,
         polygons=fshp.get_cn_city(city, province),
+        fast_transform=fast_transform,
+        **_init_pc_kwargs(kwargs),
+    )
+
+
+def add_cn_district(
+    ax: Axes,
+    district: Optional[fshp.GetCnKey] = None,
+    city: Optional[fshp.GetCnKey] = None,
+    province: Optional[fshp.GetCnKey] = None,
+    fast_transform: bool = True,
+    **kwargs: Any,
+) -> PathCollection:
+    '''
+    在 Axes 上添加中国县界
+
+    Parameters
+    ----------
+    ax : Axes
+        目标 Axes
+
+    district : GetCnKey, optional
+        县名或 adcode。可以是复数个县。
+        默认为 None，表示获取所有县。
+
+    city : GetCnKey, optional
+        市名或 adcode，表示获取某个市的所有县。可以是复数个市。
+        默认为 None，表示不指定市。
+
+    province : GetCnKey, optional
+        省名或 adcode，表示获取某个省的所有县。可以是复数个省。
+        默认为 None，表示不指定省。
+
+    fast_transform : bool, optional
+        是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
+
+    **kwargs
+        PathCollection 类的关键字参数。
+        例如 edgecolor、facecolor、cmap、norm 和 array 等。
+        https://matplotlib.org/stable/api/collections_api.html
+
+    Returns
+    -------
+    pc : PathCollection
+        表示县界的集合对象
+    '''
+    return add_polygons(
+        ax=ax,
+        polygons=fshp.get_cn_district(district, city, province),
         fast_transform=fast_transform,
         **_init_pc_kwargs(kwargs),
     )
@@ -769,7 +818,7 @@ def _add_cn_texts(
 
 def label_cn_province(
     ax: Axes,
-    province: Optional[StrOrSeq] = None,
+    province: Optional[fshp.GetCnKey] = None,
     short: bool = True,
     **kwargs: Any,
 ) -> list[Text]:
@@ -781,11 +830,12 @@ def label_cn_province(
     ax : Axes
         目标 Axes
 
-    province : StrOrSeq, optional
-        单个或一组省名。默认为 None，表示获取所有省。
+    province : GetCnKey, optional
+        省名或 adcode。可以是复数个省。
+        默认为 None，表示获取所有省。
 
     short : bool, optional
-        是否使用缩短的省名。默认为 True。
+        是否使用缩短的名称。默认为 True。
 
     **kwargs
         Axes.text 方法的关键字参数
@@ -797,19 +847,17 @@ def label_cn_province(
         表示省名的 Text 对象
     '''
     locs = fshp._get_pr_locs(province)
-    table = fshp._PR_TABLE.iloc[locs]
-    lons = table['lon']
-    lats = table['lat']
-    names = table['short_name' if short else 'pr_name']
-    texts = _add_cn_texts(ax, lons, lats, names, **kwargs)
+    df = fshp._get_pr_table().iloc[locs]
+    key = 'short_name' if short else 'pr_name'
+    texts = _add_cn_texts(ax, df['lon'], df['lat'], df[key], **kwargs)
 
     return texts
 
 
 def label_cn_city(
     ax: Axes,
-    city: Optional[StrOrSeq] = None,
-    province: Optional[StrOrSeq] = None,
+    city: Optional[fshp.GetCnKey] = None,
+    province: Optional[fshp.GetCnKey] = None,
     short: bool = True,
     **kwargs: Any,
 ) -> list[Text]:
@@ -821,16 +869,16 @@ def label_cn_city(
     ax : Axes
         目标 Axes
 
-    city : StrOrSeq, optional
-        单个或一组市名。默认为 None，表示获取所有市。
+    city : GetCnKey, optional
+        市名或 adcode。可以是复数个市。
+        默认为 None，表示获取所有市。
 
-    province : StrOrSeq, optional
-        单个或一组省名，获取属于某个省的所有市。
-        默认为 None，表示不指定省名。
-        不能同时指定 city 和 province。
+    province : GetCnKey, optional
+        省名或 adcode，表示获取某个省的所有市。可以是复数个省。
+        默认为 None，表示不指定省。
 
     short : bool, optional
-        是否使用缩短的市名。默认为 True。
+        是否使用缩短的名称。默认为 True。
 
     **kwargs
         Axes.text 方法的关键字参数
@@ -842,11 +890,57 @@ def label_cn_city(
         表示市名的 Text 对象
     '''
     locs = fshp._get_ct_locs(city, province)
-    table = fshp._CT_TABLE.iloc[locs]
-    lons = table['lon']
-    lats = table['lat']
-    names = table['short_name' if short else 'ct_name']
-    texts = _add_cn_texts(ax, lons, lats, names, **kwargs)
+    df = fshp._get_ct_table().iloc[locs]
+    key = 'short_name' if short else 'ct_name'
+    texts = _add_cn_texts(ax, df['lon'], df['lat'], df[key], **kwargs)
+
+    return texts
+
+
+def label_cn_district(
+    ax: Axes,
+    district: Optional[fshp.GetCnKey] = None,
+    city: Optional[fshp.GetCnKey] = None,
+    province: Optional[fshp.GetCnKey] = None,
+    short: bool = True,
+    **kwargs: Any,
+) -> list[Text]:
+    '''
+    在 Axes 上标注中国县名
+
+    Parameters
+    ----------
+    ax : Axes
+        目标 Axes
+
+    district : GetCnKey, optional
+        县名或 adcode。可以是复数个县。
+        默认为 None，表示获取所有县。
+
+    city : GetCnKey, optional
+        市名或 adcode，表示获取某个市的所有县。可以是复数个市。
+        默认为 None，表示不指定市。
+
+    province : GetCnKey, optional
+        省名或 adcode，表示获取某个省的所有县。可以是复数个省。
+        默认为 None，表示不指定省。
+
+    short : bool, optional
+        是否使用缩短的名称。默认为 True。
+
+    **kwargs
+        Axes.text 方法的关键字参数
+        https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.text.html
+
+    Returns
+    -------
+    texts : list of Text
+        表示县名的 Text 对象
+    '''
+    locs = fshp._get_dt_locs(district, city, province)
+    df = fshp._get_dt_table().iloc[locs]
+    key = 'short_name' if short else 'dt_name'
+    texts = _add_cn_texts(ax, df['lon'], df['lat'], df[key], **kwargs)
 
     return texts
 

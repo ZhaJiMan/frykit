@@ -117,5 +117,5 @@ scale_bar.set_xticks([0, 500])
 scale_bar.xaxis.get_label().set_fontsize('small')
 
 # 保存图片
-fig.savefig('../image/contourf.png', dpi=300, bbox_inches='tight')
+fplt.savefig('../image/contourf.png')
 plt.close(fig)

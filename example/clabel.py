@@ -29,5 +29,5 @@ labels = ax.clabel(cs, levels, manual=True, fontsize='large')
 fplt.clip_by_cn_border(cf)
 fplt.clip_by_cn_border(cs)
 
-plt.savefig('../image/clabel.png', dpi=300, bbox_inches='tight')
+fplt.savefig('../image/clabel.png')
 plt.close(fig)

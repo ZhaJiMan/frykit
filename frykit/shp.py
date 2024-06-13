@@ -207,7 +207,24 @@ def _get_dt_locs(
             return _get_locs(adcodes, key)
         return list(chain(*map(func, key)))
 
-    return func(key)
+    locs = func(key)
+    if isinstance(district, str) and len(locs) > 1:
+        lines = []
+        for row in df.iloc[locs].itertuples(index=False):
+            parts = [
+                f'province={row.pr_name}',
+                f'city={row.ct_name}',
+                f'district={row.dt_name}',
+                f'adcode={row.dt_adcode}',
+            ]
+            line = ', '.join(parts)
+            lines.append(line)
+
+        lines = '\n'.join(lines)
+        msg = f'存在复数个同名的区县，请用 adcode 指定\n{lines}'
+        raise ValueError(msg)
+
+    return locs
 
 
 def get_cn_province_names(short: bool = False) -> list[str]:

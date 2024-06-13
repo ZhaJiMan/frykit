@@ -908,6 +908,9 @@ def label_cn_district(
     '''
     在 Axes 上标注中国县名
 
+    省名和市名的位置经过微调，但县名太多了，所以简单使用 Shapely 的
+    representative_point 的位置。
+
     Parameters
     ----------
     ax : Axes

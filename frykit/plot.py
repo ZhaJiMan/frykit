@@ -11,6 +11,7 @@ from cartopy.crs import CRS, AzimuthalEquidistant, Mercator, PlateCarree
 from cartopy.mpl.feature_artist import _GeomKey
 from cartopy.mpl.geoaxes import GeoAxes
 from cartopy.mpl.ticker import LatitudeFormatter, LongitudeFormatter
+from matplotlib import font_manager
 from matplotlib.artist import Artist
 from matplotlib.axes import Axes
 from matplotlib.backend_bases import RendererBase
@@ -1178,6 +1179,7 @@ def _interp_minor_ticks(major_ticks: Any, m: int) -> np.ndarray:
     return minor_ticks
 
 
+# TODO: extents=None 时怎么处理比较合适
 def set_map_ticks(
     ax: Axes,
     extents: Optional[Any] = None,
@@ -1896,6 +1898,14 @@ def savefig(fname: Any, fig: Optional[Figure] = None, **kwargs) -> None:
     kwargs.setdefault('dpi', 300)
     kwargs.setdefault('bbox_inches', 'tight')
     fig.savefig(fname, **kwargs)
+
+
+def get_font_names(sub: Optional[str] = None) -> list[str]:
+    '''获取 Matplotlib 可用的字体名称'''
+    names = font_manager.get_font_names()
+    if sub is not None:
+        return [name for name in names if sub.lower() in name.lower()]
+    return names
 
 
 @deprecator(add_scale_bar)

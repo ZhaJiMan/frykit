@@ -32,7 +32,7 @@ Regions = Literal['china', 'world']
 class Compressor:
     '''进行压缩的类'''
 
-    def __init__(self, region: Regions = 'china'):
+    def __init__(self, region: Regions = 'china') -> None:
         if region == 'china':
             self.LON0 = 70
             self.LON1 = 140

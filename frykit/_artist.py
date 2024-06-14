@@ -427,3 +427,8 @@ class Frame(Artist):
         for pc in self.pcs.values():
             pc.draw(renderer)
         self.stale = False
+
+
+class CurlyQuiver:
+    def __init__(self) -> None:
+        raise NotImplementedError

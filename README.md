@@ -10,8 +10,7 @@
 
 `plot` 模块的功能包括：
 
-- 绘制中国行政区划数据
-- 向地图添加中国国界、省界和市界
+- 绘制中国行政区划数据。
 - 利用行政区划做裁剪（clip）
 - 快速设置地图范围和刻度
 - 添加南海小图
@@ -65,31 +64,50 @@ pip install frykit==0.2.5
 - `get_cn_border`：读取国界。
 - `get_nine_line`：读取九段线。
 - `get_cn_province`：读取省界。默认返回所有省，也可以通过省名指定单个省或多个省。
-- `get_cn_city`：读取市界。默认返回所有市。可以
+- `get_cn_city`：读取市界。默认返回所有市。
   - 通过市名指定单个市或多个市。
   - 通过省名指定单个省或多个省包含的所有市。
+- `get_cn_district`：读取县界。默认返回所有县。
+  - 通过县名指定单个县或多个县。
+  - 通过市名指定单个市或多个市包含的所有县。
+  - 通过省名指定单个省或多个省包含的所有县。
 
 ```Python
 import frykit.shp as fshp
 
-border = fshp.get_cn_border()
-nine_line = fshp.get_nine_line()
+国界 = fshp.get_cn_border()
+九段线 = fshp.get_nine_line()
 
-provinces = fshp.get_cn_province()
-anhui = fshp.get_cn_province('安徽省')
-anhui, jiangsu = fshp.get_cn_province(['安徽省', '江苏省'])
+所有省 = fshp.get_cn_province()
+安徽省 = fshp.get_cn_province('安徽省')
+安徽省, 江苏省 = fshp.get_cn_province(['安徽省', '江苏省'])
 
-cities = fshp.get_cn_city()
-hefei = fshp.get_cn_city('合肥市')
-hefei, luan = fshp.get_cn_city(['合肥市', '六安市'])
+所有市 = fshp.get_cn_city()
+合肥市 = fshp.get_cn_city('合肥市')
+合肥市, 六安市 = fshp.get_cn_city(['合肥市', '六安市'])
 
-cities_of_anhui = fshp.get_cn_city(province='安徽省')
-cities_of_anhui_and_jiangsu = fshp.get_cn_city(province=['安徽省', '江苏省'])
+安徽省的所有市 = fshp.get_cn_city(province='安徽省')
+安徽省和江苏省的所有市 = fshp.get_cn_city(province=['安徽省', '江苏省'])
+
+所有区县 = fshp.get_cn_district()
+蜀山区 = fshp.get_cn_district('蜀山区')
+蜀山区, 包河区 = fshp.get_cn_district(['蜀山区', '包河区'])
+
+合肥市的所有区县 = fshp.get_cn_district(city='合肥市')
+安徽省的所有区县 = fshp.get_cn_district(province='安徽省')
 ```
 
-行政区划源数据来自 [高德地图行政区域查询接口](https://lbs.amap.com/api/webservice/guide/api/district)，已从 GCJ-02 坐标系处理到了 WGS84 坐标系上。文件都在 `frykit.DATA_DIRPATH` 指向的目录里。制作方法见 [amap-shp](https://github.com/ZhaJiMan/amap-shp)。
+除了用字符串名称，也可以用行政区划代码（adcode）查询。不确定名称时可以用以下函数
 
-暂无县界，可以使用 [ChinaAdminDivisonSHP](https://github.com/GaryBikini/ChinaAdminDivisonSHP) 或 [CTAmap](https://www.shengshixian.com/) 的数据。
+- `get_cn_province_names`
+- `get_cn_city_names`
+- `get_cn_district_names`
+
+查询各级行政区划的名称。
+
+行政区划数据来自 [高德地图行政区域查询接口](https://lbs.amap.com/api/webservice/guide/api/district)，已从 GCJ-02 坐标系处理到了 WGS84 坐标系上。文件都在 `frykit.DATA_DIRPATH` 指向的目录里。制作方法见 [amap-shp](https://github.com/ZhaJiMan/amap-shp)。
+
+> 区县数据自 0.6.4 版本开始支持
 
 ### 绘制中国行政区划
 
@@ -97,11 +115,13 @@ cities_of_anhui_and_jiangsu = fshp.get_cn_city(province=['安徽省', '江苏省
 - `add_nine_line`：绘制九段线。
 - `add_cn_province`：绘制省界。
 - `add_cn_city`：绘制市界。
+- `add_cn_district`：绘制县界。
 
-另外还提供两个标注名字的函数：
+另外还提供标注名字的函数：
 
 - `label_cn_province`：标注省名。
 - `label_cn_city`：标注市名。
+- `label_cn_district`：标注县名。
 
 画出所有省份，同时用颜色区分京津冀地区：
 
@@ -121,6 +141,22 @@ plt.show()
 ```
 
 ![add_cn_province](image/add_cn_province.png)
+
+画出北京所有区：
+
+```Python
+import matplotlib.pyplot as plt
+import cartopy.crs as ccrs
+import frykit.plot as fplt
+
+ax = plt.axes(projection=ccrs.PlateCarree())
+fplt.add_cn_district(ax, province='北京市', fc=plt.cm.Pastel1.colors)
+fplt.label_cn_district(ax, province='北京市')
+
+plt.show()
+```
+
+![add_cn_province](image/beijing.png)
 
 ### 绘制任意多边形
 
@@ -161,6 +197,7 @@ fplt.add_polygons(ax, reader.geometries(), fc='none', ec='k', lw=0.25)
 - `clip_by_cn_border`：用国界裁剪。
 - `clip_by_cn_province`：用省界裁剪。
 - `clip_by_cn_city`：用市界裁剪。
+- `clip_by_cn_district`：用县界裁剪。
 - `clip_by_polygon`：用任意多边形裁剪。
 
 用国界裁剪 `contourf` 的例子：
@@ -191,7 +228,7 @@ plt.show()
 
 ![clip_by_cn_border](image/clip_by_cn_border.png)
 
-多省或多市裁剪需要提前合并成单个多边形，然后用 `clip_by_polygon` 裁剪：
+多省市县裁剪需要提前合并成单个多边形，然后用 `clip_by_polygon` 裁剪：
 
 ```Python
 from shapely.ops import unary_union

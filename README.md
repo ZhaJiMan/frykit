@@ -347,6 +347,7 @@ cbar.set_ticklabels(colors)
 
 ```Python
 import cmaps
+
 boundaries = [-10, -5, -2, -1, 1, 2, 5, 10, 20, 50, 100]
 norm = fplt.CenteredBoundaryNorm(boundaries)
 cbar = fplt.plot_colormap(cmaps.BlueWhiteOrangeRed, norm)
@@ -378,9 +379,9 @@ cbar.set_ticks(boundaries)
 
 ![axes](image/axes.png)
 
-- [墨卡托投影](example/mercator.py)
+- [重庆区县](example/chongqing.py)
 
-![mercator](image/mercator.png)
+![chongqing](image/chongqing.png)
 
 - [分省填色](example/fill.py)
 

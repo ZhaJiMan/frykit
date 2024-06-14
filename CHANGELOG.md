@@ -6,10 +6,11 @@
   - `get_cn_district_names`
   - `add_cn_distict`
   - `label_cn_district`
+  - `clip_by_cn_district`
 - `get_cn_xxx` 系列函数重新添加 `as_dict` 参数（没有还是不太方便）。
 - `get_cn_xxx` 系列函数现支持用整型的 adcode 查询。
 - `get_cn_xxx_names` 系列函数新增查询参数。
-- 直辖市名称发生改变：
+- `get_cn_city` 里直辖市名称发生改变：
   - 北京市 -> 北京城区
   - 天津市 -> 天津城区
   - 上海市 -> 上海城区

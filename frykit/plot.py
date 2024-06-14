@@ -608,7 +608,7 @@ def clip_by_cn_border(
 
 def clip_by_cn_province(
     artist: ArtistOrSeq,
-    province: str,
+    province: fshp.StrOrInt,
     fast_transform: bool = True,
     strict: bool = False,
 ) -> None:
@@ -625,8 +625,8 @@ def clip_by_cn_province(
         - imshow
         - quiver
 
-    province : str
-        单个省名
+    province : StrOrInt
+        单个省名或 adcode
 
     fast_transform : bool, optional
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
@@ -647,7 +647,7 @@ def clip_by_cn_province(
 
 def clip_by_cn_city(
     artist: ArtistOrSeq,
-    city: str = None,
+    city: fshp.StrOrInt,
     fast_transform: bool = True,
     strict: bool = False,
 ) -> None:
@@ -664,8 +664,8 @@ def clip_by_cn_city(
         - imshow
         - quiver
 
-    city : str
-        单个市名
+    city : StrOrInt
+        单个市名或 adcode
 
     fast_transform : bool, optional
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
@@ -679,6 +679,45 @@ def clip_by_cn_city(
     clip_by_polygon(
         artist=artist,
         polygon=fshp.get_cn_city(city),
+        fast_transform=fast_transform,
+        strict=strict,
+    )
+
+
+def clip_by_cn_district(
+    artist: ArtistOrSeq,
+    district: fshp.StrOrInt,
+    fast_transform: bool = True,
+    strict: bool = False,
+) -> None:
+    '''
+    用中国县界裁剪 Artist
+
+    Parameters
+    ----------
+    artist : ArtistOrSeq
+        被裁剪的Artist对象。可以返回自以下方法：
+        - plot, scatter
+        - contour, contourf, clabel
+        - pcolor, pcolormesh
+        - imshow
+        - quiver
+
+    district : StrOrInt
+        单个县名或 adcode
+
+    fast_transform : bool, optional
+        是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
+
+    strict : bool, optional
+        是否使用更严格的裁剪方法。默认为 False。
+        为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
+    '''
+    if is_sequence(district):
+        raise ValueError('只支持单个县')
+    clip_by_polygon(
+        artist=artist,
+        polygon=fshp.get_cn_district(district),
         fast_transform=fast_transform,
         strict=strict,
     )

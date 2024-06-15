@@ -15,6 +15,7 @@
   - 天津市 -> 天津城区
   - 上海市 -> 上海城区
   - 重庆市 -> 重庆城区、重庆郊县
+- `label_cn_xxx` 系列函数在用户不通过参数或 rcParams 指定字体时默认使用思源黑体。
 - `BinaryPacker` 和 `BinaryReader` 类新增 `region` 参数。
 
 ## `0.6.3`

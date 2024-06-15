@@ -848,9 +848,14 @@ def _add_cn_texts(
         kwargs.setdefault('clip_box', ax.bbox)
         kwargs.setdefault('transform', PlateCarree())
 
-    # 默认使用精简的思源黑体
-    filepath = DATA_DIRPATH / 'zh_font.otf'
-    if kwargs.get('fontname') is None and kwargs.get('fontfamily') is None:
+    if (
+        kwargs.get('fontname') is None
+        and kwargs.get('fontfamily') is None
+        and mpl.rcParams['font.family'][0] == 'sans-serif'
+        and mpl.rcParams['font.sans-serif'][0] == 'DejaVu Sans'
+    ):
+        # 用户不修改字体时使用自带的中文字体
+        filepath = DATA_DIRPATH / 'zh_font.otf'
         kwargs.setdefault('fontproperties', filepath)
 
     return add_texts(ax, lons, lats, names, **kwargs)

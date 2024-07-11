@@ -8,25 +8,31 @@ from typing import Any, Callable, Optional
 from frykit._typing import PathType
 
 
-def new_dir(dirpath: PathType) -> None:
+def new_dir(dirpath: PathType) -> Path:
     '''新建目录'''
     dirpath = Path(dirpath)
     if not dirpath.exists():
         dirpath.mkdir(parents=True)
 
+    return dirpath
 
-def del_dir(dirpath: PathType) -> None:
+
+def del_dir(dirpath: PathType) -> Path:
     '''删除目录。目录不存在时会报错。'''
     dirpath = Path(dirpath)
     shutil.rmtree(str(dirpath))
 
+    return dirpath
 
-def renew_dir(dirpath: PathType) -> None:
+
+def renew_dir(dirpath: PathType) -> Path:
     '''重建目录'''
     dirpath = Path(dirpath)
     if dirpath.exists():
         shutil.rmtree(str(dirpath))
     dirpath.mkdir(parents=True)
+
+    return dirpath
 
 
 def split_list(lst: Sequence, n: int) -> Iterator[Sequence]:

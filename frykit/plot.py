@@ -3,11 +3,12 @@ from collections.abc import Sequence
 from typing import Any, Literal, Optional, Union
 from weakref import WeakKeyDictionary, WeakValueDictionary
 
+import cartopy.crs as ccrs
 import matplotlib as mpl
+import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
 import shapely.geometry as sgeom
-from cartopy.crs import CRS, AzimuthalEquidistant, Mercator, PlateCarree
 from cartopy.mpl.feature_artist import _GeomKey
 from cartopy.mpl.geoaxes import GeoAxes
 from cartopy.mpl.ticker import LatitudeFormatter, LongitudeFormatter
@@ -19,7 +20,6 @@ from matplotlib.cbook import normalize_kwargs
 from matplotlib.cm import ScalarMappable
 from matplotlib.collections import PathCollection
 from matplotlib.colorbar import Colorbar
-from matplotlib.colors import BoundaryNorm, Colormap, ListedColormap, Normalize
 from matplotlib.contour import ContourSet
 from matplotlib.figure import Figure
 from matplotlib.patches import PathPatch
@@ -59,8 +59,8 @@ def _polygons_to_paths(polygons: Sequence[fshp.PolygonType]) -> list[Path]:
 
 def _transform_polygons_to_paths(
     polygons: Sequence[fshp.PolygonType],
-    crs_from: CRS,
-    crs_to: CRS,
+    crs_from: ccrs.CRS,
+    crs_to: ccrs.CRS,
     fast_transform: bool = True,
 ) -> list[Path]:
     '''对一组多边形做坐标变换再转为 Path，并缓存结果。'''
@@ -89,7 +89,7 @@ def _transform_polygons_to_paths(
 def add_polygons(
     ax: Axes,
     polygons: Union[fshp.PolygonType, Sequence[fshp.PolygonType]],
-    crs: Optional[CRS] = None,
+    crs: Optional[ccrs.CRS] = None,
     fast_transform: bool = True,
     **kwargs: Any,
 ) -> PathCollection:
@@ -131,7 +131,7 @@ def add_polygons(
         raise TypeError('ax 不是 Axes')
     elif isinstance(ax, GeoAxes):
         if crs is None:
-            crs = PlateCarree()
+            crs = ccrs.PlateCarree()
         paths = _transform_polygons_to_paths(
             polygons=polygons,
             crs_from=crs,
@@ -176,7 +176,7 @@ ArtistOrSeq = Union[Artist, Sequence[Artist]]
 def clip_by_polygon(
     artist: ArtistOrSeq,
     polygon: fshp.PolygonType,
-    crs: Optional[CRS] = None,
+    crs: Optional[ccrs.CRS] = None,
     fast_transform: bool = True,
     strict: bool = False,
 ) -> None:
@@ -224,7 +224,7 @@ def clip_by_polygon(
     is_geoaxes = isinstance(ax, GeoAxes)
     if is_geoaxes:
         if crs is None:
-            crs = PlateCarree()
+            crs = ccrs.PlateCarree()
         path = _transform_polygons_to_paths(
             polygons=[polygon],
             crs_from=crs,
@@ -270,12 +270,12 @@ def _init_pc_kwargs(kwargs: dict) -> dict:
 竖版中国标准地图的投影
 http://gi.m.mnr.gov.cn/202103/t20210312_2617069.html
 '''
-CN_AZIMUTHAL_EQUIDISTANT = AzimuthalEquidistant(
+CN_AZIMUTHAL_EQUIDISTANT = ccrs.AzimuthalEquidistant(
     central_longitude=105, central_latitude=35
 )
 
 # 网络墨卡托投影
-WEB_MERCATOR = Mercator.GOOGLE
+WEB_MERCATOR = ccrs.Mercator.GOOGLE
 
 
 def add_cn_border(
@@ -846,7 +846,7 @@ def _add_cn_texts(
     kwargs.setdefault('fontsize', 'x-small')
     if isinstance(ax, GeoAxes):
         kwargs.setdefault('clip_box', ax.bbox)
-        kwargs.setdefault('transform', PlateCarree())
+        kwargs.setdefault('transform', ccrs.PlateCarree())
 
     if (
         kwargs.get('fontname') is None
@@ -1029,7 +1029,7 @@ def _set_simple_geoaxes_ticks(
     yformatter: Formatter,
 ) -> None:
     '''设置简单投影的GeoAxes的范围和刻度'''
-    crs = PlateCarree()
+    crs = ccrs.PlateCarree()
     ax.set_xticks(major_xticks, minor=False, crs=crs)
     ax.set_yticks(major_yticks, minor=False, crs=crs)
     ax.set_xticks(minor_xticks, minor=True, crs=crs)
@@ -1055,7 +1055,7 @@ def _set_complex_geoaxes_ticks(
 ) -> None:
     '''设置复杂投影的GeoAxes的范围和刻度'''
     # 将地图边框设置为矩形
-    crs = PlateCarree()
+    crs = ccrs.PlateCarree()
     if extents is None:
         proj_type = str(type(ax.projection)).split("'")[1].split('.')[-1]
         raise ValueError(f'{proj_type} 投影里 extents 不能为 None')
@@ -1239,6 +1239,11 @@ def set_map_ticks(
     yformatter : Formatter, optional
         y 轴刻度标签的 Formatter。默认为 None，表示LatitudeFormatter()。
     '''
+    if extents is not None:
+        lon0, lon1, lat0, lat1 = extents
+        if lon0 >= lon1 or lat0 >= lat1:
+            raise ValueError('lon0 >= lon1 or lat0 >= lat1')
+
     if xticks is None:
         major_xticks = np.arange(math.floor(360 / dx) + 1) * dx - 180
     else:
@@ -1265,7 +1270,7 @@ def set_map_ticks(
     if not isinstance(ax, Axes):
         raise TypeError('ax 不是 Axes')
     elif isinstance(ax, GeoAxes):
-        if isinstance(ax.projection, (PlateCarree, Mercator)):
+        if isinstance(ax.projection, (ccrs.PlateCarree, ccrs.Mercator)):
             setter = _set_simple_geoaxes_ticks
         else:
             setter = _set_complex_geoaxes_ticks
@@ -1312,7 +1317,7 @@ def quick_cn_map(
         extents = [70, 140, 10, 60]
     fig = plt.figure(figsize=figsize)
     if use_geoaxes:
-        crs = PlateCarree()
+        crs = ccrs.PlateCarree()
         ax = fig.add_subplot(projection=crs)
     else:
         ax = fig.add_subplot()
@@ -1548,7 +1553,7 @@ def add_mini_axes(
     loc: Literal[
         'lower left', 'lower right', 'upper left', 'upper right'
     ] = 'lower right',
-    projection: Optional[CRS] = None,
+    projection: Optional[ccrs.CRS] = None,
 ) -> Axes:
     '''
     在 Axes 的角落添加一个迷你 Axes 并返回
@@ -1760,7 +1765,7 @@ def get_cross_section_xticks(
 
 def get_qualitative_palette(
     colors: Any,
-) -> tuple[ListedColormap, Normalize, np.ndarray]:
+) -> tuple[mcolors.ListedColormap, mcolors.Normalize, np.ndarray]:
     '''
     创建一组定性的 colormap 和 norm，同时返回刻度位置。
 
@@ -1781,23 +1786,23 @@ def get_qualitative_palette(
         colorbar 刻度的坐标
     '''
     N = len(colors)
-    cmap = ListedColormap(colors)
-    norm = Normalize(vmin=-0.5, vmax=N - 0.5)
+    cmap = mcolors.ListedColormap(colors)
+    norm = mcolors.Normalize(vmin=-0.5, vmax=N - 0.5)
     ticks = np.arange(N)
 
     return cmap, norm, ticks
 
 
-def get_aod_cmap() -> ListedColormap:
+def get_aod_cmap() -> mcolors.ListedColormap:
     '''返回适用于 AOD 的 cmap'''
     filepath = DATA_DIRPATH / 'NEO_modis_aer_od.csv'
     rgb = np.loadtxt(str(filepath), delimiter=',') / 256
-    cmap = ListedColormap(rgb)
+    cmap = mcolors.ListedColormap(rgb)
 
     return cmap
 
 
-class CenteredBoundaryNorm(BoundaryNorm):
+class CenteredBoundaryNorm(mcolors.BoundaryNorm):
     '''将 vcenter 所在的 bin 映射到 cmap 中间的 BoundaryNorm'''
 
     def __init__(
@@ -1833,8 +1838,8 @@ class CenteredBoundaryNorm(BoundaryNorm):
 
 
 def plot_colormap(
-    cmap: Colormap,
-    norm: Optional[Normalize] = None,
+    cmap: mcolors.Colormap,
+    norm: Optional[mcolors.Normalize] = None,
     extend: Optional[Literal['neither', 'both', 'min', 'max']] = None,
     ax: Optional[Axes] = None,
 ) -> Colorbar:

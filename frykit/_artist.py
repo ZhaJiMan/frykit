@@ -1,8 +1,9 @@
 import math
 from typing import Any, Literal, Optional
 
+import cartopy.crs as ccrs
+import matplotlib.transforms as mtransforms
 import numpy as np
-from cartopy.crs import Mercator, PlateCarree
 from cartopy.mpl.geoaxes import GeoAxes
 from matplotlib.artist import Artist, allow_rasterization
 from matplotlib.axes._axes import Axes
@@ -15,7 +16,6 @@ from matplotlib.patches import Rectangle
 from matplotlib.path import Path
 from matplotlib.quiver import Quiver, QuiverKey
 from matplotlib.text import Text
-from matplotlib.transforms import Affine2D, Bbox, ScaledTranslation, offset_copy
 
 from frykit.calc import t_to_az
 
@@ -76,7 +76,9 @@ class QuiverLegend(QuiverKey):
         # 将 qk 调整至 patch 的中心
         fontsize = self.text.get_fontsize() / 72
         dy = (self._labelsep_inches + fontsize) / 2
-        trans = offset_copy(Q.axes.transAxes, Q.figure.figure, 0, dy)
+        trans = mtransforms.offset_copy(
+            Q.axes.transAxes, Q.figure.figure, 0, dy
+        )
         self.set_transform(trans)
 
         patch_kwargs = normalize_kwargs(patch_kwargs, Rectangle)
@@ -144,7 +146,7 @@ class Compass(PathCollection):
             paths = []
             path1, path2 = self._make_paths(width, head, axis)
             for deg in range(0, 360, 90):
-                rotation = Affine2D().rotate_deg(deg)
+                rotation = mtransforms.Affine2D().rotate_deg(deg)
                 paths.append(path1.transformed(rotation))
                 paths.append(path2.transformed(rotation))
             colors = ['k', 'w']
@@ -189,7 +191,7 @@ class Compass(PathCollection):
         # 计算指北针的方向
         if self.angle is None:
             if isinstance(self.axes, GeoAxes):
-                crs = PlateCarree()
+                crs = ccrs.PlateCarree()
                 axes_to_data = self.axes.transAxes - self.axes.transData
                 x0, y0 = axes_to_data.transform((self.x, self.y))
                 crs.transform_point(x0, y0, self.axes.projection)
@@ -203,8 +205,10 @@ class Compass(PathCollection):
         else:
             azimuth = self.angle
 
-        rotation = Affine2D().rotate_deg(-azimuth)
-        translation = ScaledTranslation(self.x, self.y, self.axes.transAxes)
+        rotation = mtransforms.Affine2D().rotate_deg(-azimuth)
+        translation = mtransforms.ScaledTranslation(
+            self.x, self.y, self.axes.transAxes
+        )
         trans = self.axes.figure.dpi_scale_trans + rotation + translation
         self.text.set_transform(trans)
         self.text.set_rotation(-azimuth)
@@ -265,7 +269,7 @@ class ScaleBar(_AxesBase):
         # 在 data 坐标系取一条直线，计算单位长度对应的地理长度。
         if isinstance(self.axes, GeoAxes):
             # GeoAxes 取地图中心一段横线
-            crs = PlateCarree()
+            crs = ccrs.PlateCarree()
             geod = crs.get_geod()
             xmin, xmax = self.axes.get_xlim()
             ymin, ymax = self.axes.get_ylim()
@@ -292,7 +296,7 @@ class ScaleBar(_AxesBase):
         data_to_figure = self.axes.transData - self.figure.transSubfigure
         x, y = axes_to_data.transform((self.x, self.y))
         width = self.length * dxdr
-        bbox = Bbox.from_bounds(x, y, width, 1e-4 * width)
+        bbox = mtransforms.Bbox.from_bounds(x, y, width, 1e-4 * width)
         bbox = data_to_figure.transform_bbox(bbox)
         self.set_position(bbox)
 
@@ -333,7 +337,7 @@ class Frame(Artist):
 
     def _init(self) -> None:
         if isinstance(self.axes, GeoAxes) and not isinstance(
-            self.axes.projection, (PlateCarree, Mercator)
+            self.axes.projection, (ccrs.PlateCarree, ccrs.Mercator)
         ):
             raise ValueError('只支持 PlateCarree 和 Mercator 投影')
 

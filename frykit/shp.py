@@ -457,13 +457,17 @@ def _poly_codes(n: int) -> list[np.uint8]:
     return codes
 
 
+# 用于占位的 Path，不会被画出。
+PLACEHOLDER_PATH = Path(np.zeros((0, 2)), [])
+
+
 def polygon_to_path(polygon: PolygonType) -> Path:
     '''多边形转为 Path。空多边形对应空 Path。'''
     if not isinstance(polygon, (sgeom.Polygon, sgeom.MultiPolygon)):
         raise TypeError('polygon 不是多边形')
 
     if polygon.is_empty:
-        return Path(np.zeros((0, 2)), [])
+        return PLACEHOLDER_PATH
 
     verts = []
     codes = []

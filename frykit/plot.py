@@ -31,10 +31,22 @@ from matplotlib.transforms import Bbox
 from numpy.distutils.misc_util import is_sequence
 from numpy.lib.npyio import NpzFile
 
+import frykit._artist as fa
 import frykit.shp as fshp
 from frykit import DATA_DIRPATH
-from frykit._artist import *
 from frykit.help import deprecator
+
+# 等经纬度投影
+PLATE_CARREE = ccrs.PlateCarree()
+
+# 网络墨卡托投影
+WEB_MERCATOR = ccrs.Mercator.GOOGLE
+
+# 竖版中国标准地图的投影
+# http://gi.m.mnr.gov.cn/202103/t20210312_2617069.html
+CN_AZIMUTHAL_EQUIDISTANT = ccrs.AzimuthalEquidistant(
+    central_longitude=105, central_latitude=35
+)
 
 # polygon 的引用计数为零时弱引用会自动清理缓存
 _key_to_polygon = WeakValueDictionary()
@@ -42,7 +54,7 @@ _key_to_path = WeakKeyDictionary()
 _key_to_crs_to_transformed_path = WeakKeyDictionary()
 
 
-def _polygons_to_paths(polygons: Sequence[fshp.PolygonType]) -> list[Path]:
+def _polygons_to_paths(polygons: fshp.PolygonSeq) -> list[Path]:
     '''将一组多边形转为 Path 并缓存结果'''
     paths = []
     for polygon in polygons:
@@ -58,9 +70,9 @@ def _polygons_to_paths(polygons: Sequence[fshp.PolygonType]) -> list[Path]:
 
 
 def _transform_polygons_to_paths(
-    polygons: Sequence[fshp.PolygonType],
+    polygons: fshp.PolygonSeq,
     crs_from: ccrs.CRS,
-    crs_to: ccrs.CRS,
+    crs_to: ccrs.Projection,
     fast_transform: bool = True,
 ) -> list[Path]:
     '''对一组多边形做坐标变换再转为 Path，并缓存结果。'''
@@ -88,7 +100,7 @@ def _transform_polygons_to_paths(
 
 def add_polygons(
     ax: Axes,
-    polygons: Union[fshp.PolygonType, Sequence[fshp.PolygonType]],
+    polygons: fshp.PolygonOrSeq,
     crs: Optional[ccrs.CRS] = None,
     fast_transform: bool = True,
     **kwargs: Any,
@@ -101,7 +113,7 @@ def add_polygons(
     ax : Axes
         目标 Axes
 
-    polygons : PolygonType or sequence of PolygonType
+    polygons : PolygonOrSeq
         一个或一组多边形
 
     crs : CRS, optional
@@ -131,7 +143,7 @@ def add_polygons(
         raise TypeError('ax 不是 Axes')
     elif isinstance(ax, GeoAxes):
         if crs is None:
-            crs = ccrs.PlateCarree()
+            crs = PLATE_CARREE
         paths = _transform_polygons_to_paths(
             polygons=polygons,
             crs_from=crs,
@@ -143,7 +155,6 @@ def add_polygons(
             raise ValueError('ax 不是 GeoAxes 时 crs 只能为 None')
         paths = _polygons_to_paths(polygons)
 
-    kwargs.setdefault('transform', ax.transData)
     pc = PathCollection(paths, **kwargs)
     ax.add_collection(pc)
     ax._request_autoscale_view()
@@ -224,7 +235,7 @@ def clip_by_polygon(
     is_geoaxes = isinstance(ax, GeoAxes)
     if is_geoaxes:
         if crs is None:
-            crs = ccrs.PlateCarree()
+            crs = PLATE_CARREE
         path = _transform_polygons_to_paths(
             polygons=[polygon],
             crs_from=crs,
@@ -242,6 +253,7 @@ def clip_by_polygon(
 
     # TODO: 严格防文字出界的方案
     # fig.canvas.draw + t.get_window_extent
+    # TODO: streamplot 的箭头不在返回值里
     for a in artists:
         a.set_clip_on(True)
         if is_geoaxes:
@@ -264,18 +276,6 @@ def _init_pc_kwargs(kwargs: dict) -> dict:
     kwargs.setdefault('zorder', 1.5)
 
     return kwargs
-
-
-'''
-竖版中国标准地图的投影
-http://gi.m.mnr.gov.cn/202103/t20210312_2617069.html
-'''
-CN_AZIMUTHAL_EQUIDISTANT = ccrs.AzimuthalEquidistant(
-    central_longitude=105, central_latitude=35
-)
-
-# 网络墨卡托投影
-WEB_MERCATOR = ccrs.Mercator.GOOGLE
 
 
 def add_cn_border(
@@ -846,7 +846,7 @@ def _add_cn_texts(
     kwargs.setdefault('fontsize', 'x-small')
     if isinstance(ax, GeoAxes):
         kwargs.setdefault('clip_box', ax.bbox)
-        kwargs.setdefault('transform', ccrs.PlateCarree())
+        kwargs.setdefault('transform', PLATE_CARREE)
 
     if (
         kwargs.get('fontname') is None
@@ -1029,7 +1029,7 @@ def _set_simple_geoaxes_ticks(
     yformatter: Formatter,
 ) -> None:
     '''设置简单投影的GeoAxes的范围和刻度'''
-    crs = ccrs.PlateCarree()
+    crs = PLATE_CARREE
     ax.set_xticks(major_xticks, minor=False, crs=crs)
     ax.set_yticks(major_yticks, minor=False, crs=crs)
     ax.set_xticks(minor_xticks, minor=True, crs=crs)
@@ -1055,7 +1055,7 @@ def _set_complex_geoaxes_ticks(
 ) -> None:
     '''设置复杂投影的GeoAxes的范围和刻度'''
     # 将地图边框设置为矩形
-    crs = ccrs.PlateCarree()
+    crs = PLATE_CARREE
     if extents is None:
         proj_type = str(type(ax.projection)).split("'")[1].split('.')[-1]
         raise ValueError(f'{proj_type} 投影里 extents 不能为 None')
@@ -1317,8 +1317,7 @@ def quick_cn_map(
         extents = [70, 140, 10, 60]
     fig = plt.figure(figsize=figsize)
     if use_geoaxes:
-        crs = ccrs.PlateCarree()
-        ax = fig.add_subplot(projection=crs)
+        ax = fig.add_subplot(projection=PLATE_CARREE)
     else:
         ax = fig.add_subplot()
         ax.set_aspect(1)
@@ -1340,7 +1339,7 @@ def add_quiver_legend(
     ] = 'lower right',
     qk_kwargs: Optional[dict] = None,
     patch_kwargs: Optional[dict] = None,
-) -> QuiverLegend:
+) -> fa.QuiverLegend:
     '''
     在 Axes 上添加 Quiver 的图例（带矩形背景的 QuiverKey）
 
@@ -1381,7 +1380,7 @@ def add_quiver_legend(
     quiver_legend : QuiverLegend
         图例对象
     '''
-    quiver_legend = QuiverLegend(
+    quiver_legend = fa.QuiverLegend(
         Q, U, units, width, height, loc, qk_kwargs, patch_kwargs
     )
     Q.axes.add_artist(quiver_legend)
@@ -1398,7 +1397,7 @@ def add_compass(
     style: Literal['arrow', 'star', 'circle'] = 'arrow',
     pc_kwargs: Optional[dict] = None,
     text_kwargs: Optional[dict] = None,
-) -> Compass:
+) -> fa.Compass:
     '''
     在 Axes 上添加指北针
 
@@ -1434,7 +1433,7 @@ def add_compass(
     compass : Compass
         指北针对象
     '''
-    compass = Compass(x, y, angle, size, style, pc_kwargs, text_kwargs)
+    compass = fa.Compass(x, y, angle, size, style, pc_kwargs, text_kwargs)
     ax.add_artist(compass)
 
     return compass
@@ -1446,7 +1445,7 @@ def add_scale_bar(
     y: float,
     length: float = 1000,
     units: Literal['m', 'km'] = 'km',
-) -> ScaleBar:
+) -> fa.ScaleBar:
     '''
     在 Axes 上添加地图比例尺
 
@@ -1471,10 +1470,10 @@ def add_scale_bar(
     scale_bar : ScaleBar
         比例尺对象。刻度可以通过 set_xticks、tick_params 等方法修改。
     '''
-    return ScaleBar(ax, x, y, length, units)
+    return fa.ScaleBar(ax, x, y, length, units)
 
 
-def add_frame(ax: Axes, width: float = 5, **kwargs: Any) -> Frame:
+def add_frame(ax: Axes, width: float = 5, **kwargs: Any) -> fa.Frame:
     '''
     在 Axes 上添加 GMT 风格的边框
 
@@ -1498,7 +1497,7 @@ def add_frame(ax: Axes, width: float = 5, **kwargs: Any) -> Frame:
     frame : Frame
         边框对象
     '''
-    frame = Frame(width, **kwargs)
+    frame = fa.Frame(width, **kwargs)
     ax.add_artist(frame)
 
     return frame
@@ -1538,7 +1537,7 @@ def add_box(
     kwargs.setdefault('facecolor', 'none')
 
     # 添加 Patch
-    path = rectangle_path(*extents).interpolated(steps)
+    path = fshp.box_path(*extents).interpolated(steps)
     patch = PathPatch(path, **kwargs)
     ax.add_patch(patch)
 

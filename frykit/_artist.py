@@ -17,7 +17,10 @@ from matplotlib.path import Path
 from matplotlib.quiver import Quiver, QuiverKey
 from matplotlib.text import Text
 
+import frykit.shp as fshp
 from frykit.calc import t_to_az
+
+PLATE_CARREE = ccrs.PlateCarree()
 
 
 class QuiverLegend(QuiverKey):
@@ -191,7 +194,7 @@ class Compass(PathCollection):
         # 计算指北针的方向
         if self.angle is None:
             if isinstance(self.axes, GeoAxes):
-                crs = ccrs.PlateCarree()
+                crs = PLATE_CARREE
                 axes_to_data = self.axes.transAxes - self.axes.transData
                 x0, y0 = axes_to_data.transform((self.x, self.y))
                 crs.transform_point(x0, y0, self.axes.projection)
@@ -269,7 +272,7 @@ class ScaleBar(_AxesBase):
         # 在 data 坐标系取一条直线，计算单位长度对应的地理长度。
         if isinstance(self.axes, GeoAxes):
             # GeoAxes 取地图中心一段横线
-            crs = ccrs.PlateCarree()
+            crs = PLATE_CARREE
             geod = crs.get_geod()
             xmin, xmax = self.axes.get_xlim()
             ymin, ymax = self.axes.get_ylim()
@@ -304,15 +307,6 @@ class ScaleBar(_AxesBase):
     def draw(self, renderer: RendererBase) -> None:
         self._init()
         super().draw(renderer)
-
-
-def rectangle_path(x0: float, x1: float, y0: float, y1: float) -> Path:
-    '''构造矩形 Path'''
-    verts = [(x0, y0), (x1, y0), (x1, y1), (x0, y1), (x0, y0)]
-    codes = [Path.MOVETO, Path.LINETO, Path.LINETO, Path.LINETO, Path.CLOSEPOLY]
-    path = Path(verts, codes)
-
-    return path
 
 
 # TODO: 非矩形边框
@@ -373,7 +367,7 @@ class Frame(Artist):
         ny = len(yticks)
 
         top_paths = [
-            rectangle_path(xticks[i], xticks[i + 1], 1, 1 + dy)
+            fshp.box_path(xticks[i], xticks[i + 1], 1, 1 + dy)
             for i in range(nx - 1)
         ]
         # 即便 xaxis 方向反转也维持边框的颜色顺序
@@ -386,7 +380,7 @@ class Frame(Artist):
             return None
 
         bottom_paths = [
-            rectangle_path(xticks[i], xticks[i + 1], -dy, 0)
+            fshp.box_path(xticks[i], xticks[i + 1], -dy, 0)
             for i in range(nx - 1)
         ]
         if self.axes.xaxis.get_inverted():
@@ -394,7 +388,7 @@ class Frame(Artist):
         self.pcs['bottom'].set_paths(bottom_paths)
 
         left_paths = [
-            rectangle_path(-dx, 0, yticks[i], yticks[i + 1])
+            fshp.box_path(-dx, 0, yticks[i], yticks[i + 1])
             for i in range(ny - 1)
         ]
         if self.axes.yaxis.get_inverted():
@@ -402,7 +396,7 @@ class Frame(Artist):
         self.pcs['left'].set_paths(left_paths)
 
         right_paths = [
-            rectangle_path(1, 1 + dx, yticks[i], yticks[i + 1])
+            fshp.box_path(1, 1 + dx, yticks[i], yticks[i + 1])
             for i in range(ny - 1)
         ]
         if self.axes.yaxis.get_inverted():
@@ -411,10 +405,10 @@ class Frame(Artist):
 
         # 单独画出四个角落的方块
         corner_paths = [
-            rectangle_path(-dx, 0, -dy, 0),
-            rectangle_path(1, 1 + dx, -dy, 0),
-            rectangle_path(-dx, 0, 1, 1 + dy),
-            rectangle_path(1, 1 + dx, 1, 1 + dy),
+            fshp.box_path(-dx, 0, -dy, 0),
+            fshp.box_path(1, 1 + dx, -dy, 0),
+            fshp.box_path(-dx, 0, 1, 1 + dy),
+            fshp.box_path(1, 1 + dx, 1, 1 + dy),
         ]
         self.pcs['corner'].set_paths(corner_paths)
         fc = self.pcs['top'].get_facecolor()[-1]

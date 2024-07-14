@@ -28,7 +28,10 @@ from frykit.help import deprecator
 StrOrInt = Union[str, int]
 DictOrList = Union[dict, list[dict]]
 PolygonType = Union[sgeom.Polygon, sgeom.MultiPolygon]
-PolygonOrList = Union[PolygonType, list[PolygonType]]
+PolygonList = list[PolygonType]
+PolygonSeq = Sequence[PolygonType]
+PolygonOrList = Union[PolygonType, PolygonList]
+PolygonOrSeq = Union[PolygonType, PolygonSeq]
 
 GetCnKey = Union[StrOrInt, Sequence[StrOrInt]]
 GetCnResult = Union[PolygonOrList, DictOrList]
@@ -411,7 +414,7 @@ def get_cn_district(
     return result
 
 
-def get_countries() -> list[PolygonType]:
+def get_countries() -> PolygonList:
     '''获取所有国家国界的多边形'''
     polygons = _data_cache.get('country')
     if polygons is None:
@@ -462,7 +465,12 @@ PLACEHOLDER_PATH = Path(np.zeros((0, 2)), [])
 
 
 def polygon_to_path(polygon: PolygonType) -> Path:
-    '''多边形转为 Path。空多边形对应空 Path。'''
+    '''
+    多边形转为 Path
+
+    Path 中外环顺时针绕行，内环逆时针绕行，方便与 path_to_polygon 配合使用。
+    polygon 是空多边形时返回空 Path。
+    '''
     if not isinstance(polygon, (sgeom.Polygon, sgeom.MultiPolygon)):
         raise TypeError('polygon 不是多边形')
 
@@ -472,14 +480,14 @@ def polygon_to_path(polygon: PolygonType) -> Path:
     verts = []
     codes = []
     for polygon in getattr(polygon, 'geoms', [polygon]):
-        coords = polygon.exterior.coords
+        coords = np.asarray(polygon.exterior.coords)
         if polygon.exterior.is_ccw:
             coords = coords[::-1]
         verts.append(coords)
         codes.extend(_poly_codes(len(coords)))
 
         for ring in polygon.interiors:
-            coords = ring.coords
+            coords = np.asarray(ring.coords)
             if not ring.is_ccw:
                 coords = coords[::-1]
             verts.append(coords)
@@ -492,7 +500,13 @@ def polygon_to_path(polygon: PolygonType) -> Path:
 
 
 def path_to_polygon(path: Path) -> PolygonType:
-    '''Path 转为多边形。注意只适用于 polygon_to_path 的返回值。'''
+    '''
+    Path 转为多边形
+
+    顺时针部分对应外环，逆时针部分对应内环，与 shapefile 的规范一致，
+    所以建议配合 path_to_polygon 函数使用。
+    path 是空 Path 时返回空多边形。
+    '''
     if len(path.vertices) == 0:
         return sgeom.Polygon()
 
@@ -512,11 +526,19 @@ def path_to_polygon(path: Path) -> PolygonType:
 
 
 def polygon_to_polys(polygon: PolygonType) -> list[list[tuple[float, float]]]:
-    '''多边形转为适用于 shapefile 的坐标序列。不保证绕行方向。'''
+    '''多边形转为适用于 shapefile 的坐标序列'''
     polys = []
     for polygon in getattr(polygon, 'geoms', [polygon]):
-        for ring in [polygon.exterior, *polygon.interiors]:
-            polys.append(ring.coords[:])
+        coords = polygon.exterior.coords[:]
+        if polygon.exterior.is_ccw:
+            coords.reverse()
+        polys.append(coords)
+
+        for ring in polygon.interiors:
+            coords = ring.coords[:]
+            if not ring.is_ccw:
+                coords.reverse()
+            polys.append(coords)
 
     return polys
 
@@ -615,6 +637,12 @@ def polygon_to_mask(polygon: PolygonType, x: Any, y: Any) -> np.ndarray:
         return mask
 
     return recursion(x, y)
+
+
+def box_path(x0: float, x1: float, y0: float, y1: float) -> Path:
+    '''构造方框 Path。顺时针绕行。'''
+    verts = [(x0, y0), (x0, y1), (x1, y1), (x1, y0), (x0, y0)]
+    return Path(verts, _poly_codes(5))
 
 
 def _transform(func: Callable, geom: BaseGeometry) -> BaseGeometry:

@@ -2,11 +2,12 @@ import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 
 import frykit.plot as fplt
+import frykit.shp as fshp
 
 # 准备扇形方框
 extents = [100, 125, 15, 40]
 lon0, lon1, lat0, lat1 = extents
-path = fplt.rectangle_path(*extents).interpolated(100)
+path = fshp.box_path(*extents).interpolated(100)
 
 # 加载数据
 data = fplt.load_test_data()

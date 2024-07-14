@@ -1,3 +1,9 @@
+## `0.6.5`
+
+- `set_map_ticks` 函数会检查 `extents` 经纬度的大小关系。
+- 改进 `polygon_to_polys` 函数，保证序列绕行方向符合 shapefile 要求。
+- `rectangle_path` 函数更名为 `box_path` 函数，并移动到 `shp` 模块。
+
 ## `0.6.4`
 
 - 增加中国区县数据。相关函数：

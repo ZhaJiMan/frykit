@@ -1,6 +1,5 @@
 import math
 import re
-from collections.abc import Sequence
 from typing import Any, Literal, Optional, Union
 
 import numpy as np
@@ -104,7 +103,7 @@ def hms_to_degrees(hour: Any, minute: Any, second: Any) -> Any:
     return hour + minute / 60 + second / 3600
 
 
-def hms_to_degrees2(hms: Union[str, Sequence[str]]) -> list[float]:
+def hms_to_degrees2(hms: Union[str, list[str]]) -> list[float]:
     '''时分秒转为度数。要求 hms 是形如 43°08′20″ 的字符串。'''
 
     def func(string: str) -> tuple[float, float, float]:
@@ -138,7 +137,7 @@ def haversine(
     return dtheta
 
 
-def get_ellipse(
+def make_ellipse(
     x: float = 0,
     y: float = 0,
     a: float = 1,
@@ -148,7 +147,7 @@ def get_ellipse(
     ccw: bool = True,
 ) -> np.ndarray:
     '''
-    生成椭圆的xy坐标序列
+    生成椭圆的 xy 坐标序列
 
     Parameters
     ----------
@@ -194,7 +193,7 @@ def get_ellipse(
     return verts
 
 
-def get_circle(
+def make_circle(
     x: float = 0, y: float = 0, r: float = 1, npts: int = 100, ccw: bool = True
 ) -> np.ndarray:
     '''
@@ -220,7 +219,7 @@ def get_circle(
     verts : (npts, 2) np.ndarray
         xy 坐标序列
     '''
-    return get_ellipse(x, y, r, npts=npts, ccw=ccw)
+    return make_ellipse(x, y, r, npts=npts, ccw=ccw)
 
 
 def region_ind(
@@ -407,7 +406,7 @@ def binned_average_2d(
     y : (n,) array_like
         数据点的纵坐标
 
-    values : (n,) array_like or (m,) sequence of array_like
+    values : (n,) array_like or (m,) list of array_like
         数据点的变量值，也可以是一组变量。
 
     xbins : (nx + 1,) array_like

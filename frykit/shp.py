@@ -1,5 +1,5 @@
 import math
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from itertools import chain
 from typing import Any, Optional, Union
 
@@ -29,11 +29,9 @@ StrOrInt = Union[str, int]
 DictOrList = Union[dict, list[dict]]
 PolygonType = Union[sgeom.Polygon, sgeom.MultiPolygon]
 PolygonList = list[PolygonType]
-PolygonSeq = Sequence[PolygonType]
 PolygonOrList = Union[PolygonType, PolygonList]
-PolygonOrSeq = Union[PolygonType, PolygonSeq]
 
-GetCnKey = Union[StrOrInt, Sequence[StrOrInt]]
+GetCnKey = Union[StrOrInt, list[StrOrInt]]
 GetCnResult = Union[PolygonOrList, DictOrList]
 
 
@@ -450,6 +448,11 @@ def get_ocean() -> sgeom.MultiPolygon:
     return polygon
 
 
+def is_polygon(obj: Any) -> bool:
+    '''对象是否为多边形'''
+    return isinstance(obj, (sgeom.Polygon, sgeom.MultiPolygon))
+
+
 def _poly_codes(n: int) -> list[np.uint8]:
     '''生成适用于多边形的长度为 n 的 codes'''
     codes = [Path.LINETO] * n
@@ -471,7 +474,7 @@ def polygon_to_path(polygon: PolygonType) -> Path:
     Path 中外环顺时针绕行，内环逆时针绕行，方便与 path_to_polygon 配合使用。
     polygon 是空多边形时返回空 Path。
     '''
-    if not isinstance(polygon, (sgeom.Polygon, sgeom.MultiPolygon)):
+    if not is_polygon(polygon):
         raise TypeError('polygon 不是多边形')
 
     if polygon.is_empty:
@@ -563,7 +566,7 @@ def polygon_to_mask(polygon: PolygonType, x: Any, y: Any) -> np.ndarray:
     mask : ndarray
         布尔类型的掩膜数组，真值表示数据点落入多边形内部。形状与x和y相同。
     '''
-    if not isinstance(polygon, (sgeom.Polygon, sgeom.MultiPolygon)):
+    if not is_polygon(polygon):
         raise TypeError('polygon 不是多边形')
 
     x = np.asarray(x)
@@ -643,6 +646,22 @@ def box_path(x0: float, x1: float, y0: float, y1: float) -> Path:
     '''构造方框 Path。顺时针绕行。'''
     verts = [(x0, y0), (x0, y1), (x1, y1), (x1, y0), (x0, y0)]
     return Path(verts, _poly_codes(5))
+
+
+def polygon_extents(
+    polygon: PolygonOrList,
+) -> tuple[float, float, float, float]:
+    '''返回多边形对象的边界范围'''
+    if is_polygon(polygon):
+        x0, y0, x1, y1 = polygon.bounds
+    else:
+        bounds = np.array([p.bounds for p in polygon])
+        x0 = bounds[:, 0].min()
+        x1 = bounds[:, 2].max()
+        y0 = bounds[:, 1].min()
+        y1 = bounds[:, 3].max()
+
+    return x0, x1, y0, y1
 
 
 def _transform(func: Callable, geom: BaseGeometry) -> BaseGeometry:

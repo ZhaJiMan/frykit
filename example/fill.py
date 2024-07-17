@@ -50,7 +50,8 @@ for ax in [ax1, ax2]:
     fplt.add_polygons(
         ax, provinces, array=data, cmap=cmap, norm=norm, ec='k', lw=0.4
     )
-    for text in fplt.label_cn_province(ax):
+    # for text in fplt.label_cn_province(ax):  # frykit <= 0.64
+    for text in fplt.label_cn_province(ax).texts:
         text.set_path_effects(path_effects)
         if text.get_text() in ['香港', '澳门']:
             text.set_visible(False)

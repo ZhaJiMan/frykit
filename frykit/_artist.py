@@ -1,9 +1,13 @@
 import math
-from typing import Any, Literal, Optional
+from functools import partial
+from typing import Any, Literal, Optional, Union
+from weakref import WeakKeyDictionary, WeakValueDictionary
 
 import cartopy.crs as ccrs
 import matplotlib.transforms as mtransforms
 import numpy as np
+import shapely.geometry as sgeom
+from cartopy.mpl.feature_artist import _GeomKey
 from cartopy.mpl.geoaxes import GeoAxes
 from matplotlib.artist import Artist, allow_rasterization
 from matplotlib.axes._axes import Axes
@@ -16,11 +20,217 @@ from matplotlib.patches import Rectangle
 from matplotlib.path import Path
 from matplotlib.quiver import Quiver, QuiverKey
 from matplotlib.text import Text
+from shapely.vectorized import contains
 
 import frykit.shp as fshp
-from frykit.calc import t_to_az
+from frykit.calc import make_ellipse, t_to_az
 
 PLATE_CARREE = ccrs.PlateCarree()
+
+
+# polygon 的引用计数为零时弱引用会自动清理缓存
+_key_to_polygon = WeakValueDictionary()
+_key_to_path = WeakKeyDictionary()
+_key_to_crs_to_transformed = WeakKeyDictionary()
+
+
+def _polygons_to_paths(polygons: fshp.PolygonList) -> list[Path]:
+    '''将一组多边形转为 Path 并缓存结果'''
+    paths = []
+    for polygon in polygons:
+        key = _GeomKey(polygon)
+        # 同时设置三个弱引用字典，保证引用的是同一个 key 对象。
+        _key_to_polygon.setdefault(key, polygon)
+        _key_to_crs_to_transformed.setdefault(key, {})
+        path = _key_to_path.setdefault(key)
+        if path is None:
+            path = fshp.polygon_to_path(polygon)
+            _key_to_path[key] = path
+        paths.append(path)
+
+    return paths
+
+
+def _transform_polygons(
+    polygons: fshp.PolygonList,
+    crs_from: ccrs.CRS,
+    crs_to: ccrs.Projection,
+    fast_transform: bool = True,
+    only_path: bool = False,
+) -> Union[list[tuple[bool, fshp.PolygonType, Path]], list[Path]]:
+    '''对一组多边形做坐标变换再转为 Path，并缓存结果。'''
+    if fast_transform:
+        transform = fshp.GeometryTransformer(crs_from, crs_to)
+    else:
+        transform = lambda x: crs_to.project_geometry(x, crs_from)
+
+    values = []
+    for polygon in polygons:
+        key = _GeomKey(polygon)
+        _key_to_polygon.setdefault(key, polygon)
+        _key_to_path.setdefault(key)
+        mapping = _key_to_crs_to_transformed.setdefault(key, {})
+        value = mapping.get(crs_to)
+        if value is None or value[0] != fast_transform:
+            polygon = transform(polygon)
+            path = fshp.polygon_to_path(polygon)
+            value = (fast_transform, polygon, path)
+            mapping[crs_to] = value
+        values.append(value)
+
+    if only_path:
+        return [value[2] for value in values]
+    return values
+
+
+# TODO: LineStringCollection
+class PolygonCollection(PathCollection):
+    '''投影并绘制多边形对象的 Collection 类'''
+
+    def __init__(
+        self,
+        ax: Axes,
+        polygons: fshp.PolygonOrList,
+        crs: Optional[ccrs.CRS],
+        fast_transform: bool = True,
+        skip_outside: bool = True,
+        **kwargs: Any,
+    ) -> None:
+        self.polygons = polygons
+        if fshp.is_polygon(self.polygons):
+            self.polygons = [self.polygons]
+        self.fast_transform = fast_transform
+        self.skip_outside = skip_outside
+        self.is_geoaxes = isinstance(ax, GeoAxes)
+
+        if self.is_geoaxes:
+            self.crs = PLATE_CARREE if crs is None else crs
+            self.polygons_to_paths = partial(
+                _transform_polygons,
+                crs_from=self.crs,
+                crs_to=ax.projection,
+                fast_transform=fast_transform,
+                only_path=True,
+            )
+        else:
+            self.crs = crs
+            if self.crs is not None:
+                raise ValueError('ax 不是 GeoAxes 时 crs 只能为 None')
+            self.polygons_to_paths = _polygons_to_paths
+
+        # 初始化 paths，以触发 autoscale
+        x0, x1, y0, y1 = fshp.polygon_extents(self.polygons)
+        x = (x0 + x1) / 2
+        y = (y0 + y1) / 2
+        a = (x1 - x0) / 2
+        b = (y1 - y0) / 2
+        verts = make_ellipse(x, y, a, b)
+        ellipse = sgeom.Polygon(verts)
+        paths = self.polygons_to_paths([ellipse])
+        super().__init__(paths, **kwargs)
+        ax.add_collection(self)
+        ax._request_autoscale_view()
+
+    @allow_rasterization
+    def draw(self, renderer: RendererBase) -> None:
+        if not self.get_visible():
+            return None
+
+        if self.skip_outside:
+            if self.is_geoaxes:
+                x0, x1, y0, y1 = self.axes.get_extent(self.crs)
+            else:
+                x0, x1 = self.axes.get_xlim()
+                y0, y1 = self.axes.get_ylim()
+            extent_box = sgeom.box(x0, y0, x1, y1)
+
+            # 1 对应与边框有交点的多边形，需要做投影
+            # 2 对应无交点的多边形，直接用占位符 Path 替代
+            polygon_dict1 = {}
+            polygon_dict2 = {}
+            for i, polygon in enumerate(self.polygons):
+                if extent_box.intersects(polygon):
+                    polygon_dict1[i] = polygon
+                else:
+                    polygon_dict2[i] = polygon
+
+            # 利用字典的有序性
+            paths1 = self.polygons_to_paths(polygon_dict1.values())
+            paths2 = [fshp.PLACEHOLDER_PATH] * len(polygon_dict2)
+            path_dict1 = dict(zip(polygon_dict1.keys(), paths1))
+            path_dict2 = dict(zip(polygon_dict2.keys(), paths2))
+            path_dict = path_dict1 | path_dict2
+            paths = [path for _, path in sorted(path_dict.items())]
+        else:
+            paths = self.polygons_to_paths(self.polygons)
+
+        self.set_paths(paths)
+        super().draw(renderer)
+
+
+class TextCollection(Artist):
+    '''Text 集合'''
+
+    def __init__(
+        self,
+        x: list[float],
+        y: list[float],
+        s: list[str],
+        skip_outside: bool = True,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__()
+        self.skip_outside = skip_outside
+        self.set_zorder(kwargs.get('zorder', 3))
+        if 'transform' in kwargs:
+            self.set_transform(kwargs['transform'])
+
+        self.x, self.y, self.s = map(np.atleast_1d, [x, y, s])
+        if not len(self.x) == len(self.y) == len(self.s):
+            raise ValueError('x、y 和 s 长度必须相同')
+        self.coords = np.c_[self.x, self.y]
+
+        kwargs = normalize_kwargs(kwargs, Text)
+        kwargs.setdefault('horizontalalignment', 'center')
+        kwargs.setdefault('verticalalignment', 'center')
+        kwargs.setdefault('clip_on', True)
+        self.texts = [
+            Text(xi, yi, si, **kwargs)
+            for xi, yi, si in zip(self.x, self.y, self.s)
+        ]
+
+    def set_figure(self, fig: Figure) -> None:
+        super().set_figure(fig)
+        for text in self.texts:
+            text.set_figure(fig)
+
+    def _clip_texts(self, polygon: fshp.PolygonType) -> None:
+        # 要求 polygon 基于 data 坐标系
+        trans = self.get_transform() - self.axes.transData
+        coords = trans.transform(self.coords)
+        mask = contains(polygon, coords[:, 0], coords[:, 1])
+        for i in np.nonzero(~mask)[0]:
+            self.texts[i].set_visible(False)
+
+    def _init(self) -> None:
+        if not self.skip_outside:
+            return None
+
+        # 不画出坐标在边框外的 Text
+        x0, x1 = self.axes.get_xlim()
+        y0, y1 = self.axes.get_ylim()
+        extent_box = sgeom.box(x0, y0, x1, y1)
+        self._clip_texts(extent_box)
+
+    @allow_rasterization
+    def draw(self, renderer: RendererBase) -> None:
+        if not self.get_visible():
+            return None
+
+        self._init()
+        for text in self.texts:
+            text.draw(renderer)
+        self.stale = False
 
 
 class QuiverLegend(QuiverKey):
@@ -421,6 +631,9 @@ class Frame(Artist):
 
     @allow_rasterization
     def draw(self, renderer: RendererBase) -> None:
+        if not self.get_visible():
+            return None
+
         self._init()
         for pc in self.pcs.values():
             pc.draw(renderer)

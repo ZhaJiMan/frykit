@@ -1,15 +1,13 @@
 import math
-from collections.abc import Sequence
 from typing import Any, Literal, Optional, Union
-from weakref import WeakKeyDictionary, WeakValueDictionary
 
 import cartopy.crs as ccrs
 import matplotlib as mpl
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import shapely.geometry as sgeom
-from cartopy.mpl.feature_artist import _GeomKey
 from cartopy.mpl.geoaxes import GeoAxes
 from cartopy.mpl.ticker import LatitudeFormatter, LongitudeFormatter
 from matplotlib import font_manager
@@ -28,13 +26,14 @@ from matplotlib.quiver import Quiver
 from matplotlib.text import Text
 from matplotlib.ticker import Formatter
 from matplotlib.transforms import Bbox
-from numpy.distutils.misc_util import is_sequence
 from numpy.lib.npyio import NpzFile
+from shapely.ops import unary_union
+from shapely.prepared import prep
 
 import frykit._artist as fa
 import frykit.shp as fshp
 from frykit import DATA_DIRPATH
-from frykit.help import deprecator
+from frykit.help import deprecator, is_sequence, to_list
 
 # 等经纬度投影
 PLATE_CARREE = ccrs.PlateCarree()
@@ -48,63 +47,15 @@ CN_AZIMUTHAL_EQUIDISTANT = ccrs.AzimuthalEquidistant(
     central_longitude=105, central_latitude=35
 )
 
-# polygon 的引用计数为零时弱引用会自动清理缓存
-_key_to_polygon = WeakValueDictionary()
-_key_to_path = WeakKeyDictionary()
-_key_to_crs_to_transformed_path = WeakKeyDictionary()
-
-
-def _polygons_to_paths(polygons: fshp.PolygonSeq) -> list[Path]:
-    '''将一组多边形转为 Path 并缓存结果'''
-    paths = []
-    for polygon in polygons:
-        key = _GeomKey(polygon)
-        _key_to_polygon.setdefault(key, polygon)
-        path = _key_to_path.get(key)
-        if path is None:
-            path = fshp.polygon_to_path(polygon)
-            _key_to_path[key] = path
-        paths.append(path)
-
-    return paths
-
-
-def _transform_polygons_to_paths(
-    polygons: fshp.PolygonSeq,
-    crs_from: ccrs.CRS,
-    crs_to: ccrs.Projection,
-    fast_transform: bool = True,
-) -> list[Path]:
-    '''对一组多边形做坐标变换再转为 Path，并缓存结果。'''
-    if fast_transform:
-        transform_polygon = fshp.GeometryTransformer(crs_from, crs_to)
-    else:
-        transform_polygon = lambda x: crs_to.project_geometry(x, crs_from)
-
-    paths = []
-    for polygon in polygons:
-        key = _GeomKey(polygon)
-        _key_to_polygon.setdefault(key, polygon)
-        mapping = _key_to_crs_to_transformed_path.setdefault(key, {})
-        value = mapping.get(crs_to)
-        if value is None or value[0] != fast_transform:
-            polygon = transform_polygon(polygon)
-            path = fshp.polygon_to_path(polygon)
-            mapping[crs_to] = (fast_transform, path)
-        else:
-            path = value[1]
-        paths.append(path)
-
-    return paths
-
 
 def add_polygons(
     ax: Axes,
-    polygons: fshp.PolygonOrSeq,
+    polygons: fshp.PolygonOrList,
     crs: Optional[ccrs.CRS] = None,
     fast_transform: bool = True,
+    skip_outside: bool = True,
     **kwargs: Any,
-) -> PathCollection:
+) -> fa.PolygonCollection:
     '''
     将多边形添加到 Axes 上
 
@@ -113,7 +64,7 @@ def add_polygons(
     ax : Axes
         目标 Axes
 
-    polygons : PolygonOrSeq
+    polygons : PolygonOrList
         一个或一组多边形
 
     crs : CRS, optional
@@ -123,6 +74,9 @@ def add_polygons(
     fast_transform : bool, optional
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
 
+    skip_outside : bool, optional
+        是否跳过 ax 边框外的多边形，提高局部地图的绘制速度。默认为 True。
+
     **kwargs
         PathCollection 类的关键字参数。
         例如 edgecolor、facecolor、cmap、norm 和 array 等。
@@ -130,36 +84,17 @@ def add_polygons(
 
     Returns
     -------
-    pc : PathCollection
+    pc : PolygonCollection
         表示多边形的集合对象
     '''
-    if not is_sequence(polygons):
-        polygons = [polygons]
-    array = kwargs.get('array', None)
-    if array is not None and len(array) != len(polygons):
-        raise ValueError('array 的长度与 polygons 不匹配')
-
-    if not isinstance(ax, Axes):
-        raise TypeError('ax 不是 Axes')
-    elif isinstance(ax, GeoAxes):
-        if crs is None:
-            crs = PLATE_CARREE
-        paths = _transform_polygons_to_paths(
-            polygons=polygons,
-            crs_from=crs,
-            crs_to=ax.projection,
-            fast_transform=fast_transform,
-        )
-    else:
-        if crs is not None:
-            raise ValueError('ax 不是 GeoAxes 时 crs 只能为 None')
-        paths = _polygons_to_paths(polygons)
-
-    pc = PathCollection(paths, **kwargs)
-    ax.add_collection(pc)
-    ax._request_autoscale_view()
-
-    return pc
+    return fa.PolygonCollection(
+        ax=ax,
+        polygons=polygons,
+        crs=crs,
+        fast_transform=fast_transform,
+        skip_outside=skip_outside,
+        **kwargs,
+    )
 
 
 def add_points():
@@ -181,11 +116,11 @@ def _get_boundary(ax: GeoAxes) -> sgeom.Polygon:
     return boundary
 
 
-ArtistOrSeq = Union[Artist, Sequence[Artist]]
+ArtistOrList = Union[Artist, list[Artist]]
 
 
 def clip_by_polygon(
-    artist: ArtistOrSeq,
+    artist: ArtistOrList,
     polygon: fshp.PolygonType,
     crs: Optional[ccrs.CRS] = None,
     fast_transform: bool = True,
@@ -196,7 +131,7 @@ def clip_by_polygon(
 
     Parameters
     ----------
-    artist : ArtistOrSeq
+    artist : ArtistOrList
         被裁剪的 Artist对象。可以返回自以下方法：
         - plot, scatter
         - contour, contourf, clabel
@@ -219,7 +154,7 @@ def clip_by_polygon(
         为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
     '''
     artists = []
-    for a in artist if is_sequence(artist) else [artist]:
+    for a in to_list(artist):
         if isinstance(a, ContourSet) and mpl.__version__ < '3.8.0':
             artists.extend(a.collections)
         else:
@@ -230,39 +165,39 @@ def clip_by_polygon(
         if artists[i].axes is not ax:
             raise ValueError('一组 Artist 必须属于同一个 Axes')
 
-    if not isinstance(ax, Axes):
-        raise TypeError('ax 不是 Axes')
-    is_geoaxes = isinstance(ax, GeoAxes)
-    if is_geoaxes:
+    # 通过缓存节省投影的时间
+    if isinstance(ax, GeoAxes):
         if crs is None:
             crs = PLATE_CARREE
-        path = _transform_polygons_to_paths(
+        _, polygon, path = fa._transform_polygons(
             polygons=[polygon],
             crs_from=crs,
             crs_to=ax.projection,
             fast_transform=fast_transform,
+            only_path=False,
         )[0]
         if strict:
-            polygon = fshp.path_to_polygon(path)
             boudnary = _get_boundary(ax)
-            path = fshp.polygon_to_path(polygon & boudnary)
+            polygon = boudnary & polygon
+            path = fshp.polygon_to_path(polygon)
     else:
         if crs is not None:
             raise ValueError('ax 不是 GeoAxes 时 crs 只能为 None')
-        path = _polygons_to_paths([polygon])[0]
+        path = fa._polygons_to_paths([polygon])[0]
 
-    # TODO: 严格防文字出界的方案
-    # fig.canvas.draw + t.get_window_extent
-    # TODO: streamplot 的箭头不在返回值里
+    # TODO: 严格防文字出界的方案：fig.canvas.draw + t.get_window_extent
+    # TODO: streamplot 的返回值不能用来裁剪箭头
+    prepared = prep(polygon)
     for a in artists:
         a.set_clip_on(True)
-        if is_geoaxes:
-            a.set_clip_box(ax.bbox)
+        a.set_clip_box(ax.bbox)
         if isinstance(a, Text):
             trans = a.get_transform() - ax.transData
-            point = trans.transform(a.get_position())
-            if not path.contains_point(point):
+            pos = trans.transform(a.get_position())
+            if not prepared.contains(sgeom.Point(pos)):
                 a.set_visible(False)
+        elif isinstance(a, fa.TextCollection):
+            a._clip_texts(polygon)
         else:
             a.set_clip_path(path, ax.transData)
 
@@ -279,8 +214,11 @@ def _init_pc_kwargs(kwargs: dict) -> dict:
 
 
 def add_cn_border(
-    ax: Axes, fast_transform: bool = True, **kwargs: Any
-) -> PathCollection:
+    ax: Axes,
+    fast_transform: bool = True,
+    skip_outside: bool = True,
+    **kwargs: Any,
+) -> fa.PolygonCollection:
     '''
     在 Axes 上添加中国国界
 
@@ -292,6 +230,9 @@ def add_cn_border(
     fast_transform : bool, optional
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
 
+    skip_outside : bool, optional
+        是否跳过 ax 边框外的多边形，提高局部地图的绘制速度。默认为 True。
+
     **kwargs
         PathCollection 类的关键字参数。
         例如 edgecolor、facecolor、cmap、norm 和 array 等。
@@ -299,20 +240,24 @@ def add_cn_border(
 
     Returns
     -------
-    pc : PathCollection
+    pc : PolygonCollection
         表示国界的集合对象
     '''
     return add_polygons(
         ax=ax,
         polygons=fshp.get_cn_border(),
         fast_transform=fast_transform,
+        skip_outside=skip_outside,
         **_init_pc_kwargs(kwargs),
     )
 
 
 def add_nine_line(
-    ax: Axes, fast_transform: bool = True, **kwargs: Any
-) -> PathCollection:
+    ax: Axes,
+    fast_transform: bool = True,
+    skip_outside: bool = True,
+    **kwargs: Any,
+) -> fa.PolygonCollection:
     '''
     在 Axes 上添加九段线
 
@@ -324,6 +269,9 @@ def add_nine_line(
     fast_transform : bool, optional
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
 
+    skip_outside : bool, optional
+        是否跳过 ax 边框外的多边形，提高局部地图的绘制速度。默认为 True。
+
     **kwargs
         PathCollection 类的关键字参数。
         例如 edgecolor、facecolor、cmap、norm 和 array 等。
@@ -331,13 +279,14 @@ def add_nine_line(
 
     Returns
     -------
-    pc : PathCollection
+    pc : PolygonCollection
         表示九段线的集合对象
     '''
     return add_polygons(
         ax=ax,
         polygons=fshp.get_nine_line(),
         fast_transform=fast_transform,
+        skip_outside=skip_outside,
         **_init_pc_kwargs(kwargs),
     )
 
@@ -346,8 +295,9 @@ def add_cn_province(
     ax: Axes,
     province: Optional[fshp.GetCnKey] = None,
     fast_transform: bool = True,
+    skip_outside: bool = True,
     **kwargs: Any,
-) -> PathCollection:
+) -> fa.PolygonCollection:
     '''
     在 Axes 上添加中国省界
 
@@ -363,6 +313,9 @@ def add_cn_province(
     fast_transform : bool, optional
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
 
+    skip_outside : bool, optional
+        是否跳过 ax 边框外的多边形，提高局部地图的绘制速度。默认为 True。
+
     **kwargs
         PathCollection 类的关键字参数。
         例如 edgecolor、facecolor、cmap、norm 和 array 等。
@@ -370,13 +323,14 @@ def add_cn_province(
 
     Returns
     -------
-    pc : PathCollection
+    pc : PolygonCollection
         表示省界的集合对象
     '''
     return add_polygons(
         ax=ax,
         polygons=fshp.get_cn_province(province),
         fast_transform=fast_transform,
+        skip_outside=skip_outside,
         **_init_pc_kwargs(kwargs),
     )
 
@@ -386,8 +340,9 @@ def add_cn_city(
     city: Optional[fshp.GetCnKey] = None,
     province: Optional[fshp.GetCnKey] = None,
     fast_transform: bool = True,
+    skip_outside: bool = True,
     **kwargs: Any,
-) -> PathCollection:
+) -> fa.PolygonCollection:
     '''
     在 Axes 上添加中国市界
 
@@ -407,6 +362,9 @@ def add_cn_city(
     fast_transform : bool, optional
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
 
+    skip_outside : bool, optional
+        是否跳过 ax 边框外的多边形，提高局部地图的绘制速度。默认为 True。
+
     **kwargs
         PathCollection 类的关键字参数。
         例如 edgecolor、facecolor、cmap、norm 和 array 等。
@@ -414,13 +372,14 @@ def add_cn_city(
 
     Returns
     -------
-    pc : PathCollection
+    pc : PolygonCollection
         表示市界的集合对象
     '''
     return add_polygons(
         ax=ax,
         polygons=fshp.get_cn_city(city, province),
         fast_transform=fast_transform,
+        skip_outside=skip_outside,
         **_init_pc_kwargs(kwargs),
     )
 
@@ -431,8 +390,9 @@ def add_cn_district(
     city: Optional[fshp.GetCnKey] = None,
     province: Optional[fshp.GetCnKey] = None,
     fast_transform: bool = True,
+    skip_outside: bool = True,
     **kwargs: Any,
-) -> PathCollection:
+) -> fa.PolygonCollection:
     '''
     在 Axes 上添加中国县界
 
@@ -456,6 +416,9 @@ def add_cn_district(
     fast_transform : bool, optional
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
 
+    skip_outside : bool, optional
+        是否跳过 ax 边框外的多边形，提高局部地图的绘制速度。默认为 True。
+
     **kwargs
         PathCollection 类的关键字参数。
         例如 edgecolor、facecolor、cmap、norm 和 array 等。
@@ -463,20 +426,24 @@ def add_cn_district(
 
     Returns
     -------
-    pc : PathCollection
+    pc : PolygonCollection
         表示县界的集合对象
     '''
     return add_polygons(
         ax=ax,
         polygons=fshp.get_cn_district(district, city, province),
         fast_transform=fast_transform,
+        skip_outside=skip_outside,
         **_init_pc_kwargs(kwargs),
     )
 
 
 def add_countries(
-    ax: Axes, fast_transform: bool = True, **kwargs: Any
-) -> PathCollection:
+    ax: Axes,
+    fast_transform: bool = True,
+    skip_outside: bool = True,
+    **kwargs: Any,
+) -> fa.PolygonCollection:
     '''
     在 Axes 上添加所有国家的国界
 
@@ -490,6 +457,9 @@ def add_countries(
     fast_transform : bool, optional
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
 
+    skip_outside : bool, optional
+        是否跳过 ax 边框外的多边形，提高局部地图的绘制速度。默认为 True。
+
     **kwargs
         PathCollection 类的关键字参数。
         例如 edgecolor、facecolor、cmap、norm 和 array 等。
@@ -497,20 +467,24 @@ def add_countries(
 
     Returns
     -------
-    pc : PathCollection
+    pc : PolygonCollection
         表示国界的集合对象
     '''
     return add_polygons(
         ax=ax,
         polygons=fshp.get_countries(),
         fast_transform=fast_transform,
+        skip_outside=skip_outside,
         **_init_pc_kwargs(kwargs),
     )
 
 
 def add_land(
-    ax: Axes, fast_transform: bool = True, **kwargs: Any
-) -> PathCollection:
+    ax: Axes,
+    fast_transform: bool = True,
+    skip_outside: bool = True,
+    **kwargs: Any,
+) -> fa.PolygonCollection:
     '''
     在 Axes 上添加陆地
 
@@ -524,6 +498,9 @@ def add_land(
     fast_transform : bool, optional
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
 
+    skip_outside : bool, optional
+        是否跳过 ax 边框外的多边形，提高局部地图的绘制速度。默认为 True。
+
     **kwargs
         PathCollection 类的关键字参数。
         例如 edgecolor、facecolor、cmap、norm 和 array 等。
@@ -531,20 +508,24 @@ def add_land(
 
     Returns
     -------
-    pc : PathCollection
+    pc : PolygonCollection
         表示陆地的集合对象
     '''
     return add_polygons(
         ax=ax,
         polygons=fshp.get_land(),
         fast_transform=fast_transform,
+        skip_outside=skip_outside,
         **_init_pc_kwargs(kwargs),
     )
 
 
 def add_ocean(
-    ax: Axes, fast_transform: bool = True, **kwargs: Any
-) -> PathCollection:
+    ax: Axes,
+    fast_transform: bool = True,
+    skip_outside: bool = True,
+    **kwargs: Any,
+) -> fa.PolygonCollection:
     '''
     在 Axes 上添加海洋
 
@@ -558,6 +539,9 @@ def add_ocean(
     fast_transform : bool, optional
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
 
+    skip_outside : bool, optional
+        是否跳过 ax 边框外的多边形，提高局部地图的绘制速度。默认为 True。
+
     **kwargs
         PathCollection 类的关键字参数。
         例如 edgecolor、facecolor、cmap、norm 和 array 等。
@@ -565,26 +549,27 @@ def add_ocean(
 
     Returns
     -------
-    pc : PathCollection
+    pc : PolygonCollection
         表示海洋的集合对象
     '''
     return add_polygons(
         ax=ax,
         polygons=fshp.get_ocean(),
         fast_transform=fast_transform,
+        skip_outside=skip_outside,
         **_init_pc_kwargs(kwargs),
     )
 
 
 def clip_by_cn_border(
-    artist: ArtistOrSeq, fast_transform: bool = True, strict: bool = False
+    artist: ArtistOrList, fast_transform: bool = True, strict: bool = False
 ) -> None:
     '''
     用中国国界裁剪 Artist
 
     Parameters
     ----------
-    artist : ArtistOrSeq
+    artist : ArtistOrList
         被裁剪的Artist对象。可以返回自以下方法：
         - plot, scatter
         - contour, contourf, clabel
@@ -608,8 +593,8 @@ def clip_by_cn_border(
 
 
 def clip_by_cn_province(
-    artist: ArtistOrSeq,
-    province: fshp.StrOrInt,
+    artist: ArtistOrList,
+    province: fshp.GetCnKey,
     fast_transform: bool = True,
     strict: bool = False,
 ) -> None:
@@ -618,7 +603,7 @@ def clip_by_cn_province(
 
     Parameters
     ----------
-    artist : ArtistOrSeq
+    artist : ArtistOrList
         被裁剪的Artist对象。可以返回自以下方法：
         - plot, scatter
         - contour, contourf, clabel
@@ -626,8 +611,8 @@ def clip_by_cn_province(
         - imshow
         - quiver
 
-    province : StrOrInt
-        单个省名或 adcode
+    province : GetCnKey
+        省名或 adcode。可以是复数个省。
 
     fast_transform : bool, optional
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
@@ -636,19 +621,21 @@ def clip_by_cn_province(
         是否使用更严格的裁剪方法。默认为 False。
         为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
     '''
-    if not isinstance(province, str):
-        raise ValueError('只支持单个省')
+    polygon = fshp.get_cn_province(province)
+    if is_sequence(province):  # 但是会失去缓存的效果
+        polygon = unary_union(polygon)
+
     clip_by_polygon(
         artist=artist,
-        polygon=fshp.get_cn_province(province),
+        polygon=polygon,
         fast_transform=fast_transform,
         strict=strict,
     )
 
 
 def clip_by_cn_city(
-    artist: ArtistOrSeq,
-    city: fshp.StrOrInt,
+    artist: ArtistOrList,
+    city: fshp.GetCnKey,
     fast_transform: bool = True,
     strict: bool = False,
 ) -> None:
@@ -657,7 +644,7 @@ def clip_by_cn_city(
 
     Parameters
     ----------
-    artist : ArtistOrSeq
+    artist : ArtistOrList
         被裁剪的Artist对象。可以返回自以下方法：
         - plot, scatter
         - contour, contourf, clabel
@@ -665,8 +652,8 @@ def clip_by_cn_city(
         - imshow
         - quiver
 
-    city : StrOrInt
-        单个市名或 adcode
+    city : GetCnKey
+        市名或 adcode。可以是复数个市。
 
     fast_transform : bool, optional
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
@@ -675,19 +662,21 @@ def clip_by_cn_city(
         是否使用更严格的裁剪方法。默认为 False。
         为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
     '''
+    polygon = fshp.get_cn_city(city)
     if is_sequence(city):
-        raise ValueError('只支持单个市')
+        polygon = unary_union(polygon)
+
     clip_by_polygon(
         artist=artist,
-        polygon=fshp.get_cn_city(city),
+        polygon=polygon,
         fast_transform=fast_transform,
         strict=strict,
     )
 
 
 def clip_by_cn_district(
-    artist: ArtistOrSeq,
-    district: fshp.StrOrInt,
+    artist: ArtistOrList,
+    district: fshp.GetCnKey,
     fast_transform: bool = True,
     strict: bool = False,
 ) -> None:
@@ -696,7 +685,7 @@ def clip_by_cn_district(
 
     Parameters
     ----------
-    artist : ArtistOrSeq
+    artist : ArtistOrList
         被裁剪的Artist对象。可以返回自以下方法：
         - plot, scatter
         - contour, contourf, clabel
@@ -704,7 +693,7 @@ def clip_by_cn_district(
         - imshow
         - quiver
 
-    district : StrOrInt
+    district : GetCnKey
         单个县名或 adcode
 
     fast_transform : bool, optional
@@ -714,18 +703,20 @@ def clip_by_cn_district(
         是否使用更严格的裁剪方法。默认为 False。
         为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
     '''
+    polygon = fshp.get_cn_district(district)
     if is_sequence(district):
-        raise ValueError('只支持单个县')
+        polygon = unary_union(polygon)
+
     clip_by_polygon(
         artist=artist,
-        polygon=fshp.get_cn_district(district),
+        polygon=polygon,
         fast_transform=fast_transform,
         strict=strict,
     )
 
 
 def clip_by_land(
-    artist: ArtistOrSeq, fast_transform: bool = True, strict: bool = False
+    artist: ArtistOrList, fast_transform: bool = True, strict: bool = False
 ) -> None:
     '''
     用陆地边界裁剪 Artist
@@ -734,7 +725,7 @@ def clip_by_land(
 
     Parameters
     ----------
-    artist : ArtistOrSeq
+    artist : ArtistOrList
         被裁剪的Artist对象。可以返回自以下方法：
         - plot, scatter
         - contour, contourf, clabel
@@ -758,7 +749,7 @@ def clip_by_land(
 
 
 def clip_by_ocean(
-    artist: ArtistOrSeq, fast_transform: bool = True, strict: bool = False
+    artist: ArtistOrList, fast_transform: bool = True, strict: bool = False
 ) -> None:
     '''
     用海洋边界裁剪 Artist
@@ -767,7 +758,7 @@ def clip_by_ocean(
 
     Parameters
     ----------
-    artist : ArtistOrSeq
+    artist : ArtistOrList
         被裁剪的Artist对象。可以返回自以下方法：
         - plot, scatter
         - contour, contourf, clabel
@@ -791,8 +782,13 @@ def clip_by_ocean(
 
 
 def add_texts(
-    ax: Axes, x: Any, y: Any, s: Sequence[str], **kwargs: Any
-) -> list[Text]:
+    ax: Axes,
+    x: list[float],
+    y: list[float],
+    s: list[str],
+    skip_outside: bool = True,
+    **kwargs: Any,
+) -> fa.TextCollection:
     '''
     在 Axes 上添加一组文本
 
@@ -801,51 +797,50 @@ def add_texts(
     ax : Axes
         目标Axes
 
-    x : (n,) array_like
-        文本的横坐标数组
+    x : list of float
+        文本的横坐标
 
-    y : (n,) array_like
-        文本的纵坐标数组
+    y : list of float
+        文本的纵坐标
 
-    s : (n,) sequence of str
-        一组字符串文本
+    s : list of str
+        字符串文本
+
+    skip_outside : bool, optional
+        是否跳过 ax 边框外的文本，提高局部文字的绘制速度。默认为 True。
 
     **kwargs
-        Axes.text 方法的关键字参数
-        https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.text.html
+        Text 类的关键字参数
+        https://matplotlib.org/stable/api/text_api.html
 
     Returns
     -------
-    texts : (n,) list of Text
-        一组 Text 对象
+    tc : TextCollection
+        表示 Text 的集合对象
     '''
-    x = x if is_sequence(x) else [x]
-    y = y if is_sequence(y) else [y]
-    s = s if is_sequence(s) else [s]
-    if not len(x) == len(y) == len(s):
-        raise ValueError('x、y 和 s 长度必须相同')
+    tc = fa.TextCollection(x, y, s, skip_outside, **kwargs)
+    ax.add_artist(tc)
+    for text in tc.texts:
+        text.axes = ax
+        if not text.is_transform_set():
+            text.set_transform(ax.transData)
+        text.set_clip_box(ax.bbox)
 
-    kwargs = normalize_kwargs(kwargs, Text)
-    kwargs.setdefault('horizontalalignment', 'center')
-    kwargs.setdefault('verticalalignment', 'center')
-    kwargs.setdefault('clip_on', True)
-    texts = [ax.text(xi, yi, si, **kwargs) for xi, yi, si in zip(x, y, s)]
-
-    return texts
+    return tc
 
 
 def _add_cn_texts(
     ax: Axes,
-    lons: Any,
-    lats: Any,
-    names: Sequence[str],
+    lons: pd.Series,
+    lats: pd.Series,
+    names: pd.Series,
+    skip_outside: bool = True,
     **kwargs: Any,
-) -> list[Text]:
+) -> fa.TextCollection:
     '''在 Axes 上标注中国地名'''
     kwargs = normalize_kwargs(kwargs, Text)
     kwargs.setdefault('fontsize', 'x-small')
     if isinstance(ax, GeoAxes):
-        kwargs.setdefault('clip_box', ax.bbox)
         kwargs.setdefault('transform', PLATE_CARREE)
 
     if (
@@ -858,15 +853,16 @@ def _add_cn_texts(
         filepath = DATA_DIRPATH / 'zh_font.otf'
         kwargs.setdefault('fontproperties', filepath)
 
-    return add_texts(ax, lons, lats, names, **kwargs)
+    return add_texts(ax, lons, lats, names, skip_outside, **kwargs)
 
 
 def label_cn_province(
     ax: Axes,
     province: Optional[fshp.GetCnKey] = None,
     short: bool = True,
+    skip_outside: bool = True,
     **kwargs: Any,
-) -> list[Text]:
+) -> fa.TextCollection:
     '''
     在 Axes 上标注中国省名
 
@@ -882,21 +878,30 @@ def label_cn_province(
     short : bool, optional
         是否使用缩短的名称。默认为 True。
 
+    skip_outside : bool, optional
+        是否跳过 ax 边框外的文本，提高局部文字的绘制速度。默认为 True。
+
     **kwargs
-        Axes.text 方法的关键字参数
+        Text 类的关键字参数
         https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.text.html
 
     Returns
     -------
-    texts : list of Text
-        表示省名的 Text 对象
+    tc : TextCollection
+        表示 Text 的集合对象
     '''
     locs = fshp._get_pr_locs(province)
     df = fshp._get_pr_table().iloc[locs]
     key = 'short_name' if short else 'pr_name'
-    texts = _add_cn_texts(ax, df['lon'], df['lat'], df[key], **kwargs)
 
-    return texts
+    return _add_cn_texts(
+        ax=ax,
+        lons=df['lon'],
+        lats=df['lat'],
+        names=df[key],
+        skip_outside=skip_outside,
+        **kwargs,
+    )
 
 
 def label_cn_city(
@@ -904,8 +909,9 @@ def label_cn_city(
     city: Optional[fshp.GetCnKey] = None,
     province: Optional[fshp.GetCnKey] = None,
     short: bool = True,
+    skip_outside: bool = True,
     **kwargs: Any,
-) -> list[Text]:
+) -> fa.TextCollection:
     '''
     在 Axes 上标注中国市名
 
@@ -925,21 +931,30 @@ def label_cn_city(
     short : bool, optional
         是否使用缩短的名称。默认为 True。
 
+    skip_outside : bool, optional
+        是否跳过 ax 边框外的文本，提高局部文字的绘制速度。默认为 True。
+
     **kwargs
-        Axes.text 方法的关键字参数
+        Text 类的关键字参数
         https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.text.html
 
     Returns
     -------
-    texts : list of Text
-        表示市名的 Text 对象
+    tc : TextCollection
+        表示 Text 的集合对象
     '''
     locs = fshp._get_ct_locs(city, province)
     df = fshp._get_ct_table().iloc[locs]
     key = 'short_name' if short else 'ct_name'
-    texts = _add_cn_texts(ax, df['lon'], df['lat'], df[key], **kwargs)
 
-    return texts
+    return _add_cn_texts(
+        ax=ax,
+        lons=df['lon'],
+        lats=df['lat'],
+        names=df[key],
+        skip_outside=skip_outside,
+        **kwargs,
+    )
 
 
 def label_cn_district(
@@ -948,8 +963,9 @@ def label_cn_district(
     city: Optional[fshp.GetCnKey] = None,
     province: Optional[fshp.GetCnKey] = None,
     short: bool = True,
+    skip_outside: bool = True,
     **kwargs: Any,
-) -> list[Text]:
+) -> fa.TextCollection:
     '''
     在 Axes 上标注中国县名
 
@@ -976,21 +992,30 @@ def label_cn_district(
     short : bool, optional
         是否使用缩短的名称。默认为 True。
 
+    skip_outside : bool, optional
+        是否跳过 ax 边框外的文本，提高局部文字的绘制速度。默认为 True。
+
     **kwargs
-        Axes.text 方法的关键字参数
+        Text 类的关键字参数
         https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.text.html
 
     Returns
     -------
-    texts : list of Text
-        表示县名的 Text 对象
+    tc : TextCollection
+        表示 Text 的集合对象
     '''
     locs = fshp._get_dt_locs(district, city, province)
     df = fshp._get_dt_table().iloc[locs]
     key = 'short_name' if short else 'dt_name'
-    texts = _add_cn_texts(ax, df['lon'], df['lat'], df[key], **kwargs)
 
-    return texts
+    return _add_cn_texts(
+        ax=ax,
+        lons=df['lon'],
+        lats=df['lat'],
+        names=df[key],
+        skip_outside=skip_outside,
+        **kwargs,
+    )
 
 
 def _set_axes_ticks(
@@ -1278,14 +1303,14 @@ def set_map_ticks(
         setter = _set_axes_ticks
 
     setter(
-        ax,
-        extents,
-        major_xticks,
-        major_yticks,
-        minor_xticks,
-        minor_yticks,
-        xformatter,
-        yformatter,
+        ax=ax,
+        extents=extents,
+        major_xticks=major_xticks,
+        major_yticks=major_yticks,
+        minor_xticks=minor_xticks,
+        minor_yticks=minor_yticks,
+        xformatter=xformatter,
+        yformatter=yformatter,
     )
 
 
@@ -1381,7 +1406,14 @@ def add_quiver_legend(
         图例对象
     '''
     quiver_legend = fa.QuiverLegend(
-        Q, U, units, width, height, loc, qk_kwargs, patch_kwargs
+        Q=Q,
+        U=U,
+        units=units,
+        width=width,
+        height=height,
+        loc=loc,
+        qk_kwargs=qk_kwargs,
+        patch_kwargs=patch_kwargs,
     )
     Q.axes.add_artist(quiver_legend)
 
@@ -1433,7 +1465,15 @@ def add_compass(
     compass : Compass
         指北针对象
     '''
-    compass = fa.Compass(x, y, angle, size, style, pc_kwargs, text_kwargs)
+    compass = fa.Compass(
+        x=x,
+        y=y,
+        angle=angle,
+        size=size,
+        style=style,
+        pc_kwargs=pc_kwargs,
+        text_kwargs=text_kwargs,
+    )
     ax.add_artist(compass)
 
     return compass
@@ -1763,14 +1803,14 @@ def get_cross_section_xticks(
 
 
 def get_qualitative_palette(
-    colors: Any,
+    colors: Union[list, np.ndarray],
 ) -> tuple[mcolors.ListedColormap, mcolors.Normalize, np.ndarray]:
     '''
     创建一组定性的 colormap 和 norm，同时返回刻度位置。
 
     Parameters
     ----------
-    colors : (N,) sequence or (N, 3) or (N, 4) array_like
+    colors : (N,) list or (N, 3) or (N, 4) array_like
         colormap 所含的颜色。可以为含有颜色的序列或 RGB(A) 数组。
 
     Returns
@@ -1854,14 +1894,19 @@ def plot_colormap(
     return cbar
 
 
-def letter_axes(axes: Any, x: float, y: float, **kwargs: Any) -> None:
+def letter_axes(
+    axes: np.ndarray,
+    x: Any,
+    y: Any,
+    **kwargs: Any,
+) -> list[Text]:
     '''
     给一组 Axes 按顺序标注字母
 
     Parameters
     ----------
-    axes : array_like of Axes
-        目标 Axes 的数组
+    axes : ndarray of Axes
+        Axes 的数组
 
     x : float or array_like
         字母的横坐标，基于 Axes 单位。
@@ -1871,19 +1916,18 @@ def letter_axes(axes: Any, x: float, y: float, **kwargs: Any) -> None:
         字母的纵坐标。基于 Axes 单位。
         可以为标量或数组，数组形状需与 axes 相同。
 
-    y : float or array_like
-        可以为标量或数组，数组形状需与 axes 相同。
-
     **kwargs
-        调用 Axes.text 时的关键字参数。
+        Axes.text 的关键字参数。
         例如 fontsize、fontfamily 和 color 等。
     '''
     axes = np.atleast_1d(axes)
     x = np.full_like(axes, x) if np.isscalar(x) else np.asarray(x)
     y = np.full_like(axes, y) if np.isscalar(y) else np.asarray(y)
+
+    texts = []
     for i, (ax, xi, yi) in enumerate(zip(axes.flat, x.flat, y.flat)):
         letter = chr(97 + i)
-        ax.text(
+        text = ax.text(
             x=xi,
             y=yi,
             s=f'({letter})',
@@ -1892,6 +1936,9 @@ def letter_axes(axes: Any, x: float, y: float, **kwargs: Any) -> None:
             transform=ax.transAxes,
             **kwargs,
         )
+        texts.append(text)
+
+    return texts
 
 
 def load_test_data() -> NpzFile:

@@ -1,6 +1,6 @@
 import shutil
 import warnings
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator
 from functools import wraps
 from pathlib import Path
 from typing import Any, Callable, Optional
@@ -35,7 +35,7 @@ def renew_dir(dirpath: PathType) -> Path:
     return dirpath
 
 
-def split_list(lst: Sequence, n: int) -> Iterator[Sequence]:
+def split_list(lst: list, n: int) -> Iterator[list]:
     '''将列表尽量等分为 n 份'''
     size, rest = divmod(len(lst), n)
     start = 0
@@ -44,6 +44,26 @@ def split_list(lst: Sequence, n: int) -> Iterator[Sequence]:
         stop = start + step
         yield lst[start:stop]
         start = stop
+
+
+def is_sequence(obj: Any) -> bool:
+    '''判断是否为序列'''
+    if isinstance(obj, str):
+        return False
+
+    try:
+        len(obj)
+    except Exception:
+        return False
+
+    return True
+
+
+def to_list(obj: Any) -> list:
+    '''将对象转为列表'''
+    if is_sequence(obj):
+        return list(obj)
+    return [obj]
 
 
 class DeprecationError(Exception):

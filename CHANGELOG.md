@@ -4,11 +4,12 @@
 - `add_texts` 函数和 `label_cn_xxx` 系列函数改用 `TextCollection` 类实现，新增 `skip_outside` 参数，只绘制 `Axes` 方框内的 `Text`，加快局部文本的绘制速度。
 - 修改画 `Axes` 和 `GeoAxes` 地图时，会有一方无法利用缓存机制的 bug。
 - 提高 `clip_by_xxx` 系列函数对 `Text` 列表的效率。
+- `clip_by_cn_xxx` 系列函数支持输入一组省/市/县。
 - 新增判断多边形的 `is_polygon` 函数。
 - 新增处理序列的 `is_sequence` 和 `to_list` 函数。
 - 新增计算一组多边形边界框的 `polygon_extents` 函数。
 - 修改 `set_map_ticks` 函数，检查 `extents` 经纬度的大小关系。
-- 修改 `polygon_to_polys` 函数，保证序列绕行方向符合 shapefile 要求。
+- 改进 `polygon_to_polys` 函数，保证序列绕行方向符合 shapefile 要求。
 - 修改 `letter_axes` 函数，使其返回 `Text` 的列表。
 - `rectangle_path` 函数更名为 `box_path` 函数，并移动到 `shp` 模块。
 - `get_ellipse` 和 `get_circle` 函数更名为 `make_ellipse` 和 `make_circle`。

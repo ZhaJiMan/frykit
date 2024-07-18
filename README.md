@@ -6,7 +6,7 @@
 
 - 读取中国行政区划数据
 - 创建多边形掩膜（mask）
-- 对多边形做投影变换
+- 对几何对象做投影变换
 
 `plot` 模块的功能包括：
 
@@ -107,8 +107,6 @@ import frykit.shp as fshp
 
 行政区划数据来自 [高德地图行政区域查询接口](https://lbs.amap.com/api/webservice/guide/api/district)，已从 GCJ-02 坐标系处理到了 WGS84 坐标系上。文件都在 `frykit.DATA_DIRPATH` 指向的目录里。制作方法见 [amap-shp](https://github.com/ZhaJiMan/amap-shp)。
 
-> 区县数据自 0.6.4 版本开始支持
-
 ### 绘制中国行政区划
 
 - `add_cn_border`：绘制国界。
@@ -163,10 +161,10 @@ plt.show()
 `add_cn_border` 函数相当于
 
 ```Python
-add_polygons(ax, get_cn_border())
+add_geoms(ax, get_cn_border())
 ```
 
-底层的 `add_polygons` 可以用来绘制任意 Shapely 多边形对象。
+底层的 `add_geoms` 类似 `GeoAxes.add_geometries`，可以绘制除 `Point` 外的任意 Shapely 几何对象。
 
 画一个半径为 10 的圆：
 
@@ -174,7 +172,7 @@ add_polygons(ax, get_cn_border())
 import shapely.geometry as sgeom
 
 circle = sgeom.Point(0, 0).buffer(10)
-fplt.add_polygons(ax, circle)
+fplt.add_geoms(ax, circle)
 ```
 
 配合 Cartopy 的 `Reader` 画自己提供的 shapefile：
@@ -183,12 +181,12 @@ fplt.add_polygons(ax, circle)
 from cartopy.io.shapereader import Reader
 
 reader = Reader('2023年_CTAmap_1.12版/2023年县级/2023年县级.shp')
-fplt.add_polygons(ax, reader.geometries(), fc='none', ec='k', lw=0.25)
+fplt.add_geoms(ax, reader.geometries(), fc='none', ec='k', lw=0.25)
 ```
 
 通过 `array`、 `cmap` 和 `norm` 参数还能实现类似分省填色的效果（详见 [fill.py](example/fill.py)）。
 
-`add_polygons` 默认直接用 pyproj 做地图投影变换，速度更快但也更容易出现错误的效果。可以指定参数 `fast_transform=False`，切换成更正确但速度更慢的模式。或者直接换用 Cartopy 的 `add_geometries`。
+`add_geoms` 默认直接用 pyproj 做地图投影变换，速度更快但也更容易出现错误的效果。可以指定参数 `fast_transform=False`，切换成更正确但速度更慢的模式。或者直接换用 `GeoAxes.add_geometries`。
 
 ### 裁剪 Artist
 
@@ -228,12 +226,10 @@ plt.show()
 
 ![clip_by_cn_border](image/clip_by_cn_border.png)
 
-多省市县裁剪需要提前合并成单个多边形，然后用 `clip_by_polygon` 裁剪：
+多省裁剪直接传入列表即可：
 
 ```Python
-from shapely.ops import unary_union
-
-jingjinji = unary_union(fshp.get_cn_province(['北京市', '天津市', '河北省']))
+jingjinji = ['北京市', '天津市', '河北省']
 fplt.clip_by_polygon(cf, jingjinji)
 ```
 

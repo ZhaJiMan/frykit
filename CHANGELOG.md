@@ -5,10 +5,10 @@
 - `add_cn_xxx` 系列函数改用 `GeometryCollection` 类实现，新增 `skip_outside` 参数，通过跳过方框外的几何对象加快绘制速度。
 - `label_cn_xxx` 系列函数改用 `TextCollection` 类实现，新增 `skip_outside` 参数，通过跳过方框外的文本对象加快绘制速度。
 - 修改 `clip_by_xxx` 系列函数：
+  - 支持用多个多边形做裁剪。
   - 新增可选的 `ax` 参数，可以手动指定 `Axes`。
   - 去除 `artist.axes` 是否相同的检查。
   - 提高裁剪 `Text` 对象的效率。
-  - `clip_by_cn_xxx` 系列函数支持输入一组省/市/县。
 - 修正同时画 `Axes` 和 `GeoAxes` 地图时，会有一方无法利用缓存机制的 bug。
 - 新增 `is_geometry`、`is_point`、`is_line_string`、`is_linear_ring` 和 `is_polygon` 函数。
 - 新增 `is_sequence` 和 `to_list` 函数。

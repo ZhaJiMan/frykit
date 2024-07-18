@@ -1,4 +1,3 @@
-import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.ndimage import gaussian_filter
@@ -17,7 +16,7 @@ extents = [78, 128, 15, 55]
 
 # 设置投影
 map_crs = fplt.CN_AZIMUTHAL_EQUIDISTANT
-data_crs = ccrs.PlateCarree()
+data_crs = fplt.PLATE_CARREE
 
 # 准备地图
 fig = plt.figure(figsize=(8, 5))

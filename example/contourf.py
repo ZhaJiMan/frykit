@@ -1,4 +1,3 @@
-import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 import numpy as np
 from cartopy.feature import LAND
@@ -19,7 +18,7 @@ yticks = np.arange(-90, 91, 10)
 
 # 设置投影
 map_crs = fplt.CN_AZIMUTHAL_EQUIDISTANT
-data_crs = ccrs.PlateCarree()
+data_crs = fplt.PLATE_CARREE
 
 # 准备主地图
 fig = plt.figure(figsize=(10, 6))

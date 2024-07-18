@@ -32,3 +32,4 @@ ax.legend(
 ax.set_title('重庆区县', fontsize='x-large')
 
 fplt.savefig('../image/chongqing.png')
+plt.close(fig)

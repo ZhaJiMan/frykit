@@ -1,4 +1,3 @@
-import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -13,7 +12,7 @@ X, Y = np.meshgrid(x, y)
 Z = (np.cos(X / (x1 - x0) * np.pi) + np.sin(np.radians(Y)) * 2) * 2
 
 # 设置地图
-crs = ccrs.PlateCarree()
+crs = fplt.PLATE_CARREE
 fig = plt.figure(figsize=(8, 8))
 ax = plt.axes(projection=fplt.CN_AZIMUTHAL_EQUIDISTANT)
 ax.set_extent([78, 128, 15, 55], crs=crs)

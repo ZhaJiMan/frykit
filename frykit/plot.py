@@ -27,6 +27,7 @@ from matplotlib.text import Text
 from matplotlib.ticker import Formatter
 from matplotlib.transforms import Bbox
 from numpy.lib.npyio import NpzFile
+from shapely.geometry.base import BaseGeometry
 from shapely.ops import unary_union
 from shapely.prepared import prep
 
@@ -48,34 +49,38 @@ CN_AZIMUTHAL_EQUIDISTANT = ccrs.AzimuthalEquidistant(
 )
 
 
-def add_polygons(
+# TODO: 模仿 scatter 绘制 Point？
+def add_geoms(
     ax: Axes,
-    polygons: fshp.PolygonOrList,
+    geoms: Union[BaseGeometry, list[BaseGeometry]],
     crs: Optional[ccrs.CRS] = None,
     fast_transform: bool = True,
     skip_outside: bool = True,
     **kwargs: Any,
-) -> fa.PolygonCollection:
+) -> fa.GeometryCollection:
     '''
-    将多边形添加到 Axes 上
+    将几何对象添加到 Axes 上
+
+    BUG：Point 和 MultiPoint 画不出来
 
     Parameters
     ----------
     ax : Axes
         目标 Axes
 
-    polygons : PolygonOrList
-        一个或一组多边形
+    geoms : BaseGeometry or list of BaseGeometry
+        一个或一组几何对象
 
     crs : CRS, optional
-        当 ax 是 GeoAxes 时会将多边形从 crs 表示的坐标系变换到 ax 所在的坐标系上。
-        默认为 None，表示 PlateCarree()。
+        当 ax 是 Axes 时 crs 只能为 None。
+        当 ax 是 GeoAxes 时会将几何对象从 crs 坐标系变换到 ax 的坐标系上。
+        默认为 None，表示 PlateCarree。
 
     fast_transform : bool, optional
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
 
     skip_outside : bool, optional
-        是否跳过 ax 边框外的多边形，提高局部地图的绘制速度。默认为 True。
+        是否跳过 ax 边框外的几何对象，提高局部绘制速度。默认为 True。
 
     **kwargs
         PathCollection 类的关键字参数。
@@ -84,12 +89,17 @@ def add_polygons(
 
     Returns
     -------
-    pc : PolygonCollection
-        表示多边形的集合对象
+    col : GeometryCollection
+        表示几何对象的集合对象
     '''
-    return fa.PolygonCollection(
+    if fshp.is_geometry(geoms):
+        geoms = [geoms]
+    else:
+        geoms = list(geoms)  # 应对生成器
+
+    return fa.GeometryCollection(
         ax=ax,
-        polygons=polygons,
+        geoms=geoms,
         crs=crs,
         fast_transform=fast_transform,
         skip_outside=skip_outside,
@@ -97,12 +107,23 @@ def add_polygons(
     )
 
 
-def add_points():
-    raise NotImplementedError
-
-
-def add_line_strings():
-    raise NotImplementedError
+@deprecator(add_geoms)
+def add_polygons(
+    ax: Axes,
+    polygons: Union[fshp.PolygonType, list[fshp.PolygonType]],
+    crs: Optional[ccrs.CRS] = None,
+    fast_transform: bool = True,
+    skip_outside: bool = True,
+    **kwargs: Any,
+) -> fa.GeometryCollection:
+    return add_geoms(
+        ax=ax,
+        geoms=polygons,
+        crs=crs,
+        fast_transform=fast_transform,
+        skip_outside=skip_outside,
+        **kwargs,
+    )
 
 
 def _get_boundary(ax: GeoAxes) -> sgeom.Polygon:
@@ -116,13 +137,19 @@ def _get_boundary(ax: GeoAxes) -> sgeom.Polygon:
     return boundary
 
 
-ArtistOrList = Union[Artist, list[Artist]]
+'''
+TODO
+- 没有 axes 属性的 Artist
+- 严格防文字出界的方案：fig.canvas.draw + t.get_window_extent
+- streamplot 的返回值不能用来裁剪箭头
+'''
 
 
 def clip_by_polygon(
-    artist: ArtistOrList,
+    artist: Union[Artist, list[Artist]],
     polygon: fshp.PolygonType,
     crs: Optional[ccrs.CRS] = None,
+    ax: Optional[Axes] = None,
     fast_transform: bool = True,
     strict: bool = False,
 ) -> None:
@@ -131,8 +158,8 @@ def clip_by_polygon(
 
     Parameters
     ----------
-    artist : ArtistOrList
-        被裁剪的 Artist对象。可以返回自以下方法：
+    artist: Artist or list of Artist
+        被裁剪的 Artist 对象。可以返回自以下方法：
         - plot, scatter
         - contour, contourf, clabel
         - pcolor, pcolormesh
@@ -143,8 +170,13 @@ def clip_by_polygon(
         用于裁剪的多边形对象
 
     crs : CRS, optional
-        当 Artist 在 GeoAxes 里时会将多边形从 crs 表示的坐标系变换到 Artist
-        所在的坐标系上。默认为 None，表示 PlateCarree()。
+        当 ax 是 Axes 时 crs 只能为 None。
+        当 ax 是 GeoAxes 时会将多边形从 crs 坐标系变换到 ax 的坐标系上。
+        默认为 None，表示 PlateCarree。
+
+    ax : Axes, optional
+        artist 所在的 Axes。默认为 None，表示采用 artist.axes。
+        如果 artist.axes 不存在则需要手动指定。
 
     fast_transform : bool, optional
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
@@ -160,41 +192,43 @@ def clip_by_polygon(
         else:
             artists.append(a)
 
-    ax = artists[0].axes
-    for i in range(1, len(artists)):
-        if artists[i].axes is not ax:
-            raise ValueError('一组 Artist 必须属于同一个 Axes')
+    # 推测 ax
+    if ax is None:
+        for a in artists:
+            if a.axes is not None:
+                ax = a.axes
+                break
+        else:
+            raise ValueError('需要指定 ax')
 
     # 通过缓存节省投影的时间
     if isinstance(ax, GeoAxes):
         if crs is None:
             crs = PLATE_CARREE
-        _, polygon, path = fa._transform_polygons(
-            polygons=[polygon],
+        (path,) = fa._transform_geoms_to_paths(
+            geoms=[polygon],
             crs_from=crs,
             crs_to=ax.projection,
             fast_transform=fast_transform,
-            only_path=False,
-        )[0]
+        )
+        polygon = fshp.path_to_polygon(path)
         if strict:
             boudnary = _get_boundary(ax)
-            polygon = boudnary & polygon
-            path = fshp.polygon_to_path(polygon)
+            polygon = polygon & boudnary
+            path = fshp.geom_to_path(polygon)
     else:
         if crs is not None:
             raise ValueError('ax 不是 GeoAxes 时 crs 只能为 None')
-        path = fa._polygons_to_paths([polygon])[0]
+        (path,) = fa._geoms_to_paths([polygon])
 
-    # TODO: 严格防文字出界的方案：fig.canvas.draw + t.get_window_extent
-    # TODO: streamplot 的返回值不能用来裁剪箭头
     prepared = prep(polygon)
     for a in artists:
         a.set_clip_on(True)
         a.set_clip_box(ax.bbox)
         if isinstance(a, Text):
             trans = a.get_transform() - ax.transData
-            pos = trans.transform(a.get_position())
-            if not prepared.contains(sgeom.Point(pos)):
+            coords = trans.transform(a.get_position())
+            if not prepared.contains(sgeom.Point(coords)):
                 a.set_visible(False)
         elif isinstance(a, fa.TextCollection):
             a._clip_texts(polygon)
@@ -203,7 +237,7 @@ def clip_by_polygon(
 
 
 def _init_pc_kwargs(kwargs: dict) -> dict:
-    '''初始化传给 PathCollection 的参数'''
+    '''初始化传给 PathCollection 类的参数'''
     kwargs = normalize_kwargs(kwargs, PathCollection)
     kwargs.setdefault('linewidth', 0.5)
     kwargs.setdefault('edgecolor', 'k')
@@ -218,7 +252,7 @@ def add_cn_border(
     fast_transform: bool = True,
     skip_outside: bool = True,
     **kwargs: Any,
-) -> fa.PolygonCollection:
+) -> fa.GeometryCollection:
     '''
     在 Axes 上添加中国国界
 
@@ -231,7 +265,7 @@ def add_cn_border(
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
 
     skip_outside : bool, optional
-        是否跳过 ax 边框外的多边形，提高局部地图的绘制速度。默认为 True。
+        是否跳过 ax 边框外的多边形，提高局部绘制速度。默认为 True。
 
     **kwargs
         PathCollection 类的关键字参数。
@@ -240,12 +274,12 @@ def add_cn_border(
 
     Returns
     -------
-    pc : PolygonCollection
+    col : GeometryCollection
         表示国界的集合对象
     '''
-    return add_polygons(
+    return add_geoms(
         ax=ax,
-        polygons=fshp.get_cn_border(),
+        geoms=fshp.get_cn_border(),
         fast_transform=fast_transform,
         skip_outside=skip_outside,
         **_init_pc_kwargs(kwargs),
@@ -257,7 +291,7 @@ def add_nine_line(
     fast_transform: bool = True,
     skip_outside: bool = True,
     **kwargs: Any,
-) -> fa.PolygonCollection:
+) -> fa.GeometryCollection:
     '''
     在 Axes 上添加九段线
 
@@ -270,7 +304,7 @@ def add_nine_line(
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
 
     skip_outside : bool, optional
-        是否跳过 ax 边框外的多边形，提高局部地图的绘制速度。默认为 True。
+        是否跳过 ax 边框外的多边形，提高局部绘制速度。默认为 True。
 
     **kwargs
         PathCollection 类的关键字参数。
@@ -279,12 +313,12 @@ def add_nine_line(
 
     Returns
     -------
-    pc : PolygonCollection
+    col : GeometryCollection
         表示九段线的集合对象
     '''
-    return add_polygons(
+    return add_geoms(
         ax=ax,
-        polygons=fshp.get_nine_line(),
+        geoms=fshp.get_nine_line(),
         fast_transform=fast_transform,
         skip_outside=skip_outside,
         **_init_pc_kwargs(kwargs),
@@ -297,7 +331,7 @@ def add_cn_province(
     fast_transform: bool = True,
     skip_outside: bool = True,
     **kwargs: Any,
-) -> fa.PolygonCollection:
+) -> fa.GeometryCollection:
     '''
     在 Axes 上添加中国省界
 
@@ -314,7 +348,7 @@ def add_cn_province(
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
 
     skip_outside : bool, optional
-        是否跳过 ax 边框外的多边形，提高局部地图的绘制速度。默认为 True。
+        是否跳过 ax 边框外的多边形，提高局部绘制速度。默认为 True。
 
     **kwargs
         PathCollection 类的关键字参数。
@@ -323,12 +357,12 @@ def add_cn_province(
 
     Returns
     -------
-    pc : PolygonCollection
+    col : GeometryCollection
         表示省界的集合对象
     '''
-    return add_polygons(
+    return add_geoms(
         ax=ax,
-        polygons=fshp.get_cn_province(province),
+        geoms=fshp.get_cn_province(province),
         fast_transform=fast_transform,
         skip_outside=skip_outside,
         **_init_pc_kwargs(kwargs),
@@ -342,7 +376,7 @@ def add_cn_city(
     fast_transform: bool = True,
     skip_outside: bool = True,
     **kwargs: Any,
-) -> fa.PolygonCollection:
+) -> fa.GeometryCollection:
     '''
     在 Axes 上添加中国市界
 
@@ -363,7 +397,7 @@ def add_cn_city(
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
 
     skip_outside : bool, optional
-        是否跳过 ax 边框外的多边形，提高局部地图的绘制速度。默认为 True。
+        是否跳过 ax 边框外的多边形，提高局部绘制速度。默认为 True。
 
     **kwargs
         PathCollection 类的关键字参数。
@@ -372,12 +406,12 @@ def add_cn_city(
 
     Returns
     -------
-    pc : PolygonCollection
+    col : GeometryCollection
         表示市界的集合对象
     '''
-    return add_polygons(
+    return add_geoms(
         ax=ax,
-        polygons=fshp.get_cn_city(city, province),
+        geoms=fshp.get_cn_city(city, province),
         fast_transform=fast_transform,
         skip_outside=skip_outside,
         **_init_pc_kwargs(kwargs),
@@ -392,7 +426,7 @@ def add_cn_district(
     fast_transform: bool = True,
     skip_outside: bool = True,
     **kwargs: Any,
-) -> fa.PolygonCollection:
+) -> fa.GeometryCollection:
     '''
     在 Axes 上添加中国县界
 
@@ -417,7 +451,7 @@ def add_cn_district(
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
 
     skip_outside : bool, optional
-        是否跳过 ax 边框外的多边形，提高局部地图的绘制速度。默认为 True。
+        是否跳过 ax 边框外的多边形，提高局部绘制速度。默认为 True。
 
     **kwargs
         PathCollection 类的关键字参数。
@@ -426,12 +460,12 @@ def add_cn_district(
 
     Returns
     -------
-    pc : PolygonCollection
+    col : GeometryCollection
         表示县界的集合对象
     '''
-    return add_polygons(
+    return add_geoms(
         ax=ax,
-        polygons=fshp.get_cn_district(district, city, province),
+        geoms=fshp.get_cn_district(district, city, province),
         fast_transform=fast_transform,
         skip_outside=skip_outside,
         **_init_pc_kwargs(kwargs),
@@ -443,7 +477,7 @@ def add_countries(
     fast_transform: bool = True,
     skip_outside: bool = True,
     **kwargs: Any,
-) -> fa.PolygonCollection:
+) -> fa.GeometryCollection:
     '''
     在 Axes 上添加所有国家的国界
 
@@ -458,7 +492,7 @@ def add_countries(
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
 
     skip_outside : bool, optional
-        是否跳过 ax 边框外的多边形，提高局部地图的绘制速度。默认为 True。
+        是否跳过 ax 边框外的多边形，提高局部绘制速度。默认为 True。
 
     **kwargs
         PathCollection 类的关键字参数。
@@ -467,12 +501,12 @@ def add_countries(
 
     Returns
     -------
-    pc : PolygonCollection
+    col : GeometryCollection
         表示国界的集合对象
     '''
-    return add_polygons(
+    return add_geoms(
         ax=ax,
-        polygons=fshp.get_countries(),
+        geoms=fshp.get_countries(),
         fast_transform=fast_transform,
         skip_outside=skip_outside,
         **_init_pc_kwargs(kwargs),
@@ -484,7 +518,7 @@ def add_land(
     fast_transform: bool = True,
     skip_outside: bool = True,
     **kwargs: Any,
-) -> fa.PolygonCollection:
+) -> fa.GeometryCollection:
     '''
     在 Axes 上添加陆地
 
@@ -499,7 +533,7 @@ def add_land(
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
 
     skip_outside : bool, optional
-        是否跳过 ax 边框外的多边形，提高局部地图的绘制速度。默认为 True。
+        是否跳过 ax 边框外的多边形，提高局部绘制速度。默认为 True。
 
     **kwargs
         PathCollection 类的关键字参数。
@@ -508,12 +542,12 @@ def add_land(
 
     Returns
     -------
-    pc : PolygonCollection
+    col : GeometryCollection
         表示陆地的集合对象
     '''
-    return add_polygons(
+    return add_geoms(
         ax=ax,
-        polygons=fshp.get_land(),
+        geoms=fshp.get_land(),
         fast_transform=fast_transform,
         skip_outside=skip_outside,
         **_init_pc_kwargs(kwargs),
@@ -525,7 +559,7 @@ def add_ocean(
     fast_transform: bool = True,
     skip_outside: bool = True,
     **kwargs: Any,
-) -> fa.PolygonCollection:
+) -> fa.GeometryCollection:
     '''
     在 Axes 上添加海洋
 
@@ -540,7 +574,7 @@ def add_ocean(
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
 
     skip_outside : bool, optional
-        是否跳过 ax 边框外的多边形，提高局部地图的绘制速度。默认为 True。
+        是否跳过 ax 边框外的多边形，提高局部绘制速度。默认为 True。
 
     **kwargs
         PathCollection 类的关键字参数。
@@ -549,12 +583,12 @@ def add_ocean(
 
     Returns
     -------
-    pc : PolygonCollection
+    col : GeometryCollection
         表示海洋的集合对象
     '''
-    return add_polygons(
+    return add_geoms(
         ax=ax,
-        polygons=fshp.get_ocean(),
+        geoms=fshp.get_ocean(),
         fast_transform=fast_transform,
         skip_outside=skip_outside,
         **_init_pc_kwargs(kwargs),
@@ -562,20 +596,27 @@ def add_ocean(
 
 
 def clip_by_cn_border(
-    artist: ArtistOrList, fast_transform: bool = True, strict: bool = False
+    artist: Union[Artist, list[Artist]],
+    ax: Optional[Axes] = None,
+    fast_transform: bool = True,
+    strict: bool = False,
 ) -> None:
     '''
     用中国国界裁剪 Artist
 
     Parameters
     ----------
-    artist : ArtistOrList
+    artist: Artist or list of Artist
         被裁剪的Artist对象。可以返回自以下方法：
         - plot, scatter
         - contour, contourf, clabel
         - pcolor, pcolormesh
         - imshow
         - quiver
+
+    ax : Axes, optional
+        artist 所在的 Axes。默认为 None，表示采用 artist.axes。
+        如果 artist.axes 不存在则需要手动指定。
 
     fast_transform : bool, optional
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
@@ -587,14 +628,16 @@ def clip_by_cn_border(
     clip_by_polygon(
         artist=artist,
         polygon=fshp.get_cn_border(),
+        ax=ax,
         fast_transform=fast_transform,
         strict=strict,
     )
 
 
 def clip_by_cn_province(
-    artist: ArtistOrList,
+    artist: Union[Artist, list[Artist]],
     province: fshp.GetCnKey,
+    ax: Optional[Axes] = None,
     fast_transform: bool = True,
     strict: bool = False,
 ) -> None:
@@ -603,7 +646,7 @@ def clip_by_cn_province(
 
     Parameters
     ----------
-    artist : ArtistOrList
+    artist: Artist or list of Artist
         被裁剪的Artist对象。可以返回自以下方法：
         - plot, scatter
         - contour, contourf, clabel
@@ -613,6 +656,10 @@ def clip_by_cn_province(
 
     province : GetCnKey
         省名或 adcode。可以是复数个省。
+
+    ax : Axes, optional
+        artist 所在的 Axes。默认为 None，表示采用 artist.axes。
+        如果 artist.axes 不存在则需要手动指定。
 
     fast_transform : bool, optional
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
@@ -628,14 +675,16 @@ def clip_by_cn_province(
     clip_by_polygon(
         artist=artist,
         polygon=polygon,
+        ax=ax,
         fast_transform=fast_transform,
         strict=strict,
     )
 
 
 def clip_by_cn_city(
-    artist: ArtistOrList,
+    artist: Union[Artist, list[Artist]],
     city: fshp.GetCnKey,
+    ax: Optional[Axes] = None,
     fast_transform: bool = True,
     strict: bool = False,
 ) -> None:
@@ -644,7 +693,7 @@ def clip_by_cn_city(
 
     Parameters
     ----------
-    artist : ArtistOrList
+    artist: Artist or list of Artist
         被裁剪的Artist对象。可以返回自以下方法：
         - plot, scatter
         - contour, contourf, clabel
@@ -654,6 +703,10 @@ def clip_by_cn_city(
 
     city : GetCnKey
         市名或 adcode。可以是复数个市。
+
+    ax : Axes, optional
+        artist 所在的 Axes。默认为 None，表示采用 artist.axes。
+        如果 artist.axes 不存在则需要手动指定。
 
     fast_transform : bool, optional
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
@@ -669,14 +722,16 @@ def clip_by_cn_city(
     clip_by_polygon(
         artist=artist,
         polygon=polygon,
+        ax=ax,
         fast_transform=fast_transform,
         strict=strict,
     )
 
 
 def clip_by_cn_district(
-    artist: ArtistOrList,
+    artist: Union[Artist, list[Artist]],
     district: fshp.GetCnKey,
+    ax: Optional[Axes] = None,
     fast_transform: bool = True,
     strict: bool = False,
 ) -> None:
@@ -685,7 +740,7 @@ def clip_by_cn_district(
 
     Parameters
     ----------
-    artist : ArtistOrList
+    artist: Artist or list of Artist
         被裁剪的Artist对象。可以返回自以下方法：
         - plot, scatter
         - contour, contourf, clabel
@@ -695,6 +750,10 @@ def clip_by_cn_district(
 
     district : GetCnKey
         单个县名或 adcode
+
+    ax : Axes, optional
+        artist 所在的 Axes。默认为 None，表示采用 artist.axes。
+        如果 artist.axes 不存在则需要手动指定。
 
     fast_transform : bool, optional
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
@@ -710,13 +769,17 @@ def clip_by_cn_district(
     clip_by_polygon(
         artist=artist,
         polygon=polygon,
+        ax=ax,
         fast_transform=fast_transform,
         strict=strict,
     )
 
 
 def clip_by_land(
-    artist: ArtistOrList, fast_transform: bool = True, strict: bool = False
+    artist: Union[Artist, list[Artist]],
+    ax: Optional[Axes] = None,
+    fast_transform: bool = True,
+    strict: bool = False,
 ) -> None:
     '''
     用陆地边界裁剪 Artist
@@ -725,13 +788,17 @@ def clip_by_land(
 
     Parameters
     ----------
-    artist : ArtistOrList
+    artist: Artist or list of Artist
         被裁剪的Artist对象。可以返回自以下方法：
         - plot, scatter
         - contour, contourf, clabel
         - pcolor, pcolormesh
         - imshow
         - quiver
+
+    ax : Axes, optional
+        artist 所在的 Axes。默认为 None，表示采用 artist.axes。
+        如果 artist.axes 不存在则需要手动指定。
 
     fast_transform : bool, optional
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
@@ -743,13 +810,17 @@ def clip_by_land(
     clip_by_polygon(
         artist=artist,
         polygon=fshp.get_land(),
+        ax=ax,
         fast_transform=fast_transform,
         strict=strict,
     )
 
 
 def clip_by_ocean(
-    artist: ArtistOrList, fast_transform: bool = True, strict: bool = False
+    artist: Union[Artist, list[Artist]],
+    ax: Optional[Axes] = None,
+    fast_transform: bool = True,
+    strict: bool = False,
 ) -> None:
     '''
     用海洋边界裁剪 Artist
@@ -758,13 +829,17 @@ def clip_by_ocean(
 
     Parameters
     ----------
-    artist : ArtistOrList
+    artist: Artist or list of Artist
         被裁剪的Artist对象。可以返回自以下方法：
         - plot, scatter
         - contour, contourf, clabel
         - pcolor, pcolormesh
         - imshow
         - quiver
+
+    ax : Axes, optional
+        artist 所在的 Axes。默认为 None，表示采用 artist.axes。
+        如果 artist.axes 不存在则需要手动指定。
 
     fast_transform : bool, optional
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
@@ -776,6 +851,7 @@ def clip_by_ocean(
     clip_by_polygon(
         artist=artist,
         polygon=fshp.get_ocean(),
+        ax=ax,
         fast_transform=fast_transform,
         strict=strict,
     )
@@ -807,7 +883,7 @@ def add_texts(
         字符串文本
 
     skip_outside : bool, optional
-        是否跳过 ax 边框外的文本，提高局部文字的绘制速度。默认为 True。
+        是否跳过 ax 边框外的文本，提高局部绘制速度。默认为 True。
 
     **kwargs
         Text 类的关键字参数
@@ -853,7 +929,14 @@ def _add_cn_texts(
         filepath = DATA_DIRPATH / 'zh_font.otf'
         kwargs.setdefault('fontproperties', filepath)
 
-    return add_texts(ax, lons, lats, names, skip_outside, **kwargs)
+    return add_texts(
+        ax=ax,
+        x=lons,
+        y=lats,
+        s=names,
+        skip_outside=skip_outside,
+        **kwargs,
+    )
 
 
 def label_cn_province(
@@ -879,7 +962,7 @@ def label_cn_province(
         是否使用缩短的名称。默认为 True。
 
     skip_outside : bool, optional
-        是否跳过 ax 边框外的文本，提高局部文字的绘制速度。默认为 True。
+        是否跳过 ax 边框外的文本，提高局部绘制速度。默认为 True。
 
     **kwargs
         Text 类的关键字参数
@@ -932,7 +1015,7 @@ def label_cn_city(
         是否使用缩短的名称。默认为 True。
 
     skip_outside : bool, optional
-        是否跳过 ax 边框外的文本，提高局部文字的绘制速度。默认为 True。
+        是否跳过 ax 边框外的文本，提高局部绘制速度。默认为 True。
 
     **kwargs
         Text 类的关键字参数
@@ -993,7 +1076,7 @@ def label_cn_district(
         是否使用缩短的名称。默认为 True。
 
     skip_outside : bool, optional
-        是否跳过 ax 边框外的文本，提高局部文字的绘制速度。默认为 True。
+        是否跳过 ax 边框外的文本，提高局部绘制速度。默认为 True。
 
     **kwargs
         Text 类的关键字参数

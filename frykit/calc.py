@@ -223,7 +223,10 @@ def make_circle(
 
 
 def region_ind(
-    lon: Any, lat: Any, extents: Any, form: Literal['mask', 'ix'] = 'mask'
+    lon: Any,
+    lat: Any,
+    extents: tuple[float, float, float, float],
+    form: Literal['mask', 'ix'] = 'mask',
 ) -> Union[np.ndarray, tuple[np.ndarray, np.ndarray]]:
     '''
     返回落入给定经纬度方框范围内的索引
@@ -236,7 +239,7 @@ def region_ind(
     lat : array_like
         纬度。若 form='mask' 则要求形状与 lon 一致。
 
-    extents : (4,) array_like
+    extents : (4,) tuple of float
         经纬度方框的范围 [lon0, lon1, lat0, lat1]
 
     form : {'mask', 'ix'}

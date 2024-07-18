@@ -92,7 +92,9 @@ def _geoms_extents(
     return x0, x1, y0, y1
 
 
-# 类持有对几何对象的引用，会存在问题吗？
+# TODO
+# - 类持有对几何对象的引用，会存在问题吗？
+# - 绘制缓存的速度略慢于 FeatureArtist？
 class GeometryCollection(PathCollection):
     '''投影并绘制多边形对象的 Collection 类'''
 
@@ -126,14 +128,17 @@ class GeometryCollection(PathCollection):
             self.geoms_to_paths = _geoms_to_paths
 
         # 初始化 paths，以触发 autoscale
-        x0, x1, y0, y1 = _geoms_extents(self.geoms)
-        x = (x0 + x1) / 2
-        y = (y0 + y1) / 2
-        a = (x1 - x0) / 2
-        b = (y1 - y0) / 2
-        verts = make_ellipse(x, y, a, b)
-        ellipse = sgeom.Polygon(verts)
-        paths = self.geoms_to_paths([ellipse])
+        if ax.get_autoscale_on():
+            x0, x1, y0, y1 = _geoms_extents(self.geoms)
+            x = (x0 + x1) / 2
+            y = (y0 + y1) / 2
+            a = (x1 - x0) / 2
+            b = (y1 - y0) / 2
+            verts = make_ellipse(x, y, a, b)
+            ellipse = sgeom.Polygon(verts)
+            paths = self.geoms_to_paths([ellipse])
+        else:
+            paths = []
 
         super().__init__(paths, **kwargs)
         ax.add_collection(self)

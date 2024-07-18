@@ -34,7 +34,7 @@ from shapely.prepared import prep
 import frykit._artist as fa
 import frykit.shp as fshp
 from frykit import DATA_DIRPATH
-from frykit.help import deprecator, is_sequence, to_list
+from frykit.help import deprecator, to_list
 
 # 等经纬度投影
 PLATE_CARREE = ccrs.PlateCarree()
@@ -137,17 +137,13 @@ def _get_boundary(ax: GeoAxes) -> sgeom.Polygon:
     return boundary
 
 
-'''
-TODO
-- 没有 axes 属性的 Artist
-- 严格防文字出界的方案：fig.canvas.draw + t.get_window_extent
-- streamplot 的返回值不能用来裁剪箭头
-'''
-
-
+# TODO
+# - 没有 axes 属性的 Artist
+# - 严格防文字出界的方案：fig.canvas.draw + t.get_window_extent
+# - streamplot 的返回值不能用来裁剪箭头
 def clip_by_polygon(
     artist: Union[Artist, list[Artist]],
-    polygon: fshp.PolygonType,
+    polygon: Union[fshp.PolygonType, list[fshp.PolygonType]],
     crs: Optional[ccrs.CRS] = None,
     ax: Optional[Axes] = None,
     fast_transform: bool = True,
@@ -166,8 +162,8 @@ def clip_by_polygon(
         - imshow
         - quiver
 
-    polygon : PolygonType
-        用于裁剪的多边形对象
+    polygon : PolygonType or list of PolygonType
+        用于裁剪的一个或一组多边形
 
     crs : CRS, optional
         当 ax 是 Axes 时 crs 只能为 None。
@@ -200,6 +196,10 @@ def clip_by_polygon(
                 break
         else:
             raise ValueError('需要指定 ax')
+
+    # 合并结果无法缓存
+    if not fshp.is_geometry(polygon):
+        polygon = unary_union(polygon)
 
     # 通过缓存节省投影的时间
     if isinstance(ax, GeoAxes):
@@ -668,13 +668,9 @@ def clip_by_cn_province(
         是否使用更严格的裁剪方法。默认为 False。
         为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
     '''
-    polygon = fshp.get_cn_province(province)
-    if is_sequence(province):  # 但是会失去缓存的效果
-        polygon = unary_union(polygon)
-
     clip_by_polygon(
         artist=artist,
-        polygon=polygon,
+        polygon=fshp.get_cn_province(province),
         ax=ax,
         fast_transform=fast_transform,
         strict=strict,
@@ -715,13 +711,9 @@ def clip_by_cn_city(
         是否使用更严格的裁剪方法。默认为 False。
         为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
     '''
-    polygon = fshp.get_cn_city(city)
-    if is_sequence(city):
-        polygon = unary_union(polygon)
-
     clip_by_polygon(
         artist=artist,
-        polygon=polygon,
+        polygon=fshp.get_cn_city(city),
         ax=ax,
         fast_transform=fast_transform,
         strict=strict,
@@ -749,7 +741,7 @@ def clip_by_cn_district(
         - quiver
 
     district : GetCnKey
-        单个县名或 adcode
+        县名或 adcode。可以是复数个县。
 
     ax : Axes, optional
         artist 所在的 Axes。默认为 None，表示采用 artist.axes。
@@ -762,13 +754,9 @@ def clip_by_cn_district(
         是否使用更严格的裁剪方法。默认为 False。
         为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
     '''
-    polygon = fshp.get_cn_district(district)
-    if is_sequence(district):
-        polygon = unary_union(polygon)
-
     clip_by_polygon(
         artist=artist,
-        polygon=polygon,
+        polygon=fshp.get_cn_district(district),
         ax=ax,
         fast_transform=fast_transform,
         strict=strict,
@@ -1103,7 +1091,7 @@ def label_cn_district(
 
 def _set_axes_ticks(
     ax: Axes,
-    extents: Any,
+    extents: Optional[tuple[float, float, float, float]],
     major_xticks: np.ndarray,
     major_yticks: np.ndarray,
     minor_xticks: np.ndarray,
@@ -1128,7 +1116,7 @@ def _set_axes_ticks(
 
 def _set_simple_geoaxes_ticks(
     ax: GeoAxes,
-    extents: Any,
+    extents: Optional[tuple[float, float, float, float]],
     major_xticks: np.ndarray,
     major_yticks: np.ndarray,
     minor_xticks: np.ndarray,
@@ -1153,7 +1141,7 @@ def _set_simple_geoaxes_ticks(
 
 def _set_complex_geoaxes_ticks(
     ax: GeoAxes,
-    extents: Any,
+    extents: tuple[float, float, float, float],
     major_xticks: np.ndarray,
     major_yticks: np.ndarray,
     minor_xticks: np.ndarray,
@@ -1295,7 +1283,7 @@ def _interp_minor_ticks(major_ticks: Any, m: int) -> np.ndarray:
 # TODO: extents=None 时怎么处理比较合适
 def set_map_ticks(
     ax: Axes,
-    extents: Optional[Any] = None,
+    extents: Optional[tuple[float, float, float, float]] = None,
     xticks: Optional[Any] = None,
     yticks: Optional[Any] = None,
     *,
@@ -1317,7 +1305,7 @@ def set_map_ticks(
     ax : Axes
         目标 Axes
 
-    extents : (4,) array_like, optional
+    extents : (4,) tuple of float, optional
         经纬度范围 [lon0, lon1, lat0, lat1]。默认为 None，表示显示全球。
         当 GeoAxes 的投影不是 PlateCarree 或 Mercator 时 extents 不能为 None。
 
@@ -1375,9 +1363,7 @@ def set_map_ticks(
     if yformatter is None:
         yformatter = LatitudeFormatter()
 
-    if not isinstance(ax, Axes):
-        raise TypeError('ax 不是 Axes')
-    elif isinstance(ax, GeoAxes):
+    if isinstance(ax, GeoAxes):
         if isinstance(ax.projection, (ccrs.PlateCarree, ccrs.Mercator)):
             setter = _set_simple_geoaxes_ticks
         else:
@@ -1398,7 +1384,7 @@ def set_map_ticks(
 
 
 def quick_cn_map(
-    extents: Optional[Any] = None,
+    extents: Optional[tuple[float, float, float, float]] = None,
     use_geoaxes: bool = True,
     figsize: Optional[tuple[float, float]] = None,
 ) -> Axes:
@@ -1407,7 +1393,7 @@ def quick_cn_map(
 
     Parameters
     ----------
-    extents : extents : (4,) array_like, optional
+    extents : (4,) tuple of float, optional
         经纬度范围 [lon0, lon1, lat0, lat1]。默认为None，表示 [70, 140, 0, 60]。
 
     use_geoaxes : bool, optional
@@ -1627,7 +1613,10 @@ def add_frame(ax: Axes, width: float = 5, **kwargs: Any) -> fa.Frame:
 
 
 def add_box(
-    ax: Axes, extents: Any, steps: int = 100, **kwargs: Any
+    ax: Axes,
+    extents: tuple[float, float, float, float],
+    steps: int = 100,
+    **kwargs: Any,
 ) -> PathPatch:
     '''
     在 Axes 上添加一个方框
@@ -1637,7 +1626,7 @@ def add_box(
     ax : Axes
         目标 Axes
 
-    extents : (4,) array_like
+    extents : (4,) tuple of float
         方框范围 [x0, x1, y0, y1]
 
     steps: int, optional

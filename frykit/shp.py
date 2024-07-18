@@ -9,7 +9,11 @@ import shapely.geometry as sgeom
 from cartopy.crs import CRS
 from matplotlib.path import Path
 from pyproj import Transformer
-from shapely.geometry.base import BaseGeometry, CoordinateSequence
+from shapely.geometry.base import (
+    BaseGeometry,
+    BaseMultipartGeometry,
+    CoordinateSequence,
+)
 from shapely.prepared import prep
 
 from frykit import SHP_DIRPATH
@@ -26,14 +30,10 @@ from frykit.help import deprecator
 '''
 
 StrOrInt = Union[str, int]
-DictOrList = Union[dict, list[dict]]
-PolygonType = Union[sgeom.Polygon, sgeom.MultiPolygon]
-PolygonList = list[PolygonType]
-PolygonOrList = Union[PolygonType, PolygonList]
-
 GetCnKey = Union[StrOrInt, list[StrOrInt]]
-GetCnResult = Union[PolygonOrList, DictOrList]
 
+PolygonType = Union[sgeom.Polygon, sgeom.MultiPolygon]
+GetCnResult = Union[PolygonType, list[PolygonType], dict, list[dict]]
 
 # 缓存多边形数据
 _data_cache = {}
@@ -412,7 +412,7 @@ def get_cn_district(
     return result
 
 
-def get_countries() -> PolygonList:
+def get_countries() -> list[PolygonType]:
     '''获取所有国家国界的多边形'''
     polygons = _data_cache.get('country')
     if polygons is None:
@@ -448,14 +448,45 @@ def get_ocean() -> sgeom.MultiPolygon:
     return polygon
 
 
+def is_geometry(obj: Any) -> bool:
+    '''是否为几何对象'''
+    return isinstance(obj, BaseGeometry)
+
+
+def is_point(obj: Any) -> bool:
+    '''是否为点对象'''
+    return isinstance(obj, (sgeom.Point, sgeom.MultiPoint))
+
+
+def is_line_string(obj: Any) -> bool:
+    '''是否为线段'''
+    return isinstance(obj, (sgeom.LineString, sgeom.MultiLineString))
+
+
+def is_linear_ring(obj: Any) -> bool:
+    '''是否为线性环'''
+    return isinstance(obj, sgeom.LinearRing)
+
+
 def is_polygon(obj: Any) -> bool:
-    '''对象是否为多边形'''
+    '''是否为多边形'''
     return isinstance(obj, (sgeom.Polygon, sgeom.MultiPolygon))
 
 
-def _poly_codes(n: int) -> list[np.uint8]:
-    '''生成适用于多边形的长度为 n 的 codes'''
-    codes = [Path.LINETO] * n
+def _point_codes() -> list[np.uint8]:
+    return [Path.MOVETO]
+
+
+def _line_codes(coords: np.ndarray) -> list[np.uint8]:
+    codes = [Path.LINETO] * len(coords)
+    if codes:
+        codes[0] = Path.MOVETO
+
+    return codes
+
+
+def _ring_codes(coords: np.ndarray) -> list[np.uint8]:
+    codes = [Path.LINETO] * len(coords)
     if codes:
         codes[0] = Path.MOVETO
         codes[-1] = Path.CLOSEPOLY
@@ -464,52 +495,71 @@ def _poly_codes(n: int) -> list[np.uint8]:
 
 
 # 用于占位的 Path，不会被画出。
-PLACEHOLDER_PATH = Path(np.zeros((0, 2)), [])
+PLACEHOLDER_PATH = Path(np.zeros((0, 2)))
 
 
-def polygon_to_path(polygon: PolygonType) -> Path:
+def geom_to_path(geom: BaseGeometry) -> Path:
     '''
-    多边形转为 Path
+    几何对象转为 Path
 
-    Path 中外环顺时针绕行，内环逆时针绕行，方便与 path_to_polygon 配合使用。
-    polygon 是空多边形时返回空 Path。
+    - 空几何对象对应空 Path
+    - Point 和 LineString 保留原来的坐标顺序
+    - LinearRing 对应的 Path 里坐标沿顺时针绕行
+    - Polygon 对应的 Path 里外环坐标沿顺时针绕行，内环坐标沿逆时针绕行。
+    - Multi 对象使用 Path.make_compound_path
     '''
-    if not is_polygon(polygon):
-        raise TypeError('polygon 不是多边形')
+    if not isinstance(geom, BaseGeometry):
+        raise TypeError('geom 不是几何对象')
 
-    if polygon.is_empty:
+    if geom.is_empty:
         return PLACEHOLDER_PATH
 
-    verts = []
-    codes = []
-    for polygon in getattr(polygon, 'geoms', [polygon]):
-        coords = np.asarray(polygon.exterior.coords)
-        if polygon.exterior.is_ccw:
+    elif isinstance(geom, sgeom.LinearRing):
+        coords = np.asarray(geom.coords)
+        if geom.is_ccw:
+            coords = coords[::-1]
+        return Path(coords, _ring_codes(coords))
+
+    elif isinstance(geom, sgeom.Point):
+        return Path([[geom.x, geom.y]], _point_codes())
+
+    elif isinstance(geom, sgeom.LineString):
+        coords = np.asarray(geom.coords)
+        return Path(coords, _line_codes(coords))
+
+    elif isinstance(geom, sgeom.Polygon):
+        verts = []
+        codes = []
+        coords = np.asarray(geom.exterior.coords)
+        if geom.exterior.is_ccw:
             coords = coords[::-1]
         verts.append(coords)
-        codes.extend(_poly_codes(len(coords)))
+        codes.extend(_ring_codes(coords))
 
-        for ring in polygon.interiors:
-            coords = np.asarray(ring.coords)
-            if not ring.is_ccw:
+        for interior in geom.interiors:
+            coords = np.asarray(interior.coords)
+            if not interior.is_ccw:
                 coords = coords[::-1]
             verts.append(coords)
-            codes.extend(_poly_codes(len(coords)))
+            codes.extend(_ring_codes(coords))
 
-    verts = np.vstack(verts)
-    path = Path(verts, codes)
+        verts = np.vstack(verts)
+        return Path(verts, codes)
 
-    return path
+    elif isinstance(geom, BaseMultipartGeometry):
+        return Path.make_compound_path(*map(geom_to_path, geom.geoms))
+
+    else:
+        raise ValueError(f'不支持的类型：{type(geom)}')
+
+
+@deprecator(geom_to_path)
+def polygon_to_path(polygon: PolygonType) -> Path:
+    return geom_to_path(polygon)
 
 
 def path_to_polygon(path: Path) -> PolygonType:
-    '''
-    Path 转为多边形
-
-    顺时针部分对应外环，逆时针部分对应内环，与 shapefile 的规范一致，
-    所以建议配合 path_to_polygon 函数使用。
-    path 是空 Path 时返回空多边形。
-    '''
+    '''`path = geom_to_path(polygon)` 的逆函数'''
     if len(path.vertices) == 0:
         return sgeom.Polygon()
 
@@ -645,23 +695,7 @@ def polygon_to_mask(polygon: PolygonType, x: Any, y: Any) -> np.ndarray:
 def box_path(x0: float, x1: float, y0: float, y1: float) -> Path:
     '''构造方框 Path。顺时针绕行。'''
     verts = [(x0, y0), (x0, y1), (x1, y1), (x1, y0), (x0, y0)]
-    return Path(verts, _poly_codes(5))
-
-
-def polygon_extents(
-    polygon: PolygonOrList,
-) -> tuple[float, float, float, float]:
-    '''返回多边形对象的边界范围'''
-    if is_polygon(polygon):
-        x0, y0, x1, y1 = polygon.bounds
-    else:
-        bounds = np.array([p.bounds for p in polygon])
-        x0 = bounds[:, 0].min()
-        x1 = bounds[:, 2].max()
-        y0 = bounds[:, 1].min()
-        y1 = bounds[:, 3].max()
-
-    return x0, x1, y0, y1
+    return Path(verts, _ring_codes(verts))
 
 
 def _transform(func: Callable, geom: BaseGeometry) -> BaseGeometry:

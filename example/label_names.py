@@ -1,11 +1,10 @@
-import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 
 import frykit.plot as fplt
 
 # 设置投影
-map_crs = ccrs.AzimuthalEquidistant(central_longitude=105, central_latitude=35)
-data_crs = ccrs.PlateCarree()
+map_crs = fplt.CN_AZIMUTHAL_EQUIDISTANT
+data_crs = fplt.PLATE_CARREE
 
 
 def plot_province_map():

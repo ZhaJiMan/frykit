@@ -1,18 +1,24 @@
-## `0.6.5`（测试）
+## `0.6.5`
 
-- `add_polygons` 函数和 `add_cn_xxx` 系列函数改用 `PolygonCollection` 类实现，新增 `skip_outside` 参数，只绘制 `Axes` 方框内的 `Path`，加快局部地图的绘制速度。
-- `add_texts` 函数和 `label_cn_xxx` 系列函数改用 `TextCollection` 类实现，新增 `skip_outside` 参数，只绘制 `Axes` 方框内的 `Text`，加快局部文本的绘制速度。
-- 修改画 `Axes` 和 `GeoAxes` 地图时，会有一方无法利用缓存机制的 bug。
-- 提高 `clip_by_xxx` 系列函数对 `Text` 列表的效率。
-- `clip_by_cn_xxx` 系列函数支持输入一组省/市/县。
-- 新增判断多边形的 `is_polygon` 函数。
-- 新增处理序列的 `is_sequence` 和 `to_list` 函数。
-- 新增计算一组多边形边界框的 `polygon_extents` 函数。
+- 新增 `add_geoms` 函数，类比 `GeoAxes.add_geometries`，能绘制 `Polygon` 和 `LineString`，替代原有的 `add_polygons` 函数。
+- 新增 `geom_to_path` 函数，能将 `Point`、`LineString` 和 `Polygon` 转为 `Path`，替代原有的 `polygon_to_path` 函数。
+- `add_cn_xxx` 系列函数改用 `GeometryCollection` 类实现，新增 `skip_outside` 参数，通过跳过方框外的几何对象加快绘制速度。
+- `label_cn_xxx` 系列函数改用 `TextCollection` 类实现，新增 `skip_outside` 参数，通过跳过方框外的文本对象加快绘制速度。
+- 修改 `clip_by_xxx` 系列函数：
+  - 新增可选的 `ax` 参数，可以手动指定 `Axes`。
+  - 去除 `artist.axes` 是否相同的检查。
+  - 提高裁剪 `Text` 对象的效率。
+  - `clip_by_cn_xxx` 系列函数支持输入一组省/市/县。
+- 修正同时画 `Axes` 和 `GeoAxes` 地图时，会有一方无法利用缓存机制的 bug。
+- 新增 `is_geometry`、`is_point`、`is_line_string`、`is_linear_ring` 和 `is_polygon` 函数。
+- 新增 `is_sequence` 和 `to_list` 函数。
 - 修改 `set_map_ticks` 函数，检查 `extents` 经纬度的大小关系。
-- 改进 `polygon_to_polys` 函数，保证序列绕行方向符合 shapefile 要求。
+- 修改 `polygon_to_polys` 函数，保证序列绕行方向符合 shapefile 要求。
 - 修改 `letter_axes` 函数，使其返回 `Text` 的列表。
 - `rectangle_path` 函数更名为 `box_path` 函数，并移动到 `shp` 模块。
 - `get_ellipse` 和 `get_circle` 函数更名为 `make_ellipse` 和 `make_circle`。
+- 新增 `PLATE_CARREE` 常量。
+- 新增绘制线 shapefile 的例子。
 
 ## `0.6.4`
 

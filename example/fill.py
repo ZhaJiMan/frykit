@@ -47,10 +47,9 @@ path_effects = [Stroke(linewidth=1.5, foreground='w'), Normal()]
 
 # 绘制填色多边形，标注省名。
 for ax in [ax1, ax2]:
-    fplt.add_polygons(
+    fplt.add_geoms(
         ax, provinces, array=data, cmap=cmap, norm=norm, ec='k', lw=0.4
     )
-    # for text in fplt.label_cn_province(ax):  # frykit <= 0.64
     for text in fplt.label_cn_province(ax).texts:
         text.set_path_effects(path_effects)
         if text.get_text() in ['香港', '澳门']:

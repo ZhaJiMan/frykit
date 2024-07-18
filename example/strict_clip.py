@@ -1,4 +1,3 @@
-import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 
 import frykit.plot as fplt
@@ -16,7 +15,7 @@ lat = data['latitude']
 t2m = data['t2m']
 
 # 设置地图
-crs = ccrs.PlateCarree()
+crs = fplt.PLATE_CARREE
 fig, axes = plt.subplots(
     nrows=1,
     ncols=2,

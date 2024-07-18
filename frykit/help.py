@@ -46,6 +46,7 @@ def split_list(lst: list, n: int) -> Iterator[list]:
         start = stop
 
 
+# TODO: 低版本 shapely 的几何对象
 def is_sequence(obj: Any) -> bool:
     '''判断是否为序列'''
     if isinstance(obj, str):

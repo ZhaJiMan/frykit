@@ -1,4 +1,3 @@
-import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 import opencc
 
@@ -22,7 +21,7 @@ for i, name in enumerate(names):
 
 # 设置投影
 map_crs = fplt.CN_AZIMUTHAL_EQUIDISTANT
-data_crs = ccrs.PlateCarree()
+data_crs = fplt.PLATE_CARREE
 
 # 创建画布
 fig = plt.figure(facecolor='k')

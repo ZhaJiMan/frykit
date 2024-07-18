@@ -1,13 +1,12 @@
-import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 import numpy as np
 
 import frykit.plot as fplt
 
 # 设置地图投影
-map_crs1 = ccrs.PlateCarree()
+map_crs1 = fplt.PLATE_CARREE
 map_crs2 = fplt.CN_AZIMUTHAL_EQUIDISTANT
-data_crs = ccrs.PlateCarree()
+data_crs = fplt.PLATE_CARREE
 
 # 设置地图范围
 extents1 = [70, 140, 10, 60]

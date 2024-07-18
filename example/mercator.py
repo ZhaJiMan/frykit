@@ -1,5 +1,4 @@
 # https://scitools.org.uk/cartopy/docs/latest/matplotlib/intro.html
-import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 import numpy as np
 from pyproj import Geod
@@ -7,7 +6,7 @@ from pyproj import Geod
 import frykit.plot as fplt
 
 # 设置投影
-data_crs = ccrs.PlateCarree()
+data_crs = fplt.PLATE_CARREE
 map_crs = fplt.WEB_MERCATOR
 
 # 设置起点和终点

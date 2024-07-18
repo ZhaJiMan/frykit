@@ -1,6 +1,6 @@
 import math
 from functools import partial
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal, Optional
 from weakref import WeakKeyDictionary, WeakValueDictionary
 
 import cartopy.crs as ccrs
@@ -20,6 +20,7 @@ from matplotlib.patches import Rectangle
 from matplotlib.path import Path
 from matplotlib.quiver import Quiver, QuiverKey
 from matplotlib.text import Text
+from shapely.geometry.base import BaseGeometry
 from shapely.vectorized import contains
 
 import frykit.shp as fshp
@@ -27,106 +28,113 @@ from frykit.calc import make_ellipse, t_to_az
 
 PLATE_CARREE = ccrs.PlateCarree()
 
-
-# polygon 的引用计数为零时弱引用会自动清理缓存
-_key_to_polygon = WeakValueDictionary()
+# geom 的引用计数为零时弱引用会自动清理缓存
+_key_to_geom = WeakValueDictionary()
 _key_to_path = WeakKeyDictionary()
-_key_to_crs_to_transformed = WeakKeyDictionary()
+_key_to_crs_to_path = WeakKeyDictionary()
 
 
-def _polygons_to_paths(polygons: fshp.PolygonList) -> list[Path]:
-    '''将一组多边形转为 Path 并缓存结果'''
+def _geoms_to_paths(geoms: list[BaseGeometry]) -> list[Path]:
+    '''将一组几何对象转为 Path 并缓存结果'''
     paths = []
-    for polygon in polygons:
-        key = _GeomKey(polygon)
+    for geom in geoms:
+        key = _GeomKey(geom)
         # 同时设置三个弱引用字典，保证引用的是同一个 key 对象。
-        _key_to_polygon.setdefault(key, polygon)
-        _key_to_crs_to_transformed.setdefault(key, {})
+        _key_to_geom.setdefault(key, geom)
+        _key_to_crs_to_path.setdefault(key, {})
         path = _key_to_path.setdefault(key)
         if path is None:
-            path = fshp.polygon_to_path(polygon)
+            path = fshp.geom_to_path(geom)
             _key_to_path[key] = path
         paths.append(path)
 
     return paths
 
 
-def _transform_polygons(
-    polygons: fshp.PolygonList,
+def _transform_geoms_to_paths(
+    geoms: list[BaseGeometry],
     crs_from: ccrs.CRS,
     crs_to: ccrs.Projection,
     fast_transform: bool = True,
-    only_path: bool = False,
-) -> Union[list[tuple[bool, fshp.PolygonType, Path]], list[Path]]:
-    '''对一组多边形做坐标变换再转为 Path，并缓存结果。'''
+) -> list[Path]:
     if fast_transform:
         transform = fshp.GeometryTransformer(crs_from, crs_to)
     else:
         transform = lambda x: crs_to.project_geometry(x, crs_from)
 
-    values = []
-    for polygon in polygons:
-        key = _GeomKey(polygon)
-        _key_to_polygon.setdefault(key, polygon)
+    paths = []
+    for geom in geoms:
+        key = _GeomKey(geom)
+        _key_to_geom.setdefault(key, geom)
         _key_to_path.setdefault(key)
-        mapping = _key_to_crs_to_transformed.setdefault(key, {})
+        mapping = _key_to_crs_to_path.setdefault(key, {})
         value = mapping.get(crs_to)
         if value is None or value[0] != fast_transform:
-            polygon = transform(polygon)
-            path = fshp.polygon_to_path(polygon)
-            value = (fast_transform, polygon, path)
+            geom = transform(geom)
+            path = fshp.geom_to_path(geom)
+            value = (fast_transform, path)
             mapping[crs_to] = value
-        values.append(value)
+        paths.append(value[1])
 
-    if only_path:
-        return [value[2] for value in values]
-    return values
+    return paths
 
 
-# TODO: LineStringCollection
-class PolygonCollection(PathCollection):
+def _geoms_extents(
+    geoms: list[BaseGeometry],
+) -> tuple[float, float, float, float]:
+    '''返回一组几何对象的边界范围'''
+    bounds = np.array([geom.bounds for geom in geoms])
+    x0 = bounds[:, 0].min()
+    x1 = bounds[:, 2].max()
+    y0 = bounds[:, 1].min()
+    y1 = bounds[:, 3].max()
+
+    return x0, x1, y0, y1
+
+
+# 类持有对几何对象的引用，会存在问题吗？
+class GeometryCollection(PathCollection):
     '''投影并绘制多边形对象的 Collection 类'''
 
     def __init__(
         self,
         ax: Axes,
-        polygons: fshp.PolygonOrList,
+        geoms: list[BaseGeometry],
         crs: Optional[ccrs.CRS],
         fast_transform: bool = True,
         skip_outside: bool = True,
         **kwargs: Any,
     ) -> None:
-        self.polygons = polygons
-        if fshp.is_polygon(self.polygons):
-            self.polygons = [self.polygons]
+        self.geoms = geoms
+        self.crs = crs
         self.fast_transform = fast_transform
         self.skip_outside = skip_outside
         self.is_geoaxes = isinstance(ax, GeoAxes)
 
         if self.is_geoaxes:
-            self.crs = PLATE_CARREE if crs is None else crs
-            self.polygons_to_paths = partial(
-                _transform_polygons,
+            if self.crs is None:
+                self.crs = PLATE_CARREE
+            self.geoms_to_paths = partial(
+                _transform_geoms_to_paths,
                 crs_from=self.crs,
                 crs_to=ax.projection,
                 fast_transform=fast_transform,
-                only_path=True,
             )
         else:
-            self.crs = crs
             if self.crs is not None:
                 raise ValueError('ax 不是 GeoAxes 时 crs 只能为 None')
-            self.polygons_to_paths = _polygons_to_paths
+            self.geoms_to_paths = _geoms_to_paths
 
         # 初始化 paths，以触发 autoscale
-        x0, x1, y0, y1 = fshp.polygon_extents(self.polygons)
+        x0, x1, y0, y1 = _geoms_extents(self.geoms)
         x = (x0 + x1) / 2
         y = (y0 + y1) / 2
         a = (x1 - x0) / 2
         b = (y1 - y0) / 2
         verts = make_ellipse(x, y, a, b)
         ellipse = sgeom.Polygon(verts)
-        paths = self.polygons_to_paths([ellipse])
+        paths = self.geoms_to_paths([ellipse])
+
         super().__init__(paths, **kwargs)
         ax.add_collection(self)
         ax._request_autoscale_view()
@@ -137,32 +145,33 @@ class PolygonCollection(PathCollection):
             return None
 
         if self.skip_outside:
+            # x0 == x1 == y0 == y1 也 OK
             if self.is_geoaxes:
                 x0, x1, y0, y1 = self.axes.get_extent(self.crs)
             else:
-                x0, x1 = self.axes.get_xlim()
-                y0, y1 = self.axes.get_ylim()
+                x0, x1 = sorted(self.axes.get_xlim())
+                y0, y1 = sorted(self.axes.get_ylim())
             extent_box = sgeom.box(x0, y0, x1, y1)
 
             # 1 对应与边框有交点的多边形，需要做投影
             # 2 对应无交点的多边形，直接用占位符 Path 替代
-            polygon_dict1 = {}
-            polygon_dict2 = {}
-            for i, polygon in enumerate(self.polygons):
-                if extent_box.intersects(polygon):
-                    polygon_dict1[i] = polygon
+            geom_dict1 = {}
+            geom_dict2 = {}
+            for i, geom in enumerate(self.geoms):
+                if extent_box.intersects(geom):
+                    geom_dict1[i] = geom
                 else:
-                    polygon_dict2[i] = polygon
+                    geom_dict2[i] = geom
 
             # 利用字典的有序性
-            paths1 = self.polygons_to_paths(polygon_dict1.values())
-            paths2 = [fshp.PLACEHOLDER_PATH] * len(polygon_dict2)
-            path_dict1 = dict(zip(polygon_dict1.keys(), paths1))
-            path_dict2 = dict(zip(polygon_dict2.keys(), paths2))
+            paths1 = self.geoms_to_paths(geom_dict1.values())
+            paths2 = [fshp.PLACEHOLDER_PATH] * len(geom_dict2)
+            path_dict1 = dict(zip(geom_dict1.keys(), paths1))
+            path_dict2 = dict(zip(geom_dict2.keys(), paths2))
             path_dict = path_dict1 | path_dict2
             paths = [path for _, path in sorted(path_dict.items())]
         else:
-            paths = self.polygons_to_paths(self.polygons)
+            paths = self.geoms_to_paths(self.geoms)
 
         self.set_paths(paths)
         super().draw(renderer)

@@ -32,7 +32,8 @@
 ## 安装
 
 ```
-pip install frykit
+pip install frykit  # 安装
+pip install -U frykit  # 更新
 ```
 
 依赖为：
@@ -352,11 +353,23 @@ cbar.set_ticks(boundaries)
 
 ![colorbar](image/colorbar.png)
 
-### 模块结构
+## 模块结构
 
 ![structure](image/structure.jpg)
 
-### 详细介绍
+## 性能测试
+
+![perf](image/perf.png)
+
+测试内容：在等距方位投影的 `GeoAxes` 上绘制 frykit 自带的行政区划数据，分国、省、市、县四种，同时按 `GeoAxes` 的范围分全国和东南小区域两种。绘制四次运行的耗时，结果如上图所示。
+
+- frykit 模仿 Cartopy 实现了缓存机制，所以都是第一次画图耗时最长，后续三次会快很多。
+- Cartopy 首次画省图要 10 秒，市图要 40 秒，县图要 70 秒；而 frykit 都在 3 秒以内。
+- Cartopy 0.23 在小区域画图时仍然会画出区域外的所有内容，所以耗时相比 0.22 反而大幅倒退。frykit 对此也有优化。
+
+顺带一提 frykit 的 `add_texts` 也有优化，比用循环调用 `ax.text` 更快。
+
+## 详细介绍
 
 工具箱的原理和使用场景可见下面几篇博文：
 
@@ -367,7 +380,7 @@ cbar.set_ticks(boundaries)
 - [Matplotlib 系列：colormap 的设置](https://zhajiman.github.io/post/matplotlib_colormap/)
 - [CALIPSO L2 VFM 产品的读取和绘制（with Python）](https://zhajiman.github.io/post/calipso_vfm/)
 
-### 示例效果
+## 示例效果
 
 包的 `example` 目录里有更复杂的示例脚本：
 

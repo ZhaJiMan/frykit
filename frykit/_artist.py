@@ -92,9 +92,7 @@ def _geoms_extents(
     return x0, x1, y0, y1
 
 
-# TODO
-# - 类持有对几何对象的引用，会存在问题吗？
-# - 绘制缓存的速度略慢于 FeatureArtist？
+# TODO：类持有对几何对象的引用，会存在问题吗？
 class GeometryCollection(PathCollection):
     '''投影并绘制多边形对象的 Collection 类'''
 

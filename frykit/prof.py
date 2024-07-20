@@ -1,7 +1,7 @@
 import cProfile
-import functools
 import time
 from collections.abc import Callable
+from functools import partial, wraps
 from typing import Any, Literal, Optional
 
 from line_profiler import LineProfiler
@@ -61,11 +61,9 @@ def timer(
     if fmt is None:
         fmt = '[{name}] {time:.3f} {unit}'
     if func is None:
-        return functools.partial(
-            timer, unit=unit, verbose=verbose, fmt=fmt, out=out
-        )
+        return partial(timer, unit=unit, verbose=verbose, fmt=fmt, out=out)
 
-    @functools.wraps(func)
+    @wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         t0 = time.perf_counter()
         result = func(*args, **kwargs)
@@ -145,7 +143,7 @@ def cprofiler(filepath: PathType) -> Callable:
     '''cProfile 的装饰器。保存结果到指定路径。'''
 
     def decorator(func: Callable) -> Callable:
-        @functools.wraps(func)
+        @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             with cProfile.Profile() as profile:
                 result = func(*args, **kwargs)
@@ -161,7 +159,7 @@ def lprofiler(filepath: PathType) -> Callable:
     '''line_profiler 的装饰器。保存结果到指定路径。'''
 
     def decorator(func: Callable) -> Callable:
-        @functools.wraps(func)
+        @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             profile = LineProfiler(func)
             result = profile.runcall(func, *args, **kwargs)

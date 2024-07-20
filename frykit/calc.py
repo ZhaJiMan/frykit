@@ -188,7 +188,7 @@ def make_ellipse(
     mtx = [[a * cos, a * sin], [-b * sin, b * cos], [x, y]]
     verts = verts @ mtx
     if not ccw:
-        verts = np.flipud(verts)
+        verts = verts[::-1]
 
     return verts
 

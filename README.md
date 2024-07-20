@@ -126,11 +126,10 @@ import frykit.shp as fshp
 
 ```Python
 import matplotlib.pyplot as plt
-import cartopy.crs as ccrs
 import frykit.plot as fplt
 
 plt.figure(figsize=(8, 8))
-ax = plt.axes(projection=ccrs.PlateCarree())
+ax = plt.axes(projection=fplt.PLATE_CARREE)
 fplt.add_cn_province(ax)
 fplt.add_cn_province(ax, ['北京市', '天津市', '河北省'], fc='dodgerblue')
 fplt.add_nine_line(ax)
@@ -145,10 +144,9 @@ plt.show()
 
 ```Python
 import matplotlib.pyplot as plt
-import cartopy.crs as ccrs
 import frykit.plot as fplt
 
-ax = plt.axes(projection=ccrs.PlateCarree())
+ax = plt.axes(projection=fplt.PLATE_CARREE)
 fplt.add_cn_district(ax, province='北京市', fc=plt.cm.Pastel1.colors)
 fplt.label_cn_district(ax, province='北京市')
 
@@ -203,10 +201,9 @@ fplt.add_geoms(ax, reader.geometries(), fc='none', ec='k', lw=0.25)
 
 ```Python
 import matplotlib.pyplot as plt
-import cartopy.crs as ccrs
 import frykit.plot as fplt
 
-crs = ccrs.PlateCarree()
+crs = fplt.PLATE_CARREE
 ax = plt.axes(projection=crs)
 fplt.add_cn_province(ax)
 fplt.add_nine_line(ax)
@@ -254,7 +251,7 @@ ax.contourf(lon, lat, data)
 import numpy as np
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 
-crs = ccrs.PlateCarree()
+crs = fplt.PLATE_CARREE
 ax.set_extent([70, 140, 0, 60], crs=crs)
 ax.set_xticks(np.arange(70, 141, 10), crs=crs)
 ax.set_yticks(np.arange(0, 61, 10), crs=crs)

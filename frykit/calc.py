@@ -103,15 +103,16 @@ def hms_to_degrees(hour: Any, minute: Any, second: Any) -> Any:
     return hour + minute / 60 + second / 3600
 
 
-def hms_to_degrees2(hms: Union[str, list[str]]) -> list[float]:
+def _split_hms(hms: str) -> tuple[float, float, float]:
+    hour, minute, second = map(float, re.split(r'[^\d.]+', hms)[:3])
+    return hour, minute, second
+
+
+def hms_to_degrees2(hms: Union[str, list[str]]) -> Union[float, np.ndarray]:
     '''时分秒转为度数。要求 hms 是形如 43°08′20″ 的字符串。'''
-
-    def func(string: str) -> tuple[float, float, float]:
-        return map(float, re.split(r'[^\d.]+', string)[:3])
-
     if isinstance(hms, str):
-        return hms_to_degrees(*func(hms))
-    return list(map(func, hms))
+        return hms_to_degrees(*_split_hms(hms))
+    return np.array([*map(hms_to_degrees2, hms)])
 
 
 def hav(x: Any) -> Any:

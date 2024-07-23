@@ -39,6 +39,11 @@ GetCnResult = Union[PolygonType, list[PolygonType], dict, list[dict]]
 _data_cache = {}
 
 
+def clear_data_cache() -> None:
+    '''清除缓存的 shp 数据'''
+    _data_cache.clear()
+
+
 def get_cn_border() -> sgeom.MultiPolygon:
     '''获取中国国界的多边形'''
     polygon = _data_cache.get('cn_border')

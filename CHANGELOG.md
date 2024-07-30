@@ -1,3 +1,10 @@
+## `0.6.6` (ongoing)
+
+- `calc` 模块函数明确输入为 `array_like`，输出为 `np.ndarray`。
+- `lon_to_180` 和 `lon_to_360` 函数新增 `degrees` 参数。
+- `geom_to_path` 和 `path_to_polygon` 函数新增 `allow_empty` 参数。
+- 修正一些函数的类型提示，提高 NumPy 的版本要求为 `>=1.20.0`。
+
 ## `0.6.5`
 
 - 新增 `add_geoms` 函数，类比 `GeoAxes.add_geometries`，能绘制 `Polygon` 和 `LineString`，替代原有的 `add_polygons` 函数。

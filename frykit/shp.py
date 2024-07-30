@@ -1,23 +1,22 @@
 import math
-from collections.abc import Callable
+from collections.abc import Callable, Iterable, Sized
 from itertools import chain
-from typing import Any, Optional, Union
+from typing import Any, Optional, TypedDict, TypeVar, Union
 
 import numpy as np
 import pandas as pd  # 加载 overhead 还挺高
 import shapely.geometry as sgeom
 from cartopy.crs import CRS
 from matplotlib.path import Path
+from numpy.typing import ArrayLike, NDArray
 from pyproj import Transformer
-from shapely.geometry.base import (
-    BaseGeometry,
-    BaseMultipartGeometry,
-    CoordinateSequence,
-)
+from shapely.coords import CoordinateSequence
+from shapely.geometry.base import BaseGeometry
 from shapely.prepared import prep
 
 from frykit import SHP_DIRPATH
 from frykit._shp import BinaryReader
+from frykit._typing import StrOrInt
 from frykit.help import deprecator
 
 '''
@@ -29,14 +28,35 @@ from frykit.help import deprecator
 - 海陆: https://www.naturalearthdata.com/downloads/50m-physical-vectors/
 '''
 
-StrOrInt = Union[str, int]
-GetCnKey = Union[StrOrInt, list[StrOrInt]]
-
 PolygonType = Union[sgeom.Polygon, sgeom.MultiPolygon]
-GetCnResult = Union[PolygonType, list[PolygonType], dict, list[dict]]
+
+
+class PrDict(TypedDict):
+    pr_name: str
+    pr_adcode: int
+    short_name: str
+    lon: float
+    lat: float
+    geometry: PolygonType
+
+
+class CtDict(TypedDict):
+    ct_name: str
+    ct_adcode: int
+
+
+class DtDict(TypedDict):
+    dt_name: str
+    dt_adcode: int
+
+
+AdmKey = Union[StrOrInt, Iterable[StrOrInt]]
+PrResult = Union[PolygonType, list[PolygonType], PrDict, list[PrDict]]
+CtResult = Union[PolygonType, list[PolygonType], CtDict, list[CtDict]]
+DtResult = Union[PolygonType, list[PolygonType], DtDict, list[DtDict]]
 
 # 缓存多边形数据
-_data_cache = {}
+_data_cache: dict[str, Any] = {}
 
 
 def clear_data_cache() -> None:
@@ -123,13 +143,13 @@ def _get_locs(index: pd.Index, key: Any) -> list[int]:
     loc = index.get_loc(key)
     if isinstance(loc, slice):
         return list(range(len(index))[loc])
-    if isinstance(loc, np.ndarray):
+    elif isinstance(loc, np.ndarray):
         return np.nonzero(loc)[0].tolist()
+    else:
+        return [loc]
 
-    return [loc]
 
-
-def _get_pr_locs(province: Optional[GetCnKey] = None) -> list[int]:
+def _get_pr_locs(province: Optional[AdmKey] = None) -> list[int]:
     '''查询省界元数据表格的下标'''
     df = _get_pr_table()
     if province is None:
@@ -138,18 +158,19 @@ def _get_pr_locs(province: Optional[GetCnKey] = None) -> list[int]:
     names = pd.Index(df['pr_name'])
     adcodes = pd.Index(df['pr_adcode'])
 
-    def func(key: GetCnKey) -> list[int]:
+    def func(key: AdmKey) -> list[int]:
         if isinstance(key, str):
             return _get_locs(names, key)
-        if isinstance(key, int):
+        elif isinstance(key, int):
             return _get_locs(adcodes, key)
-        return list(chain(*map(func, key)))
+        else:
+            return list(chain(*map(func, key)))
 
     return func(province)
 
 
 def _get_ct_locs(
-    city: Optional[GetCnKey] = None, province: Optional[GetCnKey] = None
+    city: Optional[AdmKey] = None, province: Optional[AdmKey] = None
 ) -> list[int]:
     '''查询市界元数据表格的下标'''
     df = _get_ct_table()
@@ -168,20 +189,21 @@ def _get_ct_locs(
         adcodes = pd.Index(df['pr_adcode'])
         key = province
 
-    def func(key: GetCnKey) -> list[int]:
+    def func(key: AdmKey) -> list[int]:
         if isinstance(key, str):
             return _get_locs(names, key)
-        if isinstance(key, int):
+        elif isinstance(key, int):
             return _get_locs(adcodes, key)
-        return list(chain(*map(func, key)))
+        else:
+            return list(chain(*map(func, key)))
 
     return func(key)
 
 
 def _get_dt_locs(
-    district: Optional[GetCnKey] = None,
-    city: Optional[GetCnKey] = None,
-    province: Optional[GetCnKey] = None,
+    district: Optional[AdmKey] = None,
+    city: Optional[AdmKey] = None,
+    province: Optional[AdmKey] = None,
 ) -> list[int]:
     '''查询县界元数据表格的下标'''
     df = _get_dt_table()
@@ -206,12 +228,13 @@ def _get_dt_locs(
         adcodes = pd.Index(df['pr_adcode'])
         key = province
 
-    def func(key: GetCnKey) -> list[int]:
+    def func(key: AdmKey) -> list[int]:
         if isinstance(key, str):
             return _get_locs(names, key)
-        if isinstance(key, int):
+        elif isinstance(key, int):
             return _get_locs(adcodes, key)
-        return list(chain(*map(func, key)))
+        else:
+            return list(chain(*map(func, key)))
 
     locs = func(key)
     if isinstance(district, str) and len(locs) > 1:
@@ -243,7 +266,7 @@ def get_cn_province_names(short: bool = False) -> list[str]:
 
 
 def get_cn_city_names(
-    province: Optional[GetCnKey] = None, short=False
+    province: Optional[AdmKey] = None, short=False
 ) -> list[str]:
     '''获取中国市名。可以指定获取某个省的所有市名。'''
     df = _get_ct_table()
@@ -255,8 +278,8 @@ def get_cn_city_names(
 
 
 def get_cn_district_names(
-    city: Optional[GetCnKey] = None,
-    province: Optional[GetCnKey] = None,
+    city: Optional[AdmKey] = None,
+    province: Optional[AdmKey] = None,
     short: bool = False,
 ) -> list[str]:
     '''获取中国县名。可以指定获取某个市或某个省的所有县名。'''
@@ -269,14 +292,14 @@ def get_cn_district_names(
 
 
 def get_cn_province(
-    province: Optional[GetCnKey] = None, as_dict: bool = False
-) -> GetCnResult:
+    province: Optional[AdmKey] = None, as_dict: bool = False
+) -> PrResult:
     '''
     获取中国省界的多边形
 
     Parameters
     ----------
-    province : GetCnKey, optional
+    province : AdmKey, optional
         省名或 adcode。可以是复数个省。
         默认为 None，表示获取所有省。
 
@@ -285,7 +308,7 @@ def get_cn_province(
 
     Returns
     -------
-    result : GetCnResult
+    result : PrResult
         表示省界的多边形或字典
     '''
     polygons = _data_cache.get('cn_province')
@@ -307,26 +330,26 @@ def get_cn_province(
         result = polygons
 
     if isinstance(province, (str, int)):
-        result = result[0]
-
-    return result
+        return result[0]
+    else:
+        return result
 
 
 def get_cn_city(
-    city: Optional[GetCnKey] = None,
-    province: Optional[GetCnKey] = None,
+    city: Optional[AdmKey] = None,
+    province: Optional[AdmKey] = None,
     as_dict: bool = False,
-) -> GetCnResult:
+) -> CtResult:
     '''
     获取中国市界的多边形
 
     Parameters
     ----------
-    city : GetCnKey, optional
+    city : AdmKey, optional
         市名或 adcode。可以是复数个市。
         默认为 None，表示获取所有市。
 
-    province : GetCnKey, optional
+    province : AdmKey, optional
         省名或 adcode，表示获取某个省的所有市。可以是复数个省。
         默认为 None，表示不指定省。
 
@@ -335,7 +358,7 @@ def get_cn_city(
 
     Returns
     -------
-    result : GetCnResult
+    result : CtResult
         表示市界的多边形或字典
     '''
     polygons = _data_cache.get('cn_city')
@@ -357,31 +380,31 @@ def get_cn_city(
         result = polygons
 
     if isinstance(city, (str, int)):
-        result = result[0]
-
-    return result
+        return result[0]
+    else:
+        return result
 
 
 def get_cn_district(
-    district: Optional[GetCnKey] = None,
-    city: Optional[GetCnKey] = None,
-    province: Optional[GetCnKey] = None,
+    district: Optional[AdmKey] = None,
+    city: Optional[AdmKey] = None,
+    province: Optional[AdmKey] = None,
     as_dict: bool = False,
-) -> GetCnResult:
+) -> DtResult:
     '''
     获取中国县界的多边形
 
     Parameters
     ----------
-    district : GetCnKey, optional
+    district : AdmKey, optional
         县名或 adcode。可以是复数个县。
         默认为 None，表示获取所有县。
 
-    city : GetCnKey, optional
+    city : AdmKey, optional
         市名或 adcode，表示获取某个市的所有县。可以是复数个市。
         默认为 None，表示不指定市。
 
-    province : GetCnKey, optional
+    province : AdmKey, optional
         省名或 adcode，表示获取某个省的所有县。可以是复数个省。
         默认为 None，表示不指定省。
 
@@ -390,7 +413,7 @@ def get_cn_district(
 
     Returns
     -------
-    result : GetCnResult
+    result : DtResult
         表示县界的多边形或字典
     '''
     polygons = _data_cache.get('cn_district')
@@ -412,9 +435,9 @@ def get_cn_district(
         result = polygons
 
     if isinstance(district, (str, int)):
-        result = result[0]
-
-    return result
+        return result[0]
+    else:
+        return result
 
 
 def get_countries() -> list[PolygonType]:
@@ -482,7 +505,7 @@ def _point_codes() -> list[np.uint8]:
     return [Path.MOVETO]
 
 
-def _line_codes(coords: np.ndarray) -> list[np.uint8]:
+def _line_codes(coords: Sized) -> list[np.uint8]:
     codes = [Path.LINETO] * len(coords)
     if codes:
         codes[0] = Path.MOVETO
@@ -490,7 +513,7 @@ def _line_codes(coords: np.ndarray) -> list[np.uint8]:
     return codes
 
 
-def _ring_codes(coords: np.ndarray) -> list[np.uint8]:
+def _ring_codes(coords: Sized) -> list[np.uint8]:
     codes = [Path.LINETO] * len(coords)
     if codes:
         codes[0] = Path.MOVETO
@@ -503,7 +526,7 @@ def _ring_codes(coords: np.ndarray) -> list[np.uint8]:
 PLACEHOLDER_PATH = Path(np.zeros((0, 2)))
 
 
-def geom_to_path(geom: BaseGeometry) -> Path:
+def geom_to_path(geom: BaseGeometry, allow_empty: bool = True) -> Path:
     '''
     几何对象转为 Path
 
@@ -511,28 +534,30 @@ def geom_to_path(geom: BaseGeometry) -> Path:
     - Point 和 LineString 保留原来的坐标顺序
     - LinearRing 对应的 Path 里坐标沿顺时针绕行
     - Polygon 对应的 Path 里外环坐标沿顺时针绕行，内环坐标沿逆时针绕行。
-    - Multi 对象使用 Path.make_compound_path
+    - Multi 对象和 GeometryCollection 使用 Path.make_compound_path
     '''
-    if not isinstance(geom, BaseGeometry):
+    if not is_geometry(geom):
         raise TypeError('geom 不是几何对象')
 
     if geom.is_empty:
+        if not allow_empty:
+            raise ValueError('geom 是空几何对象')
         return PLACEHOLDER_PATH
 
-    elif isinstance(geom, sgeom.LinearRing):
+    if isinstance(geom, sgeom.LinearRing):
         coords = np.asarray(geom.coords)
         if geom.is_ccw:
             coords = coords[::-1]
         return Path(coords, _ring_codes(coords))
 
-    elif isinstance(geom, sgeom.Point):
+    if isinstance(geom, sgeom.Point):
         return Path([[geom.x, geom.y]], _point_codes())
 
-    elif isinstance(geom, sgeom.LineString):
+    if isinstance(geom, sgeom.LineString):
         coords = np.asarray(geom.coords)
         return Path(coords, _line_codes(coords))
 
-    elif isinstance(geom, sgeom.Polygon):
+    if isinstance(geom, sgeom.Polygon):
         verts = []
         codes = []
         coords = np.asarray(geom.exterior.coords)
@@ -551,21 +576,14 @@ def geom_to_path(geom: BaseGeometry) -> Path:
         verts = np.vstack(verts)
         return Path(verts, codes)
 
-    elif isinstance(geom, BaseMultipartGeometry):
-        return Path.make_compound_path(*map(geom_to_path, geom.geoms))
-
-    else:
-        raise ValueError(f'不支持的类型：{type(geom)}')
+    return Path.make_compound_path(*map(geom_to_path, geom.geoms))
 
 
-@deprecator(geom_to_path)
-def polygon_to_path(polygon: PolygonType) -> Path:
-    return geom_to_path(polygon)
-
-
-def path_to_polygon(path: Path) -> PolygonType:
+def path_to_polygon(path: Path, allow_empty: bool = True) -> PolygonType:
     '''`path = geom_to_path(polygon)` 的逆函数'''
     if len(path.vertices) == 0:
+        if not allow_empty:
+            raise ValueError('path.vertices 为空')
         return sgeom.Polygon()
 
     collection = []
@@ -578,30 +596,38 @@ def path_to_polygon(path: Path) -> PolygonType:
             collection.append((ring, []))
 
     polygons = [sgeom.Polygon(shell, holes) for shell, holes in collection]
-    if len(polygons) > 1:
-        return sgeom.MultiPolygon(polygons)
-    return polygons[0]
+    if len(polygons) == 1:
+        return polygons[0]
+
+    return sgeom.MultiPolygon(polygons)
 
 
 def polygon_to_polys(polygon: PolygonType) -> list[list[tuple[float, float]]]:
     '''多边形转为适用于 shapefile 的坐标序列'''
-    polys = []
-    for polygon in getattr(polygon, 'geoms', [polygon]):
+    if isinstance(polygon, sgeom.Polygon):
+        polys = []
         coords = polygon.exterior.coords[:]
         if polygon.exterior.is_ccw:
             coords.reverse()
         polys.append(coords)
 
-        for ring in polygon.interiors:
-            coords = ring.coords[:]
-            if not ring.is_ccw:
+        for interior in polygon.interiors:
+            coords = interior.coords[:]
+            if not interior.is_ccw:
                 coords.reverse()
             polys.append(coords)
 
-    return polys
+        return polys
+
+    if isinstance(polygon, sgeom.MultiPolygon):
+        return list(chain(*map(polygon_to_polys, polygon.geoms)))
+
+    raise TypeError('polygon 不是多边形')
 
 
-def polygon_to_mask(polygon: PolygonType, x: Any, y: Any) -> np.ndarray:
+def polygon_to_mask(
+    polygon: PolygonType, x: ArrayLike, y: ArrayLike
+) -> NDArray:
     '''
     用多边形制作掩膜（mask）数组
 
@@ -611,15 +637,19 @@ def polygon_to_mask(polygon: PolygonType, x: Any, y: Any) -> np.ndarray:
         用于裁剪的多边形
 
     x : array_like
-        数据点的横坐标。要求形状与y相同。
+        数据点的横坐标。要求形状与 y 相同。
 
     y : array_like
-        数据点的纵坐标。要求形状与x相同。
+        数据点的纵坐标。要求形状与 x 相同。
 
     Returns
     -------
     mask : ndarray
-        布尔类型的掩膜数组，真值表示数据点落入多边形内部。形状与x和y相同。
+        布尔类型的掩膜数组，真值表示数据点落入多边形内部。形状与 x 和 y 相同。
+
+    See Also
+    --------
+    shapely.vectorized.contains
     '''
     if not is_polygon(polygon):
         raise TypeError('polygon 不是多边形')
@@ -703,39 +733,49 @@ def box_path(x0: float, x1: float, y0: float, y1: float) -> Path:
     return Path(verts, _ring_codes(verts))
 
 
-def _transform(func: Callable, geom: BaseGeometry) -> BaseGeometry:
+_GeometryT = TypeVar('_G', bound=BaseGeometry)
+
+
+def _transform(
+    func: Callable[[CoordinateSequence], NDArray], geom: _GeometryT
+) -> _GeometryT:
     '''shapely.ops.transform 的修改版，会将坐标含无效值的对象设为空对象。'''
+    if not is_geometry(geom):
+        raise TypeError('geom 不是几何对象')
+
+    T = type(geom)
     if geom.is_empty:
-        return type(geom)()
-    if geom.geom_type in ('Point', 'LineString', 'LinearRing'):
+        return T()
+
+    if isinstance(geom, (sgeom.Point, sgeom.LineString, sgeom.LinearRing)):
         coords = func(geom.coords)
         if np.isfinite(coords).all():
-            return type(geom)(coords)
-        return type(geom)()
-    elif geom.geom_type == 'Polygon':
+            return T(coords)
+        else:
+            return T()
+
+    if isinstance(geom, sgeom.Polygon):
         shell = func(geom.exterior.coords)
         if not np.isfinite(shell).all():
-            return sgeom.Polygon()
+            return T()
+
         holes = []
-        for ring in geom.interiors:
-            hole = func(ring.coords)
+        for interior in geom.interiors:
+            hole = func(interior.coords)
             if np.isfinite(hole).all():
                 holes.append(hole)
-        return sgeom.Polygon(shell, holes)
-    elif (
-        geom.geom_type.startswith('Multi')
-        or geom.geom_type == 'GeometryCollection'
-    ):
-        parts = []
-        for part in geom.geoms:
-            part = _transform(func, part)
-            if not part.is_empty:
-                parts.append(part)
-        if parts:
-            return type(geom)(parts)
-        return type(geom)()
+        return T(shell, holes)
+
+    parts = []
+    for part in geom.geoms:
+        part = _transform(func, part)
+        if not part.is_empty:
+            parts.append(part)
+
+    if parts:
+        return T(parts)
     else:
-        raise TypeError('geom 不是几何对象')
+        return T()
 
 
 class GeometryTransformer:
@@ -766,7 +806,7 @@ class GeometryTransformer:
         # 避免反复创建Transformer的开销
         transformer = Transformer.from_crs(crs_from, crs_to, always_xy=True)
 
-        def func(coords: CoordinateSequence) -> np.ndarray:
+        def func(coords: CoordinateSequence) -> NDArray:
             coords = np.asarray(coords)
             return np.column_stack(
                 transformer.transform(coords[:, 0], coords[:, 1])
@@ -774,7 +814,7 @@ class GeometryTransformer:
 
         self._func = lambda x: _transform(func, x)
 
-    def __call__(self, geom: BaseGeometry) -> BaseGeometry:
+    def __call__(self, geom: _GeometryT) -> _GeometryT:
         '''
         对几何对象做变换
 
@@ -794,3 +834,8 @@ class GeometryTransformer:
 @deprecator(get_cn_province, raise_error=True)
 def get_cn_shp():
     pass
+
+
+@deprecator(geom_to_path)
+def polygon_to_path(polygon: PolygonType) -> Path:
+    return geom_to_path(polygon)

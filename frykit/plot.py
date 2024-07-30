@@ -1715,7 +1715,7 @@ def add_mini_axes(
             y1 = bbox.y1
         else:
             raise ValueError(
-                "loc 只能取 {'lower left', 'lower right', 'upper left', 'upper right'}"
+                "loc: {'lower left', 'lower right', 'upper left', 'upper right'}"
             )
 
         new_bbox = Bbox.from_extents(x0, y0, x1, y1)
@@ -1782,7 +1782,7 @@ def add_side_axes(
         y0 = bbox.y1 + pad
         y1 = y0 + width
     else:
-        raise ValueError("loc 只能取 {'left', 'right', 'bottom', 'top'}")
+        raise ValueError("loc: {'left', 'right', 'bottom', 'top'}")
     new_bbox = Bbox.from_extents(x0, y0, x1, y1)
     new_ax = axs[0].figure.add_axes(new_bbox)
 

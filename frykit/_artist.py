@@ -287,7 +287,7 @@ class QuiverLegend(QuiverKey):
             Y = 1 - height / 2
         else:
             raise ValueError(
-                "loc 只能取 {'lower left', 'lower right', 'upper left', 'upper right'}"
+                "loc: {'lower left', 'lower right', 'upper left', 'upper right'}"
             )
 
         qk_kwargs = normalize_kwargs(qk_kwargs)
@@ -383,7 +383,7 @@ class Compass(PathCollection):
                 paths.append(path2.transformed(rotation))
             colors = ['k', 'w']
         else:
-            raise ValueError("style只能取 {'arrow', 'circle', 'star'}")
+            raise ValueError("style: {'arrow', 'circle', 'star'}")
 
         pc_kwargs = normalize_kwargs(pc_kwargs, PathCollection)
         pc_kwargs.setdefault('linewidth', 1)
@@ -478,7 +478,7 @@ class ScaleBar(_AxesBase):
         elif units == 'km':
             self._units = 1000
         else:
-            raise ValueError("units 只能取 {'m', 'km'}")
+            raise ValueError("units: {'m', 'km'}")
 
         super().__init__(ax.figure, (0, 0, 1, 1), zorder=5)
         ax.add_child_axes(self)

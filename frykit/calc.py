@@ -443,7 +443,7 @@ def binned_average_2d(
     ybins: ArrayLike,
 ) -> tuple[NDArray, NDArray, NDArray]:
     '''
-    用平均的方式对数据做二维binning
+    用平均的方式对数据做二维 binning
 
     Parameters
     ----------

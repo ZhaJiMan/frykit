@@ -1,4 +1,5 @@
 import math
+from collections.abc import Collection, Iterable
 from functools import partial
 from typing import Any, Literal, Optional
 from weakref import WeakKeyDictionary, WeakValueDictionary
@@ -20,6 +21,7 @@ from matplotlib.patches import Rectangle
 from matplotlib.path import Path
 from matplotlib.quiver import Quiver, QuiverKey
 from matplotlib.text import Text
+from numpy.typing import ArrayLike
 from shapely.geometry.base import BaseGeometry
 from shapely.vectorized import contains
 
@@ -33,8 +35,14 @@ _key_to_geom = WeakValueDictionary()
 _key_to_path = WeakKeyDictionary()
 _key_to_crs_to_path = WeakKeyDictionary()
 
+_key_to_geom: WeakValueDictionary[_GeomKey, BaseGeometry]
+_key_to_path: WeakKeyDictionary[_GeomKey, Optional[Path]]
+_key_to_crs_to_path: WeakKeyDictionary[
+    _GeomKey, dict[ccrs.CRS, tuple[bool, Path]]
+]
 
-def _geoms_to_paths(geoms: list[BaseGeometry]) -> list[Path]:
+
+def _geoms_to_paths(geoms: Iterable[BaseGeometry]) -> list[Path]:
     '''将一组几何对象转为 Path 并缓存结果'''
     paths = []
     for geom in geoms:
@@ -52,7 +60,7 @@ def _geoms_to_paths(geoms: list[BaseGeometry]) -> list[Path]:
 
 
 def _transform_geoms_to_paths(
-    geoms: list[BaseGeometry],
+    geoms: Iterable[BaseGeometry],
     crs_from: ccrs.CRS,
     crs_to: ccrs.Projection,
     fast_transform: bool = True,
@@ -80,7 +88,7 @@ def _transform_geoms_to_paths(
 
 
 def _geoms_extents(
-    geoms: list[BaseGeometry],
+    geoms: Iterable[BaseGeometry],
 ) -> tuple[float, float, float, float]:
     '''返回一组几何对象的边界范围'''
     bounds = np.array([geom.bounds for geom in geoms])
@@ -99,7 +107,7 @@ class GeometryCollection(PathCollection):
     def __init__(
         self,
         ax: Axes,
-        geoms: list[BaseGeometry],
+        geoms: Collection[BaseGeometry],
         crs: Optional[ccrs.CRS],
         fast_transform: bool = True,
         skip_outside: bool = True,
@@ -109,9 +117,8 @@ class GeometryCollection(PathCollection):
         self.crs = crs
         self.fast_transform = fast_transform
         self.skip_outside = skip_outside
-        self.is_geoaxes = isinstance(ax, GeoAxes)
 
-        if self.is_geoaxes:
+        if isinstance(ax, GeoAxes):
             if self.crs is None:
                 self.crs = PLATE_CARREE
             self.geoms_to_paths = partial(
@@ -149,7 +156,7 @@ class GeometryCollection(PathCollection):
 
         if self.skip_outside:
             # x0 == x1 == y0 == y1 也 OK
-            if self.is_geoaxes:
+            if isinstance(self.axes, GeoAxes):
                 x0, x1, y0, y1 = self.axes.get_extent(self.crs)
             else:
                 x0, x1 = sorted(self.axes.get_xlim())
@@ -185,9 +192,9 @@ class TextCollection(Artist):
 
     def __init__(
         self,
-        x: list[float],
-        y: list[float],
-        s: list[str],
+        x: ArrayLike,
+        y: ArrayLike,
+        s: ArrayLike,
         skip_outside: bool = True,
         **kwargs: Any,
     ) -> None:

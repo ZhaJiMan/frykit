@@ -1,4 +1,5 @@
 import math
+from collections.abc import Collection, Iterable
 from typing import Any, Literal, Optional, Union
 
 import cartopy.crs as ccrs
@@ -27,6 +28,7 @@ from matplotlib.text import Text
 from matplotlib.ticker import Formatter
 from matplotlib.transforms import Bbox
 from numpy.lib.npyio import NpzFile
+from numpy.typing import ArrayLike, NDArray
 from shapely.geometry.base import BaseGeometry
 from shapely.ops import unary_union
 from shapely.prepared import prep
@@ -52,7 +54,7 @@ CN_AZIMUTHAL_EQUIDISTANT = ccrs.AzimuthalEquidistant(
 # TODO: 模仿 scatter 绘制 Point？
 def add_geoms(
     ax: Axes,
-    geoms: Union[BaseGeometry, list[BaseGeometry]],
+    geoms: Union[BaseGeometry, Iterable[BaseGeometry]],
     crs: Optional[ccrs.CRS] = None,
     fast_transform: bool = True,
     skip_outside: bool = True,
@@ -95,30 +97,11 @@ def add_geoms(
     if fshp.is_geometry(geoms):
         geoms = [geoms]
     else:
-        geoms = list(geoms)  # 应对生成器
+        geoms = list(geoms)
 
     return fa.GeometryCollection(
         ax=ax,
         geoms=geoms,
-        crs=crs,
-        fast_transform=fast_transform,
-        skip_outside=skip_outside,
-        **kwargs,
-    )
-
-
-@deprecator(add_geoms)
-def add_polygons(
-    ax: Axes,
-    polygons: Union[fshp.PolygonType, list[fshp.PolygonType]],
-    crs: Optional[ccrs.CRS] = None,
-    fast_transform: bool = True,
-    skip_outside: bool = True,
-    **kwargs: Any,
-) -> fa.GeometryCollection:
-    return add_geoms(
-        ax=ax,
-        geoms=polygons,
         crs=crs,
         fast_transform=fast_transform,
         skip_outside=skip_outside,
@@ -142,8 +125,8 @@ def _get_boundary(ax: GeoAxes) -> sgeom.Polygon:
 # - 严格防文字出界的方案：fig.canvas.draw + t.get_window_extent
 # - streamplot 的返回值不能用来裁剪箭头
 def clip_by_polygon(
-    artist: Union[Artist, list[Artist]],
-    polygon: Union[fshp.PolygonType, list[fshp.PolygonType]],
+    artist: Union[Artist, Iterable[Artist]],
+    polygon: Union[fshp.PolygonType, Collection[fshp.PolygonType]],
     crs: Optional[ccrs.CRS] = None,
     ax: Optional[Axes] = None,
     fast_transform: bool = True,
@@ -327,7 +310,7 @@ def add_nine_line(
 
 def add_cn_province(
     ax: Axes,
-    province: Optional[fshp.GetCnKey] = None,
+    province: Optional[fshp.AdmKey] = None,
     fast_transform: bool = True,
     skip_outside: bool = True,
     **kwargs: Any,
@@ -340,7 +323,7 @@ def add_cn_province(
     ax : Axes
         目标 Axes
 
-    province : GetCnKey, optional
+    province : AdmKey, optional
         省名或 adcode。可以是复数个省。
         默认为 None，表示获取所有省。
 
@@ -371,8 +354,8 @@ def add_cn_province(
 
 def add_cn_city(
     ax: Axes,
-    city: Optional[fshp.GetCnKey] = None,
-    province: Optional[fshp.GetCnKey] = None,
+    city: Optional[fshp.AdmKey] = None,
+    province: Optional[fshp.AdmKey] = None,
     fast_transform: bool = True,
     skip_outside: bool = True,
     **kwargs: Any,
@@ -385,11 +368,11 @@ def add_cn_city(
     ax : Axes
         目标 Axes
 
-    city : GetCnKey, optional
+    city : AdmKey, optional
         市名或 adcode。可以是复数个市。
         默认为 None，表示获取所有市。
 
-    province : GetCnKey, optional
+    province : AdmKey, optional
         省名或 adcode，表示获取某个省的所有市。可以是复数个省。
         默认为 None，表示不指定省。
 
@@ -420,9 +403,9 @@ def add_cn_city(
 
 def add_cn_district(
     ax: Axes,
-    district: Optional[fshp.GetCnKey] = None,
-    city: Optional[fshp.GetCnKey] = None,
-    province: Optional[fshp.GetCnKey] = None,
+    district: Optional[fshp.AdmKey] = None,
+    city: Optional[fshp.AdmKey] = None,
+    province: Optional[fshp.AdmKey] = None,
     fast_transform: bool = True,
     skip_outside: bool = True,
     **kwargs: Any,
@@ -435,15 +418,15 @@ def add_cn_district(
     ax : Axes
         目标 Axes
 
-    district : GetCnKey, optional
+    district : AdmKey, optional
         县名或 adcode。可以是复数个县。
         默认为 None，表示获取所有县。
 
-    city : GetCnKey, optional
+    city : AdmKey, optional
         市名或 adcode，表示获取某个市的所有县。可以是复数个市。
         默认为 None，表示不指定市。
 
-    province : GetCnKey, optional
+    province : AdmKey, optional
         省名或 adcode，表示获取某个省的所有县。可以是复数个省。
         默认为 None，表示不指定省。
 
@@ -596,7 +579,7 @@ def add_ocean(
 
 
 def clip_by_cn_border(
-    artist: Union[Artist, list[Artist]],
+    artist: Union[Artist, Iterable[Artist]],
     ax: Optional[Axes] = None,
     fast_transform: bool = True,
     strict: bool = False,
@@ -635,8 +618,8 @@ def clip_by_cn_border(
 
 
 def clip_by_cn_province(
-    artist: Union[Artist, list[Artist]],
-    province: fshp.GetCnKey,
+    artist: Union[Artist, Iterable[Artist]],
+    province: fshp.AdmKey,
     ax: Optional[Axes] = None,
     fast_transform: bool = True,
     strict: bool = False,
@@ -654,7 +637,7 @@ def clip_by_cn_province(
         - imshow
         - quiver
 
-    province : GetCnKey
+    province : AdmKey
         省名或 adcode。可以是复数个省。
 
     ax : Axes, optional
@@ -678,8 +661,8 @@ def clip_by_cn_province(
 
 
 def clip_by_cn_city(
-    artist: Union[Artist, list[Artist]],
-    city: fshp.GetCnKey,
+    artist: Union[Artist, Iterable[Artist]],
+    city: fshp.AdmKey,
     ax: Optional[Axes] = None,
     fast_transform: bool = True,
     strict: bool = False,
@@ -697,7 +680,7 @@ def clip_by_cn_city(
         - imshow
         - quiver
 
-    city : GetCnKey
+    city : AdmKey
         市名或 adcode。可以是复数个市。
 
     ax : Axes, optional
@@ -721,8 +704,8 @@ def clip_by_cn_city(
 
 
 def clip_by_cn_district(
-    artist: Union[Artist, list[Artist]],
-    district: fshp.GetCnKey,
+    artist: Union[Artist, Iterable[Artist]],
+    district: fshp.AdmKey,
     ax: Optional[Axes] = None,
     fast_transform: bool = True,
     strict: bool = False,
@@ -740,7 +723,7 @@ def clip_by_cn_district(
         - imshow
         - quiver
 
-    district : GetCnKey
+    district : AdmKey
         县名或 adcode。可以是复数个县。
 
     ax : Axes, optional
@@ -764,7 +747,7 @@ def clip_by_cn_district(
 
 
 def clip_by_land(
-    artist: Union[Artist, list[Artist]],
+    artist: Union[Artist, Iterable[Artist]],
     ax: Optional[Axes] = None,
     fast_transform: bool = True,
     strict: bool = False,
@@ -805,7 +788,7 @@ def clip_by_land(
 
 
 def clip_by_ocean(
-    artist: Union[Artist, list[Artist]],
+    artist: Union[Artist, Iterable[Artist]],
     ax: Optional[Axes] = None,
     fast_transform: bool = True,
     strict: bool = False,
@@ -847,9 +830,9 @@ def clip_by_ocean(
 
 def add_texts(
     ax: Axes,
-    x: list[float],
-    y: list[float],
-    s: list[str],
+    x: ArrayLike,
+    y: ArrayLike,
+    s: ArrayLike,
     skip_outside: bool = True,
     **kwargs: Any,
 ) -> fa.TextCollection:
@@ -861,13 +844,13 @@ def add_texts(
     ax : Axes
         目标Axes
 
-    x : list of float
+    x : (n,) array_like of float
         文本的横坐标
 
-    y : list of float
+    y : (n,) array_like of float
         文本的纵坐标
 
-    s : list of str
+    s : (n,) array_like of str
         字符串文本
 
     skip_outside : bool, optional
@@ -929,7 +912,7 @@ def _add_cn_texts(
 
 def label_cn_province(
     ax: Axes,
-    province: Optional[fshp.GetCnKey] = None,
+    province: Optional[fshp.AdmKey] = None,
     short: bool = True,
     skip_outside: bool = True,
     **kwargs: Any,
@@ -942,7 +925,7 @@ def label_cn_province(
     ax : Axes
         目标 Axes
 
-    province : GetCnKey, optional
+    province : AdmKey, optional
         省名或 adcode。可以是复数个省。
         默认为 None，表示获取所有省。
 
@@ -977,8 +960,8 @@ def label_cn_province(
 
 def label_cn_city(
     ax: Axes,
-    city: Optional[fshp.GetCnKey] = None,
-    province: Optional[fshp.GetCnKey] = None,
+    city: Optional[fshp.AdmKey] = None,
+    province: Optional[fshp.AdmKey] = None,
     short: bool = True,
     skip_outside: bool = True,
     **kwargs: Any,
@@ -991,11 +974,11 @@ def label_cn_city(
     ax : Axes
         目标 Axes
 
-    city : GetCnKey, optional
+    city : AdmKey, optional
         市名或 adcode。可以是复数个市。
         默认为 None，表示获取所有市。
 
-    province : GetCnKey, optional
+    province : AdmKey, optional
         省名或 adcode，表示获取某个省的所有市。可以是复数个省。
         默认为 None，表示不指定省。
 
@@ -1030,9 +1013,9 @@ def label_cn_city(
 
 def label_cn_district(
     ax: Axes,
-    district: Optional[fshp.GetCnKey] = None,
-    city: Optional[fshp.GetCnKey] = None,
-    province: Optional[fshp.GetCnKey] = None,
+    district: Optional[fshp.AdmKey] = None,
+    city: Optional[fshp.AdmKey] = None,
+    province: Optional[fshp.AdmKey] = None,
     short: bool = True,
     skip_outside: bool = True,
     **kwargs: Any,
@@ -1048,15 +1031,15 @@ def label_cn_district(
     ax : Axes
         目标 Axes
 
-    district : GetCnKey, optional
+    district : AdmKey, optional
         县名或 adcode。可以是复数个县。
         默认为 None，表示获取所有县。
 
-    city : GetCnKey, optional
+    city : AdmKey, optional
         市名或 adcode，表示获取某个市的所有县。可以是复数个市。
         默认为 None，表示不指定市。
 
-    province : GetCnKey, optional
+    province : AdmKey, optional
         省名或 adcode，表示获取某个省的所有县。可以是复数个省。
         默认为 None，表示不指定省。
 
@@ -1092,10 +1075,10 @@ def label_cn_district(
 def _set_axes_ticks(
     ax: Axes,
     extents: Optional[tuple[float, float, float, float]],
-    major_xticks: np.ndarray,
-    major_yticks: np.ndarray,
-    minor_xticks: np.ndarray,
-    minor_yticks: np.ndarray,
+    major_xticks: NDArray,
+    major_yticks: NDArray,
+    minor_xticks: NDArray,
+    minor_yticks: NDArray,
     xformatter: Formatter,
     yformatter: Formatter,
 ) -> None:
@@ -1117,10 +1100,10 @@ def _set_axes_ticks(
 def _set_simple_geoaxes_ticks(
     ax: GeoAxes,
     extents: Optional[tuple[float, float, float, float]],
-    major_xticks: np.ndarray,
-    major_yticks: np.ndarray,
-    minor_xticks: np.ndarray,
-    minor_yticks: np.ndarray,
+    major_xticks: NDArray,
+    major_yticks: NDArray,
+    minor_xticks: NDArray,
+    minor_yticks: NDArray,
     xformatter: Formatter,
     yformatter: Formatter,
 ) -> None:
@@ -1142,10 +1125,10 @@ def _set_simple_geoaxes_ticks(
 def _set_complex_geoaxes_ticks(
     ax: GeoAxes,
     extents: tuple[float, float, float, float],
-    major_xticks: np.ndarray,
-    major_yticks: np.ndarray,
-    minor_xticks: np.ndarray,
-    minor_yticks: np.ndarray,
+    major_xticks: NDArray,
+    major_yticks: NDArray,
+    minor_xticks: NDArray,
+    minor_yticks: NDArray,
     xformatter: Formatter,
     yformatter: Formatter,
 ) -> None:
@@ -1174,7 +1157,7 @@ def _set_complex_geoaxes_ticks(
     lineR = sgeom.LineString([(x1, y0), (x1, y1)])
 
     def get_two_xticks(
-        xticks: np.ndarray,
+        xticks: NDArray,
     ) -> tuple[list[float], list[float], list[str], list[str]]:
         '''获取地图上下边框的 x 刻度和刻度标签'''
         xticksB = []
@@ -1199,7 +1182,7 @@ def _set_complex_geoaxes_ticks(
         return xticksB, xticksT, xticklabelsB, xticklabelsT
 
     def get_two_yticks(
-        yticks: np.ndarray,
+        yticks: NDArray,
     ) -> tuple[list[float], list[float], list[str], list[str]]:
         '''获取地图左右边框的 y 刻度和刻度标签'''
         yticksL = []
@@ -1266,7 +1249,7 @@ def _set_complex_geoaxes_ticks(
         tick.tick1line.set_alpha(0)
 
 
-def _interp_minor_ticks(major_ticks: Any, m: int) -> np.ndarray:
+def _interp_minor_ticks(major_ticks: NDArray, m: int) -> NDArray:
     '''在主刻度的每段间隔内线性插值出 m 个次刻度'''
     n = len(major_ticks)
     if n == 0 or m <= 0:
@@ -1284,8 +1267,8 @@ def _interp_minor_ticks(major_ticks: Any, m: int) -> np.ndarray:
 def set_map_ticks(
     ax: Axes,
     extents: Optional[tuple[float, float, float, float]] = None,
-    xticks: Optional[Any] = None,
-    yticks: Optional[Any] = None,
+    xticks: Optional[ArrayLike] = None,
+    yticks: Optional[ArrayLike] = None,
     *,
     dx: float = 10,
     dy: float = 10,
@@ -1746,7 +1729,7 @@ def add_mini_axes(
 
 # TODO: mpl_toolkits.axes_grid1 实现
 def add_side_axes(
-    ax: Any,
+    ax: Union[Axes, ArrayLike],
     loc: Literal['left', 'right', 'bottom', 'top'],
     pad: float,
     width: float,
@@ -1807,12 +1790,12 @@ def add_side_axes(
 
 
 def get_cross_section_xticks(
-    lon: Any,
-    lat: Any,
+    lon: ArrayLike,
+    lat: ArrayLike,
     nticks: int = 6,
     lon_formatter: Optional[Formatter] = None,
     lat_formatter: Optional[Formatter] = None,
-) -> tuple[np.ndarray, np.ndarray, list[str]]:
+) -> tuple[NDArray, NDArray, list[str]]:
     '''
     返回垂直截面图所需的横坐标，刻度位置和刻度标签。
 
@@ -1875,8 +1858,8 @@ def get_cross_section_xticks(
 
 
 def get_qualitative_palette(
-    colors: Union[list, np.ndarray],
-) -> tuple[mcolors.ListedColormap, mcolors.Normalize, np.ndarray]:
+    colors: Union[list, NDArray]
+) -> tuple[mcolors.ListedColormap, mcolors.Normalize, NDArray]:
     '''
     创建一组定性的 colormap 和 norm，同时返回刻度位置。
 
@@ -1967,10 +1950,7 @@ def plot_colormap(
 
 
 def letter_axes(
-    axes: np.ndarray,
-    x: Any,
-    y: Any,
-    **kwargs: Any,
+    axes: NDArray, x: ArrayLike, y: ArrayLike, **kwargs: Any
 ) -> list[Text]:
     '''
     给一组 Axes 按顺序标注字母
@@ -1980,11 +1960,11 @@ def letter_axes(
     axes : ndarray of Axes
         Axes 的数组
 
-    x : float or array_like
+    x : float or array_like of float
         字母的横坐标，基于 Axes 单位。
         可以为标量或数组，数组形状需与 axes 相同。
 
-    y : float or array_like
+    y : float or array_like of float
         字母的纵坐标。基于 Axes 单位。
         可以为标量或数组，数组形状需与 axes 相同。
 
@@ -2034,6 +2014,25 @@ def get_font_names(sub: Optional[str] = None) -> list[str]:
     if sub is not None:
         return [name for name in names if sub.lower() in name.lower()]
     return names
+
+
+@deprecator(add_geoms)
+def add_polygons(
+    ax: Axes,
+    polygons: Union[fshp.PolygonType, Iterable[fshp.PolygonType]],
+    crs: Optional[ccrs.CRS] = None,
+    fast_transform: bool = True,
+    skip_outside: bool = True,
+    **kwargs: Any,
+) -> fa.GeometryCollection:
+    return add_geoms(
+        ax=ax,
+        geoms=polygons,
+        crs=crs,
+        fast_transform=fast_transform,
+        skip_outside=skip_outside,
+        **kwargs,
+    )
 
 
 @deprecator(add_scale_bar)

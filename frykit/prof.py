@@ -11,7 +11,7 @@ from frykit._typing import PathType
 TimeUnits = Literal['ns', 'us', 'ms', 's', 'min']
 
 
-def _convert_seconds(seconds, unit: TimeUnits = 's') -> float:
+def _convert_seconds(seconds: float, unit: TimeUnits = 's') -> float:
     '''将时间秒数转换为其它单位'''
     if unit == 'ns':
         scale = 1e9
@@ -96,7 +96,7 @@ class Timer:
         unit: TimeUnits = 's',
         verbose: bool = True,
         fmt: Optional[str] = None,
-    ):
+    ) -> None:
         '''
         Parameters
         ----------
@@ -115,9 +115,9 @@ class Timer:
         self.unit = unit
         self.verbose = verbose
         self.fmt = fmt
-        self._t0 = None
-        self._t1 = None
-        self.dt = None
+        self._t0: Optional[float] = None
+        self._t1: Optional[float] = None
+        self.dt: Optional[float] = None
 
     def start(self) -> None:
         '''开始计时'''

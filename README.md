@@ -174,13 +174,25 @@ circle = sgeom.Point(0, 0).buffer(10)
 fplt.add_geoms(ax, circle)
 ```
 
-配合 Cartopy 的 `Reader` 画自己提供的 shapefile：
+画自己的 shapefile，用 Cartopy 的 `Reader`、PyShp 或 Fiona 读取：
 
 ```Python
 from cartopy.io.shapereader import Reader
 
 reader = Reader('2023年_CTAmap_1.12版/2023年县级/2023年县级.shp')
 fplt.add_geoms(ax, reader.geometries(), fc='none', ec='k', lw=0.25)
+```
+
+画自己的 GeoJSON，用 Shapley 做转换：
+
+```Python
+import json
+import shapely.geometry as sgeom
+
+with open('天地图_行政区划可视化/中国_省.geojson') as f:
+    geoj = json.load(f)
+geoms = [sgeom.shape(feature['geometry']) for feature in geoj['features']]
+fplt.add_geoms(ax, geoms, fc='none', ec='k', lw=0.25)
 ```
 
 通过 `array`、 `cmap` 和 `norm` 参数还能实现类似分省填色的效果（详见 [fill.py](example/fill.py)）。

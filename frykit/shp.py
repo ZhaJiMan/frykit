@@ -56,7 +56,7 @@ CtResult = Union[PolygonType, list[PolygonType], CtDict, list[CtDict]]
 DtResult = Union[PolygonType, list[PolygonType], DtDict, list[DtDict]]
 
 # 缓存多边形数据
-_data_cache: dict[str, Any] = {}
+_data_cache: dict[str, Union[BaseGeometry, list[BaseGeometry]]] = {}
 
 
 def clear_data_cache() -> None:

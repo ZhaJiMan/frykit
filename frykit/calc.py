@@ -333,7 +333,7 @@ def count_consecutive_values(
     Parameters
     ----------
     series : (n,) array_like
-        一维序列，要求 n >= 1。
+        一维序列
 
     cond : (n,) array_like of bool or callable
         筛选特定元素的条件。可以是与 series 对应的布尔数组，
@@ -352,20 +352,20 @@ def count_consecutive_values(
     series[counts >= 3] = np.nan
     '''
     series = np.asarray(series)
-    if series.ndim != 1 or len(series) == 0:
-        raise ValueError('series 应该是长度大于零的一维序列')
+    assert series.ndim == 1
 
     if callable(cond):
-        not_value_mask = ~cond(series)
-    else:
-        not_value_mask = ~np.asarray(cond)
-    assert not_value_mask.dtype == bool
+        cond = cond(series)
+    cond = np.asarray(cond, dtype=bool)
+    assert cond.shape == series.shape
 
-    value_id = np.r_[0, np.diff(not_value_mask).cumsum()] + 1
-    value_id[not_value_mask] = 0
+    if len(series) == 0:
+        return np.array([], dtype=int)
+
+    value_id = np.r_[0, np.diff(cond).cumsum()] + 1
     unique, unique_counts = np.unique(value_id, return_counts=True)
     value_counts = unique_counts[np.searchsorted(unique, value_id)]
-    value_counts[not_value_mask] = 0
+    value_counts[~cond] = 0
 
     return value_counts
 
@@ -378,6 +378,22 @@ def count_consecutive_non_positives(series: ArrayLike) -> NDArray:
 def count_consecutive_nans(series: ArrayLike) -> NDArray:
     '''统计连续出现 NaN 的次数'''
     return count_consecutive_values(series, np.isnan)
+
+
+def split_mask(mask: ArrayLike) -> list[NDArray]:
+    '''分段返回布尔数组里连续真值段落的索引'''
+    mask = np.asarray(mask, dtype=bool)
+    assert mask.ndim == 1
+
+    ii = np.nonzero(mask)[0]
+    n = len(ii)
+    if n == 0:
+        return []
+    elif n == 1:
+        return [ii]
+    else:
+        jj = np.nonzero(np.diff(ii) != 1)[0] + 1
+        return np.split(ii, jj)
 
 
 def interp_nearest_dd(

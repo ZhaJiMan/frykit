@@ -362,7 +362,7 @@ def count_consecutive_values(
     if len(series) == 0:
         return np.array([], dtype=int)
 
-    value_id = np.r_[0, np.diff(cond).cumsum()] + 1
+    value_id = np.r_[0, np.diff(cond).cumsum()]
     unique, unique_counts = np.unique(value_id, return_counts=True)
     value_counts = unique_counts[np.searchsorted(unique, value_id)]
     value_counts[~cond] = 0

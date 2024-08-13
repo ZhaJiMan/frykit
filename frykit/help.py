@@ -1,9 +1,9 @@
 import shutil
 import warnings
-from collections.abc import Iterator
-from functools import wraps
+from collections.abc import Iterable, Iterator
+from functools import partial, wraps
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Union
 
 from frykit._typing import PathType
 
@@ -72,23 +72,43 @@ class DeprecationError(Exception):
 
 
 def deprecator(
-    new_func: Optional[Callable], raise_error: bool = False
+    deprecated: Optional[Callable] = None,
+    *,
+    alternatives: Optional[Union[Callable, Iterable[Callable]]] = None,
+    raise_error: bool = False,
 ) -> Callable:
-    '''提示弃用的装饰器'''
+    '''
+    提示函数弃用的装饰器
 
-    def decorator(old_func: Callable) -> Callable:
-        info = f'{old_func.__name__} is deprecated'
-        if new_func is not None:
-            info += f', use {new_func.__name__} instead'
+    Parameters
+    ----------
+    deprecated : callable, optional
+        被弃用的函数。使用装饰器时不需要显式指定该参数。
 
-        @wraps(old_func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            if raise_error:
-                raise DeprecationError(info)
-            warnings.warn(info, DeprecationWarning, stacklevel=2)
-            result = old_func(*args, **kwargs)
-            return result
+    alternatives : callable or list of callable, optional
+        替代被弃用函数的函数。可以是 None、一个或多个函数。
 
-        return wrapper
+    raise_error: bool, optional
+        是否抛出错误。默认为 False，仅抛出警告。
+    '''
+    if deprecated is None:
+        return partial(
+            deprecator, alternatives=alternatives, raise_error=raise_error
+        )
 
-    return decorator
+    msg = f'{deprecated.__name__} 已弃用'
+    if alternatives is not None:
+        alternatives = to_list(alternatives)
+        sub = '、'.join([func.__name__ for func in alternatives])
+        sub = ' 或 '.join(sub.rsplit('、', 1))
+        msg += f'，建议换用 {sub}'
+
+    @wraps(deprecated)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        if raise_error:
+            raise DeprecationError(msg)
+        warnings.warn(msg, DeprecationWarning, stacklevel=2)
+
+        return deprecated(*args, **kwargs)
+
+    return wrapper

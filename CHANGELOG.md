@@ -1,11 +1,7 @@
 ## `0.6.6` (ongoing)
 
 - 新增 `clear_data_cache` 函数。
-- 新增统计数组元素连续出现次数的函数：
-  - `count_consecutive_values`
-  - `count_consecutive_non_positives`
-  - `count_consecutive_nans`
-- 新增对布尔数组里连续的真值进行分段的 `split_mask` 函数。
+- 新增统计布尔序列连续真值的 `count_consecutive_trues` 函数，和对连续真值进行分段的 `split_consecutive_trues` 函数。
 - `calc` 模块函数明确输入为 `array_like`，输出为 `np.ndarray`。
 - `lon_to_180` 和 `lon_to_360` 函数新增 `degrees` 参数。
 - `geom_to_path` 和 `path_to_polygon` 函数新增 `allow_empty` 参数。

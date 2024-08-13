@@ -831,11 +831,14 @@ class GeometryTransformer:
         return self._func(geom)
 
 
-@deprecator(get_cn_province, raise_error=True)
+@deprecator(
+    alternatives=[get_cn_border, get_cn_province, get_cn_city, get_cn_district],
+    raise_error=True,
+)
 def get_cn_shp():
     pass
 
 
-@deprecator(geom_to_path)
+@deprecator(alternatives=geom_to_path)
 def polygon_to_path(polygon: PolygonType) -> Path:
     return geom_to_path(polygon)

@@ -1,6 +1,6 @@
 import math
 import re
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 from functools import partial
 from typing import Any, Literal, Optional, Union
 
@@ -324,68 +324,27 @@ def region_ind(
     return ind  # type: ignore
 
 
-def count_consecutive_values(
-    series: ArrayLike, cond: Union[ArrayLike, Callable[[NDArray], NDArray]]
-) -> NDArray:
-    '''
-    统计序列中满足条件的元素连续出现的次数
-
-    Parameters
-    ----------
-    series : (n,) array_like
-        一维序列
-
-    cond : (n,) array_like of bool or callable
-        筛选特定元素的条件。可以是与 series 对应的布尔数组，
-        也可以是 callable，接受 np.asarray(series) 并返回布尔数组。
-        用法类似 DataFrame.where 的 cond 参数。
-
-    Returns
-    -------
-    value_counts : (n,) ndarray of int
-        满足条件的位置的值为元素连续出现的次数，不满足条件的位置的值为 0。
-
-    Examples
-    --------
-    series = [0, 1, 2, 0, 0, 3, 4, 5, 0, 0, 0, 6]
-    counts = count_consecutive_values(series, lambda x: x == 0)
-    series[counts >= 3] = np.nan
-    '''
-    series = np.asarray(series)
-    assert series.ndim == 1
-
-    if callable(cond):
-        cond = cond(series)
-    cond = np.asarray(cond, dtype=bool)
-    assert cond.shape == series.shape
-
-    if len(series) == 0:
+def count_consecutive_trues(mask: ArrayLike) -> NDArray:
+    '''统计布尔序列里真值连续出现的次数，返回长度相同的序列。'''
+    mask = np.asarray(mask, dtype=bool)
+    assert mask.ndim == 1
+    if len(mask) == 0:
         return np.array([], dtype=int)
 
-    value_id = np.r_[0, np.diff(cond).cumsum()]
+    value_id = np.r_[0, np.diff(mask).cumsum()]
     unique, unique_counts = np.unique(value_id, return_counts=True)
     value_counts = unique_counts[np.searchsorted(unique, value_id)]
-    value_counts[~cond] = 0
+    value_counts[~mask] = 0
 
     return value_counts
 
 
-def count_consecutive_non_positives(series: ArrayLike) -> NDArray:
-    '''统计连续出现非正数的次数'''
-    return count_consecutive_values(series, cond=lambda x: x <= 0)
-
-
-def count_consecutive_nans(series: ArrayLike) -> NDArray:
-    '''统计连续出现 NaN 的次数'''
-    return count_consecutive_values(series, np.isnan)
-
-
-def split_mask(mask: ArrayLike) -> list[NDArray]:
-    '''分段返回布尔数组里连续真值段落的索引'''
+def split_consecutive_trues(mask: ArrayLike) -> list[NDArray]:
+    '''分段返回布尔序列里连续真值段落的索引'''
     mask = np.asarray(mask, dtype=bool)
     assert mask.ndim == 1
 
-    ii = np.nonzero(mask)[0]
+    (ii,) = np.nonzero(mask)
     n = len(ii)
     if n == 0:
         return []

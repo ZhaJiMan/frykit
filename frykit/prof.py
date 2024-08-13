@@ -29,6 +29,7 @@ def _convert_seconds(seconds: float, unit: TimeUnits = 's') -> float:
     return seconds * scale
 
 
+# TODO: 仿照 %timeit 返回多次平均的时间
 def timer(
     func: Optional[Callable] = None,
     *,

@@ -2016,7 +2016,7 @@ def get_font_names(sub: Optional[str] = None) -> list[str]:
     return names
 
 
-@deprecator(add_geoms)
+@deprecator(alternatives=add_geoms)
 def add_polygons(
     ax: Axes,
     polygons: Union[fshp.PolygonType, Iterable[fshp.PolygonType]],
@@ -2035,16 +2035,16 @@ def add_polygons(
     )
 
 
-@deprecator(add_scale_bar)
+@deprecator(alternatives=add_scale_bar)
 def add_map_scale(*args, **kwargs):
     return add_scale_bar(*args, **kwargs)
 
 
-@deprecator(add_frame)
+@deprecator(alternatives=add_frame)
 def gmt_style_frame(*args, **kwargs):
     return add_frame(*args, **kwargs)
 
 
-@deprecator(add_mini_axes, raise_error=True)
+@deprecator(alternatives=add_mini_axes, raise_error=True)
 def move_axes_to_corner():
     pass

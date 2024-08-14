@@ -40,17 +40,12 @@ pip install -U frykit  # 更新
 
 ```
 python>=3.9.0
+numpy>=1.20.0
 cartopy>=0.20.0
 pandas>=1.2.0
 ```
 
-Python 版本较低时可以手动指定版本
-
-```
-pip install frykit==0.2.5
-```
-
-不过 API 跟最新版有很大区别。
+Python 版本不满足要求时可能装上 `frykit==0.2.5`，不建议使用。
 
 ## 更新记录
 

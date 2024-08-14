@@ -1,4 +1,4 @@
-## `0.6.6` (ongoing)
+## `0.6.6`
 
 - 新增 `clear_data_cache` 函数。
 - 新增统计布尔序列连续真值的 `count_consecutive_trues` 函数，和对连续真值进行分段的 `split_consecutive_trues` 函数。

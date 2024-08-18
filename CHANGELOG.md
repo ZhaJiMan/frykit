@@ -7,6 +7,7 @@
 - `geom_to_path` 和 `path_to_polygon` 函数新增 `allow_empty` 参数。
 - 修改 `add_mini_axes` 函数 `projection` 参数的默认值为 `'same'`，让 `None` 表示没有投影。
 - 将 `ScaleBar` 的基类从 `_AxesBase` 修改为 `Axes`。
+- 增强 `deprecator` 装饰器，`alternatives` 参数能接受多个函数。
 - 修正一些函数的类型提示，提高 NumPy 的版本要求为 `>=1.20.0`。
 
 ## `0.6.5`

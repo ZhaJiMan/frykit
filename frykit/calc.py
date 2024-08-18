@@ -332,8 +332,8 @@ def count_consecutive_trues(mask: ArrayLike) -> NDArray:
         return np.array([], dtype=int)
 
     value_id = np.r_[0, np.diff(mask).cumsum()]
-    unique, unique_counts = np.unique(value_id, return_counts=True)
-    value_counts = unique_counts[np.searchsorted(unique, value_id)]
+    _, unique_counts = np.unique(value_id, return_counts=True)
+    value_counts = unique_counts[value_id]
     value_counts[~mask] = 0
 
     return value_counts

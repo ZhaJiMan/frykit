@@ -12,7 +12,6 @@ from cartopy.mpl.feature_artist import _GeomKey
 from cartopy.mpl.geoaxes import GeoAxes
 from matplotlib.artist import Artist, allow_rasterization
 from matplotlib.axes._axes import Axes
-from matplotlib.axes._base import _AxesBase
 from matplotlib.backend_bases import RendererBase
 from matplotlib.cbook import normalize_kwargs
 from matplotlib.collections import PathCollection
@@ -457,7 +456,7 @@ class Compass(PathCollection):
         super().draw(renderer)
 
 
-class ScaleBar(_AxesBase):
+class ScaleBar(Axes):
     '''地图比例尺'''
 
     def __init__(

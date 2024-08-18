@@ -1,5 +1,6 @@
 import math
 from collections.abc import Collection, Iterable
+from functools import wraps
 from typing import Any, Literal, Optional, Union
 
 import cartopy.crs as ccrs
@@ -1091,7 +1092,7 @@ def _set_axes_ticks(
     ax.yaxis.set_major_formatter(yformatter)
 
     if extents is None:
-        extents = [-180, 180, -90, 90]
+        extents = (-180, 180, -90, 90)
     x0, x1, y0, y1 = extents
     ax.set_xlim(x0, x1)
     ax.set_ylim(y0, y1)
@@ -1391,7 +1392,7 @@ def quick_cn_map(
         表示地图的 Axes
     '''
     if extents is None:
-        extents = [70, 140, 10, 60]
+        extents = (70, 140, 10, 60)
     fig = plt.figure(figsize=figsize)
     if use_geoaxes:
         ax = fig.add_subplot(projection=PLATE_CARREE)
@@ -1575,6 +1576,7 @@ def add_frame(ax: Axes, width: float = 5, **kwargs: Any) -> fa.Frame:
     ----------
     ax : Axes
         目标 Axes。仅支持 PlateCarree 和 Mercator 投影的 GeoAxes。
+        若 ax 是 ScaleBar, 只会添加 top 边框。
 
     width : float, optional
         边框的宽度。单位为点，默认为 5。
@@ -1647,7 +1649,7 @@ def add_mini_axes(
     loc: Literal[
         'lower left', 'lower right', 'upper left', 'upper right'
     ] = 'lower right',
-    projection: Optional[ccrs.CRS] = None,
+    projection: Union[Literal['same', None], ccrs.CRS] = 'same',
 ) -> Axes:
     '''
     在 Axes 的角落添加一个迷你 Axes 并返回
@@ -1667,21 +1669,22 @@ def add_mini_axes(
         指定放置在哪个角落。默认为 'lower right'。
 
     projection : CRS, optional
-        新 Axes 的投影。默认为 None，表示沿用 ax 的投影。
+        新 Axes 的投影。默认为 'same'，表示沿用 ax 的投影。
+        如果是 None，表示没有投影。
 
     Returns
     -------
     new_ax : Axes
         新的迷你 Axes
     '''
-    if projection is None:
-        if isinstance(ax, GeoAxes):
-            projection = ax.projection
+    if projection == 'same':
+        projection = getattr(ax, 'projection', None)
     new_ax = ax.figure.add_subplot(projection=projection)
     new_ax.set_aspect(aspect)
     draw = new_ax.draw
 
-    def new_draw(renderer: RendererBase) -> None:
+    @wraps(draw)
+    def wrapper(renderer: RendererBase) -> None:
         '''在原先的 draw 前调整 new_ax 的大小位置'''
         bbox = ax.get_position()
         new_bbox = new_ax.get_position()
@@ -1722,7 +1725,7 @@ def add_mini_axes(
         new_ax.set_position(new_bbox)
         draw(renderer)
 
-    new_ax.draw = new_draw
+    new_ax.draw = wrapper
 
     return new_ax
 

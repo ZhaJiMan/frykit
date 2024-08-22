@@ -60,7 +60,7 @@ def add_geoms(
     fast_transform: bool = True,
     skip_outside: bool = True,
     **kwargs: Any,
-) -> fa.GeometryCollection:
+) -> fa.GeomCollection:
     '''
     将几何对象添加到 Axes 上
 
@@ -92,7 +92,7 @@ def add_geoms(
 
     Returns
     -------
-    col : GeometryCollection
+    col : GeomCollection
         表示几何对象的集合对象
     '''
     if fshp.is_geometry(geoms):
@@ -100,7 +100,7 @@ def add_geoms(
     else:
         geoms = list(geoms)
 
-    return fa.GeometryCollection(
+    return fa.GeomCollection(
         ax=ax,
         geoms=geoms,
         crs=crs,
@@ -236,7 +236,7 @@ def add_cn_border(
     fast_transform: bool = True,
     skip_outside: bool = True,
     **kwargs: Any,
-) -> fa.GeometryCollection:
+) -> fa.GeomCollection:
     '''
     在 Axes 上添加中国国界
 
@@ -258,7 +258,7 @@ def add_cn_border(
 
     Returns
     -------
-    col : GeometryCollection
+    col : GeomCollection
         表示国界的集合对象
     '''
     return add_geoms(
@@ -275,7 +275,7 @@ def add_nine_line(
     fast_transform: bool = True,
     skip_outside: bool = True,
     **kwargs: Any,
-) -> fa.GeometryCollection:
+) -> fa.GeomCollection:
     '''
     在 Axes 上添加九段线
 
@@ -297,7 +297,7 @@ def add_nine_line(
 
     Returns
     -------
-    col : GeometryCollection
+    col : GeomCollection
         表示九段线的集合对象
     '''
     return add_geoms(
@@ -315,7 +315,7 @@ def add_cn_province(
     fast_transform: bool = True,
     skip_outside: bool = True,
     **kwargs: Any,
-) -> fa.GeometryCollection:
+) -> fa.GeomCollection:
     '''
     在 Axes 上添加中国省界
 
@@ -341,7 +341,7 @@ def add_cn_province(
 
     Returns
     -------
-    col : GeometryCollection
+    col : GeomCollection
         表示省界的集合对象
     '''
     return add_geoms(
@@ -360,7 +360,7 @@ def add_cn_city(
     fast_transform: bool = True,
     skip_outside: bool = True,
     **kwargs: Any,
-) -> fa.GeometryCollection:
+) -> fa.GeomCollection:
     '''
     在 Axes 上添加中国市界
 
@@ -390,7 +390,7 @@ def add_cn_city(
 
     Returns
     -------
-    col : GeometryCollection
+    col : GeomCollection
         表示市界的集合对象
     '''
     return add_geoms(
@@ -410,7 +410,7 @@ def add_cn_district(
     fast_transform: bool = True,
     skip_outside: bool = True,
     **kwargs: Any,
-) -> fa.GeometryCollection:
+) -> fa.GeomCollection:
     '''
     在 Axes 上添加中国县界
 
@@ -444,7 +444,7 @@ def add_cn_district(
 
     Returns
     -------
-    col : GeometryCollection
+    col : GeomCollection
         表示县界的集合对象
     '''
     return add_geoms(
@@ -461,7 +461,7 @@ def add_countries(
     fast_transform: bool = True,
     skip_outside: bool = True,
     **kwargs: Any,
-) -> fa.GeometryCollection:
+) -> fa.GeomCollection:
     '''
     在 Axes 上添加所有国家的国界
 
@@ -485,7 +485,7 @@ def add_countries(
 
     Returns
     -------
-    col : GeometryCollection
+    col : GeomCollection
         表示国界的集合对象
     '''
     return add_geoms(
@@ -502,7 +502,7 @@ def add_land(
     fast_transform: bool = True,
     skip_outside: bool = True,
     **kwargs: Any,
-) -> fa.GeometryCollection:
+) -> fa.GeomCollection:
     '''
     在 Axes 上添加陆地
 
@@ -526,7 +526,7 @@ def add_land(
 
     Returns
     -------
-    col : GeometryCollection
+    col : GeomCollection
         表示陆地的集合对象
     '''
     return add_geoms(
@@ -543,7 +543,7 @@ def add_ocean(
     fast_transform: bool = True,
     skip_outside: bool = True,
     **kwargs: Any,
-) -> fa.GeometryCollection:
+) -> fa.GeomCollection:
     '''
     在 Axes 上添加海洋
 
@@ -567,7 +567,7 @@ def add_ocean(
 
     Returns
     -------
-    col : GeometryCollection
+    col : GeomCollection
         表示海洋的集合对象
     '''
     return add_geoms(
@@ -2020,22 +2020,8 @@ def get_font_names(sub: Optional[str] = None) -> list[str]:
 
 
 @deprecator(alternatives=add_geoms)
-def add_polygons(
-    ax: Axes,
-    polygons: Union[fshp.PolygonType, Iterable[fshp.PolygonType]],
-    crs: Optional[ccrs.CRS] = None,
-    fast_transform: bool = True,
-    skip_outside: bool = True,
-    **kwargs: Any,
-) -> fa.GeometryCollection:
-    return add_geoms(
-        ax=ax,
-        geoms=polygons,
-        crs=crs,
-        fast_transform=fast_transform,
-        skip_outside=skip_outside,
-        **kwargs,
-    )
+def add_polygons(*args, **kwargs):
+    return add_geoms(*args, **kwargs)
 
 
 @deprecator(alternatives=add_scale_bar)

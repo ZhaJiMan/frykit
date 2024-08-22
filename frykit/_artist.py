@@ -103,7 +103,7 @@ def _geoms_extents(
 
 
 # TODO：类持有对几何对象的引用，会存在问题吗？
-class GeometryCollection(PathCollection):
+class GeomCollection(PathCollection):
     '''投影并绘制多边形对象的 Collection 类'''
 
     def __init__(

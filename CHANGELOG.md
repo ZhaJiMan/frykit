@@ -1,6 +1,7 @@
 ## `0.7.0` (ongoing)
 
-- 修正 `GeometryCollection` 处理空几何对象时的错误。
+- `_artist.GeometryCollection` 改名为 `GeomCollection`，避免和 Shapely 的同名类撞名。
+- 修正 `GeomCollection` 处理空几何对象时的错误。
 - 移除 `Timer` 类，建议直接用 `time.time` 函数。
 - 修改 `timer` 装饰器的用法，使被包装的函数返回测量时间。
 

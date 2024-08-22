@@ -89,14 +89,17 @@ def _transform_geoms_to_paths(
 def _geoms_extents(
     geoms: Iterable[BaseGeometry],
 ) -> tuple[float, float, float, float]:
-    '''返回一组几何对象的边界范围'''
-    bounds = np.array([geom.bounds for geom in geoms])
-    x0 = bounds[:, 0].min()
-    x1 = bounds[:, 2].max()
-    y0 = bounds[:, 1].min()
-    y1 = bounds[:, 3].max()
-
-    return x0, x1, y0, y1
+    '''返回一组几何对象的边界范围。全部为空对象时返回 NaN。'''
+    bounds = [geom.bounds for geom in geoms if not geom.is_empty]
+    if bounds:
+        bounds = np.array(bounds)
+        x0 = bounds[:, 0].min()
+        x1 = bounds[:, 2].max()
+        y0 = bounds[:, 1].min()
+        y1 = bounds[:, 3].max()
+        return x0, x1, y0, y1
+    else:
+        return (np.nan,) * 4
 
 
 # TODO：类持有对几何对象的引用，会存在问题吗？
@@ -131,18 +134,19 @@ class GeometryCollection(PathCollection):
                 raise ValueError('ax 不是 GeoAxes 时 crs 只能为 None')
             self.geoms_to_paths = _geoms_to_paths
 
-        # 初始化 paths，以触发 autoscale
+        # 尝试用椭圆作为初始化的 paths
+        paths = []
         if ax.get_autoscale_on():
-            x0, x1, y0, y1 = _geoms_extents(self.geoms)
-            x = (x0 + x1) / 2
-            y = (y0 + y1) / 2
-            a = (x1 - x0) / 2
-            b = (y1 - y0) / 2
-            verts = make_ellipse(x, y, a, b)
-            ellipse = sgeom.Polygon(verts)
-            paths = self.geoms_to_paths([ellipse])
-        else:
-            paths = []
+            extents = _geoms_extents(self.geoms)
+            if not np.isnan(extents).any():
+                x0, x1, y0, y1 = extents
+                x = (x0 + x1) / 2
+                y = (y0 + y1) / 2
+                a = (x1 - x0) / 2
+                b = (y1 - y0) / 2
+                verts = make_ellipse(x, y, a, b)
+                ellipse = sgeom.Polygon(verts)
+                paths = self.geoms_to_paths([ellipse])
 
         super().__init__(paths, **kwargs)
         ax.add_collection(self)

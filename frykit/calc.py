@@ -41,7 +41,6 @@ def lon_to_360(lon: ArrayLike, degrees: bool = True) -> NDArray:
 def month_to_season(month: ArrayLike) -> NDArray:
     '''将月份换算为季节。月份用 [1, 12] 表示，季节用 [1, 4] 表示。'''
     month = np.asarray(month)
-    assert issubclass(month.dtype.type, np.integer)
     return (month - 3) % 12 // 3 + 1
 
 
@@ -327,7 +326,8 @@ def region_ind(
 def count_consecutive_trues(mask: ArrayLike) -> NDArray:
     '''统计布尔序列里真值连续出现的次数，返回长度相同的序列。'''
     mask = np.asarray(mask, dtype=bool)
-    assert mask.ndim == 1
+    if mask.ndim != 1:
+        raise ValueError('mask 只能是一维数组')
     if len(mask) == 0:
         return np.array([], dtype=int)
 
@@ -342,7 +342,8 @@ def count_consecutive_trues(mask: ArrayLike) -> NDArray:
 def split_consecutive_trues(mask: ArrayLike) -> list[NDArray]:
     '''分段返回布尔序列里连续真值段落的索引'''
     mask = np.asarray(mask, dtype=bool)
-    assert mask.ndim == 1
+    if mask.ndim != 1:
+        raise ValueError('mask 只能是一维数组')
 
     (ii,) = np.nonzero(mask)
     n = len(ii)

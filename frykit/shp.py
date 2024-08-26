@@ -523,7 +523,7 @@ def _ring_codes(coords: Sized) -> list[np.uint8]:
 
 
 # 用于占位的 Path，不会被画出。
-PLACEHOLDER_PATH = Path(np.zeros((0, 2)))
+PLACEHOLDER_PATH = Path(np.empty((0, 2)))
 
 
 def geom_to_path(geom: BaseGeometry, allow_empty: bool = True) -> Path:

@@ -1,6 +1,6 @@
 '''运行example目录下的所有脚本'''
 
-# TODO：换用 pytest
+# TODO: 换用 pytest
 import subprocess
 from pathlib import Path
 

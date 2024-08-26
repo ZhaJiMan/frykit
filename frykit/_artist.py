@@ -86,10 +86,10 @@ def _transform_geoms_to_paths(
     return paths
 
 
-def _geoms_extents(
+def _get_geoms_extents(
     geoms: Iterable[BaseGeometry],
-) -> tuple[float, float, float, float]:
-    '''返回一组几何对象的边界范围。全部为空对象时返回 NaN。'''
+) -> Optional[tuple[float, float, float, float]]:
+    '''返回一组几何对象的边界范围。全部为空对象时返回 None。'''
     bounds = [geom.bounds for geom in geoms if not geom.is_empty]
     if bounds:
         bounds = np.array(bounds)
@@ -99,10 +99,10 @@ def _geoms_extents(
         y1 = bounds[:, 3].max()
         return x0, x1, y0, y1
     else:
-        return (np.nan,) * 4
+        return None
 
 
-# TODO：类持有对几何对象的引用，会存在问题吗？
+# TODO: 类持有对几何对象的引用，会存在问题吗？
 class GeomCollection(PathCollection):
     '''投影并绘制多边形对象的 Collection 类'''
 
@@ -116,14 +116,15 @@ class GeomCollection(PathCollection):
         **kwargs: Any,
     ) -> None:
         self.geoms = geoms
-        self.crs = crs
         self.fast_transform = fast_transform
         self.skip_outside = skip_outside
 
-        if isinstance(ax, GeoAxes):
+        self.crs = crs
+        self._on_geoaxes = isinstance(ax, GeoAxes)
+        if self._on_geoaxes:
             if self.crs is None:
                 self.crs = PLATE_CARREE
-            self.geoms_to_paths = partial(
+            self._geoms_to_paths = partial(
                 _transform_geoms_to_paths,
                 crs_from=self.crs,
                 crs_to=ax.projection,
@@ -132,21 +133,25 @@ class GeomCollection(PathCollection):
         else:
             if self.crs is not None:
                 raise ValueError('ax 不是 GeoAxes 时 crs 只能为 None')
-            self.geoms_to_paths = _geoms_to_paths
+            self._geoms_to_paths = _geoms_to_paths
 
         # 尝试用椭圆作为初始化的 paths
         paths = []
         if ax.get_autoscale_on():
-            extents = _geoms_extents(self.geoms)
-            if not np.isnan(extents).any():
-                x0, x1, y0, y1 = extents
-                x = (x0 + x1) / 2
-                y = (y0 + y1) / 2
-                a = (x1 - x0) / 2
-                b = (y1 - y0) / 2
-                verts = make_ellipse(x, y, a, b)
-                ellipse = sgeom.Polygon(verts)
-                paths = self.geoms_to_paths([ellipse])
+            extents = _get_geoms_extents(self.geoms)
+            if extents is not None:
+                if self._on_geoaxes:
+                    x0, x1, y0, y1 = extents
+                    x = (x0 + x1) / 2
+                    y = (y0 + y1) / 2
+                    a = (x1 - x0) / 2
+                    b = (y1 - y0) / 2
+                    verts = make_ellipse(x, y, a, b, ccw=False)
+                    ellipse = sgeom.Polygon(verts)
+                    paths = self._geoms_to_paths([ellipse])
+                else:
+                    extent_path = fshp.box_path(*extents)
+                    paths = [extent_path]
 
         super().__init__(paths, **kwargs)
         ax.add_collection(self)
@@ -159,32 +164,32 @@ class GeomCollection(PathCollection):
 
         if self.skip_outside:
             # x0 == x1 == y0 == y1 也 OK
-            if isinstance(self.axes, GeoAxes):
+            if self._on_geoaxes:
                 x0, x1, y0, y1 = self.axes.get_extent(self.crs)
             else:
                 x0, x1 = sorted(self.axes.get_xlim())
                 y0, y1 = sorted(self.axes.get_ylim())
-            extent_box = sgeom.box(x0, y0, x1, y1)
+            extent_polygon = sgeom.box(x0, y0, x1, y1)
 
             # 1 对应与边框有交点的多边形，需要做投影
             # 2 对应无交点的多边形，直接用占位符 Path 替代
             geom_dict1 = {}
             geom_dict2 = {}
             for i, geom in enumerate(self.geoms):
-                if extent_box.intersects(geom):
+                if extent_polygon.intersects(geom):
                     geom_dict1[i] = geom
                 else:
                     geom_dict2[i] = geom
 
             # 利用字典的有序性
-            paths1 = self.geoms_to_paths(geom_dict1.values())
+            paths1 = self._geoms_to_paths(geom_dict1.values())
             paths2 = [fshp.PLACEHOLDER_PATH] * len(geom_dict2)
             path_dict1 = dict(zip(geom_dict1.keys(), paths1))
             path_dict2 = dict(zip(geom_dict2.keys(), paths2))
             path_dict = path_dict1 | path_dict2
             paths = [path for _, path in sorted(path_dict.items())]
         else:
-            paths = self.geoms_to_paths(self.geoms)
+            paths = self._geoms_to_paths(self.geoms)
 
         self.set_paths(paths)
         super().draw(renderer)
@@ -226,10 +231,11 @@ class TextCollection(Artist):
         for text in self.texts:
             text.set_figure(fig)
 
-    def _clip_texts(self, polygon: fshp.PolygonType) -> None:
+    def _set_clip_polygon(self, polygon: fshp.PolygonType) -> None:
         # 要求 polygon 基于 data 坐标系
         trans = self.get_transform() - self.axes.transData
         coords = trans.transform(self.coords)
+        # contains 不包含落在边界上的点
         mask = contains(polygon, coords[:, 0], coords[:, 1])
         for i in np.nonzero(~mask)[0]:
             self.texts[i].set_visible(False)
@@ -239,10 +245,10 @@ class TextCollection(Artist):
             return None
 
         # 不画出坐标在边框外的 Text
-        x0, x1 = self.axes.get_xlim()
-        y0, y1 = self.axes.get_ylim()
-        extent_box = sgeom.box(x0, y0, x1, y1)
-        self._clip_texts(extent_box)
+        x0, x1 = sorted(self.axes.get_xlim())
+        y0, y1 = sorted(self.axes.get_ylim())
+        extent_polygon = sgeom.box(x0, y0, x1, y1)
+        self._set_clip_polygon(extent_polygon)
 
     @allow_rasterization
     def draw(self, renderer: RendererBase) -> None:
@@ -394,7 +400,6 @@ class Compass(PathCollection):
         pc_kwargs.setdefault('facecolor', colors)
         pc_kwargs.setdefault('clip_on', False)
         pc_kwargs.setdefault('zorder', 5)
-        # 当 pc_kwargs 中也有transform 时会报错
         super().__init__(paths, transform=None, **pc_kwargs)
 
         # 文字在箭头上方

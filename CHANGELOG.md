@@ -1,9 +1,14 @@
-## `0.7.0` (ongoing)
+## `0.6.7`
 
-- `_artist.GeometryCollection` 改名为 `GeomCollection`，避免和 Shapely 的同名类撞名。
-- 修正 `GeomCollection` 处理空几何对象时的错误。
-- 移除 `Timer` 类，建议直接用 `time.time` 函数。
+- 对 `_artist.GeometryCollection` 类的修改：
+  - 更名为 `GeomCollection`，避免跟 Shapely 的同名类撞名。
+  - 修正接受空几何对象时的错误。
+- 对 `set_map_ticks` 函数的修改：
+  - `extents` 参数的默认值从 `None` 改为 `'global'`，明确全球范围之意。
+  - 只画出落入 `extents` 范围内的刻度，避免范围外刻度太多影响速度。
+  - 主刻度无序时能先排序再生成次刻度。
 - 修改 `timer` 装饰器的用法，使被包装的函数返回测量时间。
+- 移除 `Timer` 类，建议直接用 `time.time` 函数。
 
 ## `0.6.6`
 

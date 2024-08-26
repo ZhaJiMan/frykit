@@ -37,6 +37,7 @@ from shapely.prepared import prep
 import frykit._artist as fa
 import frykit.shp as fshp
 from frykit import DATA_DIRPATH
+from frykit.calc import lon_to_180
 from frykit.help import deprecator, to_list
 
 # 等经纬度投影
@@ -75,9 +76,9 @@ def add_geoms(
         一个或一组几何对象
 
     crs : CRS, optional
-        当 ax 是 Axes 时 crs 只能为 None。
-        当 ax 是 GeoAxes 时会将几何对象从 crs 坐标系变换到 ax 的坐标系上。
-        默认为 None，表示 PlateCarree。
+        当 ax 是 Axes 时 crs 只能为 None，表示不做变换。
+        当 ax 是 GeoAxes 时会将 geoms 从 crs 坐标系变换到 ax.projection 坐标系上。
+        此时默认值 None 表示 PlateCarree。
 
     fast_transform : bool, optional
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
@@ -110,7 +111,7 @@ def add_geoms(
     )
 
 
-def _get_boundary(ax: GeoAxes) -> sgeom.Polygon:
+def _get_geoaxes_boundary(ax: GeoAxes) -> sgeom.Polygon:
     '''将 GeoAxes.patch 转为 data 坐标系里的多边形'''
     patch = ax.patch
     patch._adjust_location()
@@ -121,10 +122,15 @@ def _get_boundary(ax: GeoAxes) -> sgeom.Polygon:
     return boundary
 
 
-# TODO
-# - 没有 axes 属性的 Artist
-# - 严格防文字出界的方案：fig.canvas.draw + t.get_window_extent
-# - streamplot 的返回值不能用来裁剪箭头
+'''TODO
+- 受 xlim 和 ylim 影响的情况：
+  - strict=True
+  - Text 和 TextCollection
+- 严格防文字出界的方案：fig.canvas.draw + t.get_window_extent
+- streamplot 返回值里的箭头无法裁剪
+'''
+
+
 def clip_by_polygon(
     artist: Union[Artist, Iterable[Artist]],
     polygon: Union[fshp.PolygonType, Collection[fshp.PolygonType]],
@@ -150,9 +156,9 @@ def clip_by_polygon(
         用于裁剪的一个或一组多边形
 
     crs : CRS, optional
-        当 ax 是 Axes 时 crs 只能为 None。
-        当 ax 是 GeoAxes 时会将多边形从 crs 坐标系变换到 ax 的坐标系上。
-        默认为 None，表示 PlateCarree。
+        当 ax 是 Axes 时 crs 只能为 None，表示不做变换。
+        当 ax 是 GeoAxes 时会将 geoms 从 crs 坐标系变换到 ax.projection 坐标系上。
+        此时默认值 None 表示 PlateCarree。
 
     ax : Axes, optional
         artist 所在的 Axes。默认为 None，表示采用 artist.axes。
@@ -167,10 +173,13 @@ def clip_by_polygon(
     '''
     artists = []
     for a in to_list(artist):
-        if isinstance(a, ContourSet) and mpl.__version__ < '3.8.0':
-            artists.extend(a.collections)
-        else:
+        if isinstance(a, Artist):
             artists.append(a)
+        else:
+            if isinstance(a, ContourSet):  # MPL < 3.8.x
+                artists.extend(a.collections)
+            else:
+                raise TypeError(f'{a} 不是 Artist')
 
     # 推测 ax
     if ax is None:
@@ -197,7 +206,7 @@ def clip_by_polygon(
         )
         polygon = fshp.path_to_polygon(path)
         if strict:
-            boudnary = _get_boundary(ax)
+            boudnary = _get_geoaxes_boundary(ax)
             polygon = polygon & boudnary
             path = fshp.geom_to_path(polygon)
     else:
@@ -215,7 +224,7 @@ def clip_by_polygon(
             if not prepared.contains(sgeom.Point(coords)):
                 a.set_visible(False)
         elif isinstance(a, fa.TextCollection):
-            a._clip_texts(polygon)
+            a._set_clip_polygon(polygon)
         else:
             a.set_clip_path(path, ax.transData)
 
@@ -1075,7 +1084,7 @@ def label_cn_district(
 
 def _set_axes_ticks(
     ax: Axes,
-    extents: Optional[tuple[float, float, float, float]],
+    extents: Union[tuple[float, float, float, float], Literal['global']],
     major_xticks: NDArray,
     major_yticks: NDArray,
     minor_xticks: NDArray,
@@ -1083,7 +1092,18 @@ def _set_axes_ticks(
     xformatter: Formatter,
     yformatter: Formatter,
 ) -> None:
-    '''设置PlateCarree投影的Axes的范围和刻度'''
+    '''设置 PlateCarree 投影的 Axes 的范围和刻度'''
+    if extents == 'global':
+        extents = (-180, 180, -90, 90)
+    lon0, lon1, lat0, lat1 = extents
+    ax.set_xlim(lon0, lon1)
+    ax.set_ylim(lat0, lat1)
+
+    major_xticks = _get_ticks_in(major_xticks, lon0, lon1)
+    major_yticks = _get_ticks_in(major_yticks, lat0, lat1)
+    minor_xticks = _get_ticks_in(minor_xticks, lon0, lon1)
+    minor_yticks = _get_ticks_in(minor_yticks, lat0, lat1)
+
     ax.set_xticks(major_xticks, minor=False)
     ax.set_yticks(major_yticks, minor=False)
     ax.set_xticks(minor_xticks, minor=True)
@@ -1091,16 +1111,10 @@ def _set_axes_ticks(
     ax.xaxis.set_major_formatter(xformatter)
     ax.yaxis.set_major_formatter(yformatter)
 
-    if extents is None:
-        extents = (-180, 180, -90, 90)
-    x0, x1, y0, y1 = extents
-    ax.set_xlim(x0, x1)
-    ax.set_ylim(y0, y1)
-
 
 def _set_simple_geoaxes_ticks(
     ax: GeoAxes,
-    extents: Optional[tuple[float, float, float, float]],
+    extents: Union[tuple[float, float, float, float], Literal['global']],
     major_xticks: NDArray,
     major_yticks: NDArray,
     minor_xticks: NDArray,
@@ -1108,8 +1122,27 @@ def _set_simple_geoaxes_ticks(
     xformatter: Formatter,
     yformatter: Formatter,
 ) -> None:
-    '''设置简单投影的GeoAxes的范围和刻度'''
+    '''设置简单投影的 GeoAxes 的范围和刻度'''
     crs = PLATE_CARREE
+    if extents == 'global':
+        ax.set_global()
+        lat0, lat1 = -90, 90
+        if isinstance(ax.projection, ccrs.Mercator):
+            lat0, lat1 = crs.transform_points(
+                ax.projection,
+                np.array(ax.projection.x_limits),
+                np.array(ax.projection.y_limits),
+            )[:, 1]
+        extents = (-180, 180, lat0, lat1)
+    else:
+        ax.set_extent(extents, crs=crs)
+
+    lon0, lon1, lat0, lat1 = extents
+    major_xticks = _get_ticks_in(major_xticks, lon0, lon1)
+    major_yticks = _get_ticks_in(major_yticks, lat0, lat1)
+    minor_xticks = _get_ticks_in(minor_xticks, lon0, lon1)
+    minor_yticks = _get_ticks_in(minor_yticks, lat0, lat1)
+
     ax.set_xticks(major_xticks, minor=False, crs=crs)
     ax.set_yticks(major_yticks, minor=False, crs=crs)
     ax.set_xticks(minor_xticks, minor=True, crs=crs)
@@ -1117,15 +1150,11 @@ def _set_simple_geoaxes_ticks(
     ax.xaxis.set_major_formatter(xformatter)
     ax.yaxis.set_major_formatter(yformatter)
 
-    if extents is None:
-        ax.set_global()
-    else:
-        ax.set_extent(extents, crs)
 
-
+# TODO: 那可太多了……
 def _set_complex_geoaxes_ticks(
     ax: GeoAxes,
-    extents: tuple[float, float, float, float],
+    extents: Union[tuple[float, float, float, float], Literal['global']],
     major_xticks: NDArray,
     major_yticks: NDArray,
     minor_xticks: NDArray,
@@ -1133,32 +1162,33 @@ def _set_complex_geoaxes_ticks(
     xformatter: Formatter,
     yformatter: Formatter,
 ) -> None:
-    '''设置复杂投影的GeoAxes的范围和刻度'''
+    '''设置复杂投影的 GeoAxes 的范围和刻度'''
     # 将地图边框设置为矩形
     crs = PLATE_CARREE
-    if extents is None:
+    if extents == 'global':
         proj_type = str(type(ax.projection)).split("'")[1].split('.')[-1]
-        raise ValueError(f'{proj_type} 投影里 extents 不能为 None')
-    ax.set_extent(extents, crs)
+        raise ValueError(f"使用 {proj_type} 投影时必须设置 extents 范围")
+    ax.set_extent(extents, crs=crs)
 
-    eps = 1
-    npts = 100
+    # 获取新的经纬度范围
     x0, x1 = ax.get_xlim()
     y0, y1 = ax.get_ylim()
     lon0, lon1, lat0, lat1 = ax.get_extent(crs)
-    lon0 -= eps
-    lon1 += eps
-    lat0 -= eps
-    lat1 += eps
+    # get_extent 存在点数偏少的问题，需要用 eps 扩张。
+    eps = 1  # 但是取多少好？
+    lon0 = max(-180, lon0 - eps)
+    lon1 = min(180, lon1 + eps)
+    lat0 = max(-90, lat0 - eps)
+    lat1 = min(90, lat1 + eps)
 
-    # 在 data 坐标系用 LineString 表示地图边框四条边长
+    # 在 data 坐标系用 LineString 表示地图边框的四条边
     lineB = sgeom.LineString([(x0, y0), (x1, y0)])
     lineT = sgeom.LineString([(x0, y1), (x1, y1)])
     lineL = sgeom.LineString([(x0, y0), (x0, y1)])
     lineR = sgeom.LineString([(x1, y0), (x1, y1)])
 
     def get_two_xticks(
-        xticks: NDArray,
+        xticks: NDArray, npts: int = 100
     ) -> tuple[list[float], list[float], list[str], list[str]]:
         '''获取地图上下边框的 x 刻度和刻度标签'''
         xticksB = []
@@ -1166,7 +1196,8 @@ def _set_complex_geoaxes_ticks(
         xticklabelsB = []
         xticklabelsT = []
         lats = np.linspace(lat0, lat1, npts)
-        xticks = xticks[(xticks >= lon0) & (xticks <= lon1)]
+        xticks = lon_to_180(xticks)
+        xticks = _get_ticks_in(xticks, lon0, lon1)
         for xtick in xticks:
             lons = np.full_like(lats, xtick)
             lon_line = sgeom.LineString(np.c_[lons, lats])
@@ -1183,7 +1214,7 @@ def _set_complex_geoaxes_ticks(
         return xticksB, xticksT, xticklabelsB, xticklabelsT
 
     def get_two_yticks(
-        yticks: NDArray,
+        yticks: NDArray, npts: int = 100
     ) -> tuple[list[float], list[float], list[str], list[str]]:
         '''获取地图左右边框的 y 刻度和刻度标签'''
         yticksL = []
@@ -1191,7 +1222,7 @@ def _set_complex_geoaxes_ticks(
         yticklabelsL = []
         yticklabelsR = []
         lons = np.linspace(lon0, lon1, npts)
-        yticks = yticks[(yticks >= lat0) & (yticks <= lat1)]
+        yticks = _get_ticks_in(yticks, lat0, lat1)
         for ytick in yticks:
             lats = np.full_like(lons, ytick)
             lat_line = sgeom.LineString(np.c_[lons, lats])
@@ -1250,24 +1281,33 @@ def _set_complex_geoaxes_ticks(
         tick.tick1line.set_alpha(0)
 
 
+# TODO: 浮点数精度问题
+def _get_ticks_in(ticks: NDArray, vmin: float, vmax: float) -> NDArray:
+    '''获取 v0 <= ticks <= v1 的刻度'''
+    return ticks[(ticks >= vmin) & (ticks <= vmax)]
+
+
 def _interp_minor_ticks(major_ticks: NDArray, m: int) -> NDArray:
     '''在主刻度的每段间隔内线性插值出 m 个次刻度'''
+    assert m >= 0
     n = len(major_ticks)
-    if n == 0 or m <= 0:
+    if n <= 1 or m == 0:
         return np.array([])
 
     L = n + (n - 1) * m
-    x = np.array([i for i in range(L) if i % (m + 1) > 0]) / (L - 1)
+    x = np.array([i for i in range(L) if i % (m + 1)]) / (L - 1)
     xp = np.linspace(0, 1, n)
+    major_ticks = np.sort(major_ticks)
     minor_ticks = np.interp(x, xp, major_ticks)
 
     return minor_ticks
 
 
-# TODO: extents=None 时怎么处理比较合适
 def set_map_ticks(
     ax: Axes,
-    extents: Optional[tuple[float, float, float, float]] = None,
+    extents: Union[
+        tuple[float, float, float, float], Literal['global']
+    ] = 'global',
     xticks: Optional[ArrayLike] = None,
     yticks: Optional[ArrayLike] = None,
     *,
@@ -1282,30 +1322,33 @@ def set_map_ticks(
     设置地图的范围和刻度
 
     当 ax 是普通 Axes 时，认为其投影为PlateCarree()。
-    当 ax 是 GeoAxes 时，如果效果有误，建议换用 GeoAxes.gridlines。
+    当 ax 是 GeoAxes 时，如果 ax 的边框不是矩形或跨越了日界线，很可能产生错误的结果。
+    此时建议换用 GeoAxes.gridlines。
 
     Parameters
     ----------
     ax : Axes
         目标 Axes
 
-    extents : (4,) tuple of float, optional
-        经纬度范围 [lon0, lon1, lat0, lat1]。默认为 None，表示显示全球。
-        当 GeoAxes 的投影不是 PlateCarree 或 Mercator 时 extents 不能为 None。
+    extents : (4,) tuple of float or {'global'}, optional
+        经纬度范围 [lon0, lon1, lat0, lat1]。默认为 'global'，表示显示全球。
+        当 GeoAxes 的投影不是 PlateCarree 或 Mercator 时 extents 不能为 'global'。
 
     xticks : array_like, optional
-        x 轴主刻度的坐标，单位为经度。默认为 None，表示使用 dx 参数。
+        x 轴主刻度的坐标，单位为经度。
+        默认为 None，表示不直接给出，而是根据 dx 自动决定。
 
     yticks : array_like, optional
-        y 轴主刻度的坐标，单位为纬度。默认为 None，表示使用 dy 参数。
+        y 轴主刻度的坐标，单位为纬度。
+        默认为 None，表示不直接给出，而是根据 dy 自动决定。
 
     dx : float, optional
         以 dx 为间隔从 -180 度开始生成 x 轴主刻度的间隔。默认为 10 度。
-        xticks 不为 None 时会覆盖该参数。
+        xticks 不为 None 时该参数无效。
 
     dy : float, optional
         以 dy 为间隔从 -90 度开始生成 y 轴主刻度的间隔。默认为 10 度。
-        yticks 不为 None 时会覆盖该参数。
+        yticks 不为 None 时该参数无效。
 
     mx : int, optional
         经度主刻度之间次刻度的个数。默认为 0。
@@ -1319,10 +1362,13 @@ def set_map_ticks(
     yformatter : Formatter, optional
         y 轴刻度标签的 Formatter。默认为 None，表示LatitudeFormatter()。
     '''
-    if extents is not None:
+    if extents != 'global':
         lon0, lon1, lat0, lat1 = extents
         if lon0 >= lon1 or lat0 >= lat1:
-            raise ValueError('lon0 >= lon1 or lat0 >= lat1')
+            raise ValueError('要求 lon0 < lon1 且 lat0 < lat1')
+
+    if dx < 0 or dy < 0:
+        raise ValueError('dx 和 dy 必须是正数')
 
     if xticks is None:
         major_xticks = np.arange(math.floor(360 / dx) + 1) * dx - 180

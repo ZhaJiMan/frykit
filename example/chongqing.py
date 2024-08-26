@@ -7,7 +7,7 @@ plt.rcParams['font.family'] = 'Microsoft YaHei'
 
 fig, ax = plt.subplots(figsize=(8, 8))
 ax.set_aspect(1)
-fplt.set_map_ticks(ax, [105, 110.5, 28, 32.5], dx=1, dy=1)
+fplt.set_map_ticks(ax, (105, 110.5, 28, 32.5), dx=1, dy=1)
 
 # 绘制行政区划
 fplt.add_cn_province(ax, fc='floralwhite')

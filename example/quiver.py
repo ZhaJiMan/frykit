@@ -11,9 +11,6 @@ t2m = gaussian_filter(data['t2m'] - 273.15, sigma=1)
 u10 = gaussian_filter(data['u10'], sigma=1)
 v10 = gaussian_filter(data['v10'], sigma=1)
 
-# 设置地图范围
-extents = [78, 128, 15, 55]
-
 # 设置投影
 map_crs = fplt.CN_AZIMUTHAL_EQUIDISTANT
 data_crs = fplt.PLATE_CARREE
@@ -21,7 +18,7 @@ data_crs = fplt.PLATE_CARREE
 # 准备地图
 fig = plt.figure(figsize=(8, 5))
 ax = fig.add_subplot(projection=map_crs)
-ax.set_extent(extents, crs=data_crs)
+ax.set_extent((78, 128, 15, 55), crs=data_crs)
 fplt.add_cn_province(ax, lw=0.4)
 
 # 绘制气温

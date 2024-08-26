@@ -5,7 +5,7 @@ import frykit.plot as fplt
 
 # 构造假数据
 npts = 100
-x0, x1, y0, y1 = [70, 140, 0, 60]
+x0, x1, y0, y1 = 70, 140, 0, 60
 x = np.linspace(x0, x1, npts)
 y = np.linspace(y0, y1, npts)
 X, Y = np.meshgrid(x, y)
@@ -15,7 +15,7 @@ Z = (np.cos(X / (x1 - x0) * np.pi) + np.sin(np.radians(Y)) * 2) * 2
 crs = fplt.PLATE_CARREE
 fig = plt.figure(figsize=(8, 8))
 ax = plt.axes(projection=fplt.CN_AZIMUTHAL_EQUIDISTANT)
-ax.set_extent([78, 128, 15, 55], crs=crs)
+ax.set_extent((78, 128, 15, 55), crs=crs)
 fplt.add_cn_border(ax)
 fplt.add_nine_line(ax)
 

@@ -4,7 +4,7 @@ import frykit.plot as fplt
 import frykit.shp as fshp
 
 # 准备扇形方框
-extents = [100, 125, 15, 40]
+extents = (100, 125, 15, 40)
 lon0, lon1, lat0, lat1 = extents
 path = fshp.box_path(*extents).interpolated(100)
 

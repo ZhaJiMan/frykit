@@ -9,8 +9,8 @@ map_crs2 = fplt.CN_AZIMUTHAL_EQUIDISTANT
 data_crs = fplt.PLATE_CARREE
 
 # 设置地图范围
-extents1 = [70, 140, 10, 60]
-extents2 = [78, 128, 15, 55]
+extents1 = (70, 140, 10, 60)
+extents2 = (78, 128, 15, 55)
 
 # 设置方块网格范围
 dlon = dlat = 10

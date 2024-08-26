@@ -26,7 +26,7 @@ data_crs = fplt.PLATE_CARREE
 # 创建画布
 fig = plt.figure(facecolor='k')
 ax = fig.add_subplot(111, projection=map_crs)
-ax.set_extent([76, 134, 2, 55], crs=data_crs)
+ax.set_extent((76, 134, 2, 55), crs=data_crs)
 ax.set_facecolor('k')
 ax.axis('off')
 

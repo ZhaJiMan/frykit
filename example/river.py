@@ -11,7 +11,7 @@ reader.close()
 
 fig = plt.figure(figsize=(8, 8))
 ax = fig.add_subplot(projection=fplt.CN_AZIMUTHAL_EQUIDISTANT)
-fplt.set_map_ticks(ax, [78, 128, 15, 53])
+fplt.set_map_ticks(ax, (78, 128, 15, 53))
 
 ax.set_facecolor('#a4d7f6')
 fplt.add_countries(ax, fc='#ffffff')

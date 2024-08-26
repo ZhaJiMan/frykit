@@ -259,7 +259,7 @@ import numpy as np
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 
 crs = fplt.PLATE_CARREE
-ax.set_extent([70, 140, 0, 60], crs=crs)
+ax.set_extent((70, 140, 0, 60), crs=crs)
 ax.set_xticks(np.arange(70, 141, 10), crs=crs)
 ax.set_yticks(np.arange(0, 61, 10), crs=crs)
 ax.xaxis.set_major_formatter(LongitudeFormatter())
@@ -269,7 +269,7 @@ ax.yaxis.set_major_formatter(LatitudeFormatter())
 `set_map_ticks` 函数可以将这段简化成一行：
 
 ```Python
-fplt.set_map_ticks(ax, [70, 140, 0, 60], dx=10, dy=10)
+fplt.set_map_ticks(ax, (70, 140, 0, 60), dx=10, dy=10)
 ```
 
 会自动根据经度间隔和纬度间隔生成刻度，并加上度数和东南西北的符号。另外还可以：
@@ -310,7 +310,7 @@ scale_bar.set_xticks([0, 500, 1000])
 
 ```Python
 mini_ax = fplt.add_mini_axes(ax)
-mini_ax.set_extent([105, 120, 2, 25], crs=crs)
+mini_ax.set_extent((105, 120, 2, 25), crs=crs)
 fplt.add_cn_province(mini_ax)
 fplt.add_nine_line(mini_ax)
 ```

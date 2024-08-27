@@ -17,6 +17,7 @@ from shapely.prepared import prep
 from frykit import SHP_DIRPATH
 from frykit._shp import BinaryReader
 from frykit._typing import StrOrInt
+from frykit.calc import _asarrays
 from frykit.help import deprecator
 
 '''
@@ -535,6 +536,10 @@ def geom_to_path(geom: BaseGeometry, allow_empty: bool = True) -> Path:
     - LinearRing 对应的 Path 里坐标沿顺时针绕行
     - Polygon 对应的 Path 里外环坐标沿顺时针绕行，内环坐标沿逆时针绕行。
     - Multi 对象和 GeometryCollection 使用 Path.make_compound_path
+
+    See Also
+    --------
+    cartopy.mpl.patch.geos_to_path
     '''
     if not is_geometry(geom):
         raise TypeError('geom 不是几何对象')
@@ -654,8 +659,7 @@ def polygon_to_mask(
     if not is_polygon(polygon):
         raise TypeError('polygon 不是多边形')
 
-    x = np.asarray(x)
-    y = np.asarray(y)
+    x, y = _asarrays(x, y)
     if x.shape != y.shape:
         raise ValueError('x 和 y 的形状不匹配')
     if x.ndim == 0 and y.ndim == 0:
@@ -783,6 +787,11 @@ class GeometryTransformer:
     对几何对象做坐标变换的类
 
     基于 pyproj.Transformer 实现，可能在地图边界出现错误的结果。
+    如果变换后的坐标存在 NaN 或无穷值，会将对应的几何对象设为空对象。
+
+    See Also
+    --------
+    cartopy.crs.Projection.project_geometry
     '''
 
     def __init__(self, crs_from: CRS, crs_to: CRS) -> None:

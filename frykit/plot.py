@@ -37,7 +37,7 @@ from shapely.prepared import prep
 import frykit._artist as fa
 import frykit.shp as fshp
 from frykit import DATA_DIRPATH
-from frykit.calc import lon_to_180
+from frykit.calc import _asarrays, lon_to_180
 from frykit.help import deprecator, to_list
 
 # 等经纬度投影
@@ -95,6 +95,10 @@ def add_geoms(
     -------
     col : GeomCollection
         表示几何对象的集合对象
+
+    See Also
+    --------
+    cartopy.mpl.geoaxes.GeoAxes.add_geometries
     '''
     if fshp.is_geometry(geoms):
         geoms = [geoms]
@@ -1151,7 +1155,7 @@ def _set_simple_geoaxes_ticks(
     ax.yaxis.set_major_formatter(yformatter)
 
 
-# TODO: 那可太多了……
+# TODO: 非矩形边框
 def _set_complex_geoaxes_ticks(
     ax: GeoAxes,
     extents: Union[tuple[float, float, float, float], Literal['global']],
@@ -1882,6 +1886,7 @@ def get_cross_section_xticks(
         用经纬度表示的刻度标签
     '''
     # 线性插值计算刻度的经纬度值
+    lon, lat = _asarrays(lon, lat)
     npts = len(lon)
     if npts <= 1:
         raise ValueError('lon 和 lat 至少有 2 个元素')
@@ -1999,14 +2004,14 @@ def plot_colormap(
 
 
 def letter_axes(
-    axes: NDArray, x: ArrayLike, y: ArrayLike, **kwargs: Any
+    axes: ArrayLike, x: ArrayLike, y: ArrayLike, **kwargs: Any
 ) -> list[Text]:
     '''
     给一组 Axes 按顺序标注字母
 
     Parameters
     ----------
-    axes : ndarray of Axes
+    axes : Axes or array_like of Axes
         Axes 的数组
 
     x : float or array_like of float

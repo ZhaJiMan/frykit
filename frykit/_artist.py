@@ -25,7 +25,7 @@ from shapely.geometry.base import BaseGeometry
 from shapely.vectorized import contains
 
 import frykit.shp as fshp
-from frykit.calc import make_ellipse, t_to_az
+from frykit.calc import make_ellipse, split_coords, t_to_az
 
 PLATE_CARREE = ccrs.PlateCarree()
 
@@ -65,9 +65,10 @@ def _transform_geoms_to_paths(
     fast_transform: bool = True,
 ) -> list[Path]:
     if fast_transform:
-        transform = fshp.GeometryTransformer(crs_from, crs_to)
+        # 直接变换 vertices 会在 clip 环节产生麻烦
+        transform_geom = fshp.GeometryTransformer(crs_from, crs_to)
     else:
-        transform = lambda x: crs_to.project_geometry(x, crs_from)
+        transform_geom = lambda x: crs_to.project_geometry(x, crs_from)
 
     paths = []
     for geom in geoms:
@@ -77,7 +78,7 @@ def _transform_geoms_to_paths(
         mapping = _key_to_crs_to_path.setdefault(key, {})
         value = mapping.get(crs_to)
         if value is None or value[0] != fast_transform:
-            geom = transform(geom)
+            geom = transform_geom(geom)
             path = fshp.geom_to_path(geom)
             value = (fast_transform, path)
             mapping[crs_to] = value
@@ -183,7 +184,7 @@ class GeomCollection(PathCollection):
 
             # 利用字典的有序性
             paths1 = self._geoms_to_paths(geom_dict1.values())
-            paths2 = [fshp.PLACEHOLDER_PATH] * len(geom_dict2)
+            paths2 = [fshp.EMPTY_PATH] * len(geom_dict2)
             path_dict1 = dict(zip(geom_dict1.keys(), paths1))
             path_dict2 = dict(zip(geom_dict2.keys(), paths2))
             path_dict = path_dict1 | path_dict2
@@ -236,7 +237,7 @@ class TextCollection(Artist):
         trans = self.get_transform() - self.axes.transData
         coords = trans.transform(self.coords)
         # contains 不包含落在边界上的点
-        mask = contains(polygon, coords[:, 0], coords[:, 1])
+        mask = contains(polygon, *split_coords(coords))
         for i in np.nonzero(~mask)[0]:
             self.texts[i].set_visible(False)
 

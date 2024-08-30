@@ -37,7 +37,7 @@ from shapely.prepared import prep
 import frykit._artist as fa
 import frykit.shp as fshp
 from frykit import DATA_DIRPATH
-from frykit.calc import _asarrays, lon_to_180
+from frykit.calc import asarrays, lon_to_180
 from frykit.help import deprecator, to_list
 
 # 等经纬度投影
@@ -180,7 +180,7 @@ def clip_by_polygon(
         if isinstance(a, Artist):
             artists.append(a)
         else:
-            if isinstance(a, ContourSet):  # MPL < 3.8.x
+            if isinstance(a, ContourSet):  # MPL < 3.8
                 artists.extend(a.collections)
             else:
                 raise TypeError(f'{a} 不是 Artist')
@@ -208,7 +208,7 @@ def clip_by_polygon(
             crs_to=ax.projection,
             fast_transform=fast_transform,
         )
-        polygon = fshp.path_to_polygon(path)
+        polygon = fshp.path_to_polygon(path)  # TODO
         if strict:
             boudnary = _get_geoaxes_boundary(ax)
             polygon = polygon & boudnary
@@ -1886,7 +1886,7 @@ def get_cross_section_xticks(
         用经纬度表示的刻度标签
     '''
     # 线性插值计算刻度的经纬度值
-    lon, lat = _asarrays(lon, lat)
+    lon, lat = asarrays(lon, lat)
     npts = len(lon)
     if npts <= 1:
         raise ValueError('lon 和 lat 至少有 2 个元素')
@@ -2073,18 +2073,3 @@ def get_font_names(sub: Optional[str] = None) -> list[str]:
 @deprecator(alternatives=add_geoms)
 def add_polygons(*args, **kwargs):
     return add_geoms(*args, **kwargs)
-
-
-@deprecator(alternatives=add_scale_bar)
-def add_map_scale(*args, **kwargs):
-    return add_scale_bar(*args, **kwargs)
-
-
-@deprecator(alternatives=add_frame)
-def gmt_style_frame(*args, **kwargs):
-    return add_frame(*args, **kwargs)
-
-
-@deprecator(alternatives=add_mini_axes, raise_error=True)
-def move_axes_to_corner():
-    pass

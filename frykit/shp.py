@@ -6,10 +6,9 @@ from typing import Any, Optional, TypedDict, TypeVar, Union
 import numpy as np
 import pandas as pd  # 加载 overhead 还挺高
 import shapely.geometry as sgeom
-from cartopy.crs import CRS
 from matplotlib.path import Path
 from numpy.typing import ArrayLike, NDArray
-from pyproj import Transformer
+from pyproj import CRS, Transformer
 from shapely.coords import CoordinateSequence
 from shapely.geometry.base import BaseGeometry
 from shapely.prepared import prep
@@ -17,8 +16,7 @@ from shapely.prepared import prep
 from frykit import SHP_DIRPATH
 from frykit._shp import BinaryReader
 from frykit._typing import StrOrInt
-from frykit.calc import _asarrays
-from frykit.help import deprecator
+from frykit.calc import asarrays, split_coords
 
 '''
 数据源
@@ -332,8 +330,7 @@ def get_cn_province(
 
     if isinstance(province, (str, int)):
         return result[0]
-    else:
-        return result
+    return result
 
 
 def get_cn_city(
@@ -382,8 +379,7 @@ def get_cn_city(
 
     if isinstance(city, (str, int)):
         return result[0]
-    else:
-        return result
+    return result
 
 
 def get_cn_district(
@@ -437,8 +433,7 @@ def get_cn_district(
 
     if isinstance(district, (str, int)):
         return result[0]
-    else:
-        return result
+    return result
 
 
 def get_countries() -> list[PolygonType]:
@@ -524,10 +519,11 @@ def _ring_codes(coords: Sized) -> list[np.uint8]:
 
 
 # 用于占位的 Path，不会被画出。
-PLACEHOLDER_PATH = Path(np.empty((0, 2)))
+EMPTY_PATH = Path(np.empty((0, 2)))
+EMPTY_POLYGON = sgeom.Polygon()
 
 
-def geom_to_path(geom: BaseGeometry, allow_empty: bool = True) -> Path:
+def geom_to_path(geom: BaseGeometry) -> Path:
     '''
     几何对象转为 Path
 
@@ -543,11 +539,8 @@ def geom_to_path(geom: BaseGeometry, allow_empty: bool = True) -> Path:
     '''
     if not is_geometry(geom):
         raise TypeError('geom 不是几何对象')
-
     if geom.is_empty:
-        if not allow_empty:
-            raise ValueError('geom 是空几何对象')
-        return PLACEHOLDER_PATH
+        return EMPTY_PATH
 
     if isinstance(geom, sgeom.LinearRing):
         coords = np.asarray(geom.coords)
@@ -584,23 +577,44 @@ def geom_to_path(geom: BaseGeometry, allow_empty: bool = True) -> Path:
     return Path.make_compound_path(*map(geom_to_path, geom.geoms))
 
 
-def path_to_polygon(path: Path, allow_empty: bool = True) -> PolygonType:
-    '''`path = geom_to_path(polygon)` 的逆函数'''
+def _is_finite(arr: NDArray) -> bool:
+    '''判断数组是否含 NaN 或 Inf'''
+    return bool(np.isfinite(arr).all())
+
+
+def path_to_polygon(path: Path) -> PolygonType:
+    '''
+    Path 对象转为多边形
+
+    - 空 Path 对应空多边形
+    - 要求输入满足 geom_to_path 输出的 Path 的规则
+    - 含 NaN 或 Inf 的部分对应空多边形
+
+    See Also
+    --------
+    cartopy.mpl.patch.path_to_geos
+    '''
     if len(path.vertices) == 0:
-        if not allow_empty:
-            raise ValueError('path.vertices 为空')
-        return sgeom.Polygon()
+        return EMPTY_POLYGON
 
     collection = []
+    invalid_flag = False
     inds = np.nonzero(path.codes == Path.MOVETO)[0][1:]
     for verts in np.vsplit(path.vertices, inds):
+        if not _is_finite(verts):
+            invalid_flag = True
+            continue
         ring = sgeom.LinearRing(verts)
         if ring.is_ccw:
-            collection[-1][1].append(ring)
+            if not invalid_flag:
+                collection[-1][1].apend(ring)
         else:
             collection.append((ring, []))
+            invalid_flag = False
 
     polygons = [sgeom.Polygon(shell, holes) for shell, holes in collection]
+    if not polygons:
+        return EMPTY_POLYGON
     if len(polygons) == 1:
         return polygons[0]
 
@@ -659,7 +673,7 @@ def polygon_to_mask(
     if not is_polygon(polygon):
         raise TypeError('polygon 不是多边形')
 
-    x, y = _asarrays(x, y)
+    x, y = asarrays(x, y)
     if x.shape != y.shape:
         raise ValueError('x 和 y 的形状不匹配')
     if x.ndim == 0 and y.ndim == 0:
@@ -737,7 +751,7 @@ def box_path(x0: float, x1: float, y0: float, y1: float) -> Path:
     return Path(verts, _ring_codes(verts))
 
 
-_GeometryT = TypeVar('_G', bound=BaseGeometry)
+_GeometryT = TypeVar('_GeometryT', bound=BaseGeometry)
 
 
 def _transform(
@@ -751,22 +765,21 @@ def _transform(
     if geom.is_empty:
         return T()
 
-    if isinstance(geom, (sgeom.Point, sgeom.LineString, sgeom.LinearRing)):
+    if issubclass(T, (sgeom.Point, sgeom.LineString, sgeom.LinearRing)):
         coords = func(geom.coords)
-        if np.isfinite(coords).all():
+        if _is_finite(coords):
             return T(coords)
-        else:
-            return T()
+        return T()
 
-    if isinstance(geom, sgeom.Polygon):
+    if issubclass(T, sgeom.Polygon):
         shell = func(geom.exterior.coords)
-        if not np.isfinite(shell).all():
+        if not _is_finite(shell):
             return T()
 
         holes = []
         for interior in geom.interiors:
             hole = func(interior.coords)
-            if np.isfinite(hole).all():
+            if _is_finite(hole):
                 holes.append(hole)
         return T(shell, holes)
 
@@ -778,8 +791,7 @@ def _transform(
 
     if parts:
         return T(parts)
-    else:
-        return T()
+    return T()
 
 
 class GeometryTransformer:
@@ -816,9 +828,8 @@ class GeometryTransformer:
         transformer = Transformer.from_crs(crs_from, crs_to, always_xy=True)
 
         def func(coords: CoordinateSequence) -> NDArray:
-            coords = np.asarray(coords)
             return np.column_stack(
-                transformer.transform(coords[:, 0], coords[:, 1])
+                transformer.transform(*split_coords(coords))
             ).squeeze()
 
         self._func = lambda x: _transform(func, x)
@@ -838,16 +849,3 @@ class GeometryTransformer:
             目标坐标系上的几何对象
         '''
         return self._func(geom)
-
-
-@deprecator(
-    alternatives=[get_cn_border, get_cn_province, get_cn_city, get_cn_district],
-    raise_error=True,
-)
-def get_cn_shp():
-    pass
-
-
-@deprecator(alternatives=geom_to_path)
-def polygon_to_path(polygon: PolygonType) -> Path:
-    return geom_to_path(polygon)

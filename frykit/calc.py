@@ -15,7 +15,7 @@ R450 = 5 * R90
 R540 = 3 * R180
 
 
-def _asarrays(*args: ArrayLike, **kwargs: Any) -> list[NDArray]:
+def asarrays(*args: ArrayLike, **kwargs: Any) -> list[NDArray]:
     '''对多个参数应用 np.asarray'''
     return list(map(partial(np.asarray, **kwargs), args))
 
@@ -48,7 +48,7 @@ def rt_to_xy(
     r: ArrayLike, t: ArrayLike, degrees: bool = False
 ) -> tuple[NDArray, NDArray]:
     '''极坐标转直角坐标。默认使用弧度。'''
-    r, t = _asarrays(r, t)
+    r, t = asarrays(r, t)
     if degrees:
         t = np.radians(t)
     x = r * np.cos(t)
@@ -61,7 +61,7 @@ def xy_to_rt(
     x: ArrayLike, y: ArrayLike, degrees: bool = False
 ) -> tuple[NDArray, NDArray]:
     '''直角坐标转极坐标。默认使用弧度，角度范围 (-180, 180]。'''
-    x, y = _asarrays(x, y)
+    x, y = asarrays(x, y)
     r = np.hypot(x, y)
     t = np.arctan2(y, x)
     if degrees:
@@ -92,7 +92,7 @@ def lon_lat_to_xyz(
     lon: ArrayLike, lat: ArrayLike, r: float = 1.0, degrees: bool = False
 ) -> tuple[NDArray, NDArray, NDArray]:
     '''经纬度转为球面 xyz 坐标。默认使用弧度。'''
-    lon, lat = _asarrays(lon, lat)
+    lon, lat = asarrays(lon, lat)
     if degrees:
         lon = np.radians(lon)
         lat = np.radians(lat)
@@ -108,7 +108,7 @@ def wswd_to_uv(
     ws: ArrayLike, wd: ArrayLike, degrees: bool = False
 ) -> tuple[NDArray, NDArray]:
     '''风向风速转为 uv。默认使用弧度。'''
-    ws, wd = _asarrays(ws, wd)
+    ws, wd = asarrays(ws, wd)
     if degrees:
         wd = np.radians(wd)
     u = -ws * np.sin(wd)
@@ -121,7 +121,7 @@ def uv_to_wswd(
     u: ArrayLike, v: ArrayLike, degrees: bool = False
 ) -> tuple[NDArray, NDArray]:
     '''uv 转为风向风速。默认使用弧度。'''
-    u, v = _asarrays(u, v)
+    u, v = asarrays(u, v)
     ws = np.hypot(u, v)
     wd = np.arctan2(u, v) + np.pi
     if degrees:
@@ -138,7 +138,7 @@ def hms_to_degrees(
     hour: ArrayLike, minute: ArrayLike, second: ArrayLike
 ) -> NDArray:
     '''时分秒转为度数'''
-    hour, minute, second = _asarrays(hour, minute, second)
+    hour, minute, second = asarrays(hour, minute, second)
     return _hms_to_degrees(hour, minute, second)  # type: ignore
 
 
@@ -168,7 +168,7 @@ def haversine(
     degrees: bool = False,
 ) -> NDArray:
     '''利用 haversine 公式计算两点间的圆心角'''
-    lon1, lat1, lon2, lat2 = _asarrays(lon1, lat1, lon2, lat2)
+    lon1, lat1, lon2, lat2 = asarrays(lon1, lat1, lon2, lat2)
     if degrees:
         lon1, lat1, lon2, lat2 = map(np.radians, [lon1, lat1, lon2, lat2])
 
@@ -268,6 +268,13 @@ def make_circle(
     return make_ellipse(x, y, r, npts=npts, ccw=ccw)
 
 
+def split_coords(coords: ArrayLike) -> tuple[NDArray, NDArray]:
+    '''将形如 (n, 2) 的坐标数组分为 x 和 y 两列'''
+    coords = np.asarray(coords)
+    assert coords.ndim == 2 and coords.shape[1] >= 2
+    return coords[:, 0], coords[:, 1]
+
+
 def region_ind(
     lon: ArrayLike,
     lat: ArrayLike,
@@ -307,7 +314,7 @@ def region_ind(
     data2d_subset = data2d[ixgrid]
     data3d_subset = data3d[:, ixgrid[0], ixgrid[1]]
     '''
-    lon, lat = _asarrays(lon, lat)
+    lon, lat = asarrays(lon, lat)
     lon0, lon1, lat0, lat1 = extents
     lon_mask = (lon >= lon0) & (lon <= lon1)
     lat_mask = (lat >= lat0) & (lat <= lat1)
@@ -324,7 +331,7 @@ def region_ind(
 
 
 def count_consecutive_trues(mask: ArrayLike) -> NDArray:
-    '''统计布尔序列里真值连续出现的次数，返回长度相同的序列。'''
+    '''统计布尔序列里真值连续出现的次数，返回相同长度的序列。'''
     mask = np.asarray(mask, dtype=bool)
     if mask.ndim != 1:
         raise ValueError('mask 只能是一维数组')
@@ -388,7 +395,7 @@ def interp_nearest_dd(
     result : (m, ...) ndarray
         插值点处变量值的数组（浮点型）
     '''
-    points, xi = _asarrays(points, xi)
+    points, xi = asarrays(points, xi)
     values = np.asarray(values, dtype=float)
     if points.ndim != 2:
         raise ValueError('points 的维度应该为 2')
@@ -448,7 +455,7 @@ def interp_nearest_2d(
     result : ndarray
         插值点处变量值的数组（浮点型）。
     '''
-    x, y, xi, yi, values = _asarrays(x, y, xi, yi, values)
+    x, y, xi, yi, values = asarrays(x, y, xi, yi, values)
     if x.shape != y.shape:
         raise ValueError('x 和 y 的形状应该一样')
     if values.shape[: x.ndim] != x.shape:

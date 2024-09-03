@@ -128,7 +128,7 @@ def _get_geoaxes_boundary(ax: GeoAxes) -> sgeom.Polygon:
 
 '''TODO
 - 受 xlim 和 ylim 影响的情况：
-  - strict=True
+  - strict_clip=True
   - Text 和 TextCollection
 - 严格防文字出界的方案：fig.canvas.draw + t.get_window_extent
 - streamplot 返回值里的箭头无法裁剪
@@ -141,7 +141,7 @@ def clip_by_polygon(
     crs: Optional[ccrs.CRS] = None,
     ax: Optional[Axes] = None,
     fast_transform: bool = True,
-    strict: bool = False,
+    strict_clip: bool = False,
 ) -> None:
     '''
     用多边形裁剪 Artist，只显示多边形内的内容。
@@ -171,7 +171,7 @@ def clip_by_polygon(
     fast_transform : bool, optional
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
 
-    strict : bool, optional
+    strict_clip : bool, optional
         是否使用更严格的裁剪方法。默认为 False。
         为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
     '''
@@ -209,7 +209,7 @@ def clip_by_polygon(
             fast_transform=fast_transform,
         )
         polygon = fshp.path_to_polygon(path)  # TODO
-        if strict:
+        if strict_clip:
             boudnary = _get_geoaxes_boundary(ax)
             polygon = polygon & boudnary
             path = fshp.geom_to_path(polygon)
@@ -596,7 +596,7 @@ def clip_by_cn_border(
     artist: Union[Artist, Iterable[Artist]],
     ax: Optional[Axes] = None,
     fast_transform: bool = True,
-    strict: bool = False,
+    strict_clip: bool = False,
 ) -> None:
     '''
     用中国国界裁剪 Artist
@@ -618,7 +618,7 @@ def clip_by_cn_border(
     fast_transform : bool, optional
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
 
-    strict : bool, optional
+    strict_clip : bool, optional
         是否使用更严格的裁剪方法。默认为 False。
         为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
     '''
@@ -627,7 +627,7 @@ def clip_by_cn_border(
         polygon=fshp.get_cn_border(),
         ax=ax,
         fast_transform=fast_transform,
-        strict=strict,
+        strict_clip=strict_clip,
     )
 
 
@@ -636,7 +636,7 @@ def clip_by_cn_province(
     province: fshp.AdmKey,
     ax: Optional[Axes] = None,
     fast_transform: bool = True,
-    strict: bool = False,
+    strict_clip: bool = False,
 ) -> None:
     '''
     用中国省界裁剪 Artist
@@ -661,7 +661,7 @@ def clip_by_cn_province(
     fast_transform : bool, optional
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
 
-    strict : bool, optional
+    strict_clip : bool, optional
         是否使用更严格的裁剪方法。默认为 False。
         为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
     '''
@@ -670,7 +670,7 @@ def clip_by_cn_province(
         polygon=fshp.get_cn_province(province),
         ax=ax,
         fast_transform=fast_transform,
-        strict=strict,
+        strict_clip=strict_clip,
     )
 
 
@@ -679,7 +679,7 @@ def clip_by_cn_city(
     city: fshp.AdmKey,
     ax: Optional[Axes] = None,
     fast_transform: bool = True,
-    strict: bool = False,
+    strict_clip: bool = False,
 ) -> None:
     '''
     用中国市界裁剪 Artist
@@ -704,7 +704,7 @@ def clip_by_cn_city(
     fast_transform : bool, optional
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
 
-    strict : bool, optional
+    strict_clip : bool, optional
         是否使用更严格的裁剪方法。默认为 False。
         为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
     '''
@@ -713,7 +713,7 @@ def clip_by_cn_city(
         polygon=fshp.get_cn_city(city),
         ax=ax,
         fast_transform=fast_transform,
-        strict=strict,
+        strict_clip=strict_clip,
     )
 
 
@@ -722,7 +722,7 @@ def clip_by_cn_district(
     district: fshp.AdmKey,
     ax: Optional[Axes] = None,
     fast_transform: bool = True,
-    strict: bool = False,
+    strict_clip: bool = False,
 ) -> None:
     '''
     用中国县界裁剪 Artist
@@ -747,7 +747,7 @@ def clip_by_cn_district(
     fast_transform : bool, optional
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
 
-    strict : bool, optional
+    strict_clip : bool, optional
         是否使用更严格的裁剪方法。默认为 False。
         为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
     '''
@@ -756,7 +756,7 @@ def clip_by_cn_district(
         polygon=fshp.get_cn_district(district),
         ax=ax,
         fast_transform=fast_transform,
-        strict=strict,
+        strict_clip=strict_clip,
     )
 
 
@@ -764,7 +764,7 @@ def clip_by_land(
     artist: Union[Artist, Iterable[Artist]],
     ax: Optional[Axes] = None,
     fast_transform: bool = True,
-    strict: bool = False,
+    strict_clip: bool = False,
 ) -> None:
     '''
     用陆地边界裁剪 Artist
@@ -788,7 +788,7 @@ def clip_by_land(
     fast_transform : bool, optional
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
 
-    strict : bool, optional
+    strict_clip : bool, optional
         是否使用更严格的裁剪方法。默认为 False。
         为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
     '''
@@ -797,7 +797,7 @@ def clip_by_land(
         polygon=fshp.get_land(),
         ax=ax,
         fast_transform=fast_transform,
-        strict=strict,
+        strict_clip=strict_clip,
     )
 
 
@@ -805,7 +805,7 @@ def clip_by_ocean(
     artist: Union[Artist, Iterable[Artist]],
     ax: Optional[Axes] = None,
     fast_transform: bool = True,
-    strict: bool = False,
+    strict_clip: bool = False,
 ) -> None:
     '''
     用海洋边界裁剪 Artist
@@ -829,7 +829,7 @@ def clip_by_ocean(
     fast_transform : bool, optional
         是否直接用 pyproj 做坐标变换。默认为 True，速度更快但效果也容易出错。
 
-    strict : bool, optional
+    strict_clip : bool, optional
         是否使用更严格的裁剪方法。默认为 False。
         为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
     '''
@@ -838,7 +838,7 @@ def clip_by_ocean(
         polygon=fshp.get_ocean(),
         ax=ax,
         fast_transform=fast_transform,
-        strict=strict,
+        strict_clip=strict_clip,
     )
 
 

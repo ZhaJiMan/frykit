@@ -30,14 +30,14 @@ for i, ax in enumerate(axes):
 
 # 非严格裁剪会漏出来一点
 pc1 = axes[0].pcolormesh(lon, lat, t2m, transform=crs)
-fplt.clip_by_cn_border(pc1, strict=False)
+fplt.clip_by_cn_border(pc1)
 
 # 严格裁剪
 pc2 = axes[1].pcolormesh(lon, lat, t2m, transform=crs)
-fplt.clip_by_cn_border(pc2, strict=True)
+fplt.clip_by_cn_border(pc2, strict_clip=True)
 
-axes[0].set_title('strict=False', fontsize='large', color='r')
-axes[1].set_title('strcit=True', fontsize='large', color='r')
+axes[0].set_title('strict_clip=False', fontsize='large', color='r')
+axes[1].set_title('strcit_clip=True', fontsize='large', color='r')
 
 fplt.savefig('../image/strict_clip.png')
 plt.close(fig)

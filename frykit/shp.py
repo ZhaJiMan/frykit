@@ -17,6 +17,7 @@ from frykit import SHP_DIRPATH
 from frykit._shp import BinaryReader
 from frykit._typing import StrOrInt
 from frykit.calc import asarrays, split_coords
+from frykit.help import deprecator
 
 '''
 数据源
@@ -587,7 +588,7 @@ def path_to_polygon(path: Path) -> PolygonType:
     Path 对象转为多边形
 
     - 空 Path 对应空多边形
-    - 要求输入满足 geom_to_path 输出的 Path 的规则
+    - 要求输入是 geom_to_path(polygon) 的结果，其它输入不保证结果正确。
     - 含 NaN 或 Inf 的部分对应空多边形
 
     See Also
@@ -849,3 +850,8 @@ class GeometryTransformer:
             目标坐标系上的几何对象
         '''
         return self._func(geom)
+
+
+@deprecator(alternatives=geom_to_path)
+def polygon_to_path(polygon: PolygonType) -> Path:
+    return geom_to_path(polygon)

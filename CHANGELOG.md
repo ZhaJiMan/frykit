@@ -1,3 +1,11 @@
+## `0.6.8`
+
+- 新增对多个参数应用 `np.asarray` 的 `asarrays` 函数。
+- 新增将坐标数组分成两列的 `split_coords` 函数。
+- `clip_by_xxx` 系列函数的 `stric` 参数改名为 `strict_clip`。
+- 移除 `geom_to_path` 和 `path_to_polygon` 函数的 `allow_empty` 参数，预期空几何对象对应于空 Path。
+- 彻底移除 `add_map_scale` 函数。
+
 ## `0.6.7`
 
 - 对 `_artist.GeometryCollection` 类的修改：
@@ -63,6 +71,7 @@
   - 重庆市 -> 重庆城区、重庆郊县
 - `label_cn_xxx` 系列函数在用户不通过参数或 rcParams 指定字体时默认使用思源黑体。
 - `BinaryPacker` 和 `BinaryReader` 类新增 `region` 参数。
+- 新增获取 Matplotlib 可用字体名称的 `get_font_names` 函数。
 
 ## `0.6.3`
 

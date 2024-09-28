@@ -126,15 +126,6 @@ def _get_geoaxes_boundary(ax: GeoAxes) -> sgeom.Polygon:
     return boundary
 
 
-'''TODO
-- 受 xlim 和 ylim 影响的情况：
-  - strict_clip=True
-  - Text 和 TextCollection
-- 严格防文字出界的方案：fig.canvas.draw + t.get_window_extent
-- streamplot 返回值里的箭头无法裁剪
-'''
-
-
 def clip_by_polygon(
     artist: Union[Artist, Iterable[Artist]],
     polygon: Union[fshp.PolygonType, Collection[fshp.PolygonType]],
@@ -174,6 +165,12 @@ def clip_by_polygon(
     strict_clip : bool, optional
         是否使用更严格的裁剪方法。默认为 False。
         为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
+
+    Notes
+    -----
+    裁剪后再调整 Axes 的 xlim 和 ylim 会导致裁剪错位的场景：
+    - 开启 strict_clip 时
+    - 非 data 或投影坐标系的 Text 和 TextCollection
     '''
     artists = []
     for a in to_list(artist):
@@ -210,13 +207,16 @@ def clip_by_polygon(
         )
         polygon = fshp.path_to_polygon(path)  # TODO
         if strict_clip:
-            boudnary = _get_geoaxes_boundary(ax)
-            polygon = polygon & boudnary
+            polygon &= _get_geoaxes_boundary(ax)
             path = fshp.geom_to_path(polygon)
     else:
         if crs is not None:
             raise ValueError('ax 不是 GeoAxes 时 crs 只能为 None')
         (path,) = fa._geoms_to_paths([polygon])
+
+    # TODO
+    # - 严格防文字出界的方案：fig.canvas.draw + t.get_window_extent
+    # - sreamplot 返回值的里的箭头无法裁剪
 
     prepared = prep(polygon)
     for a in artists:

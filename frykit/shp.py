@@ -852,6 +852,6 @@ class GeometryTransformer:
         return self._func(geom)
 
 
-@deprecator(alternatives=geom_to_path)
+@deprecator(alternative=geom_to_path)
 def polygon_to_path(polygon: PolygonType) -> Path:
     return geom_to_path(polygon)

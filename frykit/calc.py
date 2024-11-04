@@ -2,10 +2,12 @@ import math
 import re
 from collections.abc import Iterable
 from functools import partial
-from typing import Any, Literal, Optional, Union
+from typing import Any, Optional, Union
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
+
+from frykit.help import deprecator
 
 R90 = np.pi / 2
 R180 = np.pi
@@ -275,59 +277,63 @@ def split_coords(coords: ArrayLike) -> tuple[NDArray, NDArray]:
     return coords[:, 0], coords[:, 1]
 
 
-def region_ind(
-    lon: ArrayLike,
-    lat: ArrayLike,
+def region_mask(
+    x: ArrayLike,
+    y: ArrayLike,
     extents: tuple[float, float, float, float],
-    form: Literal['mask', 'ix'] = 'mask',
+    apply_AND: bool = False,
 ) -> Union[NDArray, tuple[NDArray, NDArray]]:
     '''
-    返回落入给定经纬度方框范围内的索引
+    返回表示坐标点是否落入方框的布尔数组
 
     Parameters
     ----------
-    lon : array_like
-        经度。若 form='mask' 则要求形状与 lat 一致。
+    x : array_like
+        横坐标。若 apply_AND=True，要求形状与 y 一致。
 
-    lat : array_like
-        纬度。若 form='mask' 则要求形状与 lon 一致。
+    y : array_like
+        纵坐标。若 apply_AND=True，要求形状与 x 一致。
 
     extents : (4,) tuple of float
-        经纬度方框的范围 [lon0, lon1, lat0, lat1]
+        方框范围 (x0, x1, y0, y1)
 
-    form : {'mask', 'ix'}
-        索引的形式。
-        'mask'：使用与 lon 和 lat 同形状的布尔数组进行索引。
-        'ix'：使用下标构成的开放网格进行索引。
+    apply_AND: bool, optional
+        如果为 True，返回 x 和 y 的布尔数组求与的结果。
+        如果为 False，返回 x 和 y 的布尔数组组成的元组。
+        默认为 False。
 
     Returns
     -------
-    ind : ndarray or 2-tuple of ndarray
-        索引的布尔数组，或者两个下标数组构成的元组。
+    mask : ndarray or 2-tuple of ndarray
+        表示是否落入方框的布尔数组
 
     Examples
     --------
-    mask = region_ind(lon2d, lat2d, extents)
-    data1d = data2d[mask]
+    lon_mask, lat_mask = region_mask(lon1d, lat1d, extents)
+    lon1d = lon1d[lon_mask]
+    lat1d = lat1d[lat_mask]
+    ixgrid = np.ix_(lat_mask, lon_mask)
+    subset_data2d = data2d[ixgrid]
 
-    ixgrid = region_ind(lon1d, lat1d, extents, form='ix')
-    data2d_subset = data2d[ixgrid]
-    data3d_subset = data3d[:, ixgrid[0], ixgrid[1]]
+    mask = region_mask(lon2d, lat2d, extents, apply_AND=True)
+    subset_data1d = data2d[mask]
     '''
-    lon, lat = asarrays(lon, lat)
-    lon0, lon1, lat0, lat1 = extents
-    lon_mask = (lon >= lon0) & (lon <= lon1)
-    lat_mask = (lat >= lat0) & (lat <= lat1)
-    if form == 'mask':
-        if lon.shape != lat.shape:
-            raise ValueError('lon 和 lat 的形状应该一样')
-        ind = lon_mask & lat_mask
-    elif form == 'ix':
-        ind = np.ix_(lon_mask, lat_mask)
-    else:
-        raise ValueError("form: {'mask', 'ix'}")
+    x, y = asarrays(x, y)
+    if apply_AND and x.shape != y.shape:
+        raise ValueError('apply_AND=True 时要求数组 x 和 y 形状相同')
 
-    return ind  # type: ignore
+    x0, x1, y0, y1 = extents
+    xm = (x >= x0) & (x <= x1)
+    ym = (y >= y0) & (y <= y1)
+    if apply_AND:
+        return xm & ym
+    else:
+        return xm, ym
+
+
+@deprecator(alternative=region_mask, raise_error=True)
+def region_ind(*args, **kwargs):
+    pass
 
 
 def count_consecutive_trues(mask: ArrayLike) -> NDArray:

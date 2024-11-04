@@ -11,8 +11,7 @@ from frykit._typing import PathType
 def new_dir(dirpath: PathType) -> Path:
     '''新建目录'''
     dirpath = Path(dirpath)
-    if not dirpath.exists():
-        dirpath.mkdir(parents=True)
+    dirpath.mkdir(parents=True, exist_ok=True)
 
     return dirpath
 
@@ -74,7 +73,7 @@ class DeprecationError(Exception):
 def deprecator(
     deprecated: Optional[Callable] = None,
     *,
-    alternatives: Optional[Union[Callable, Iterable[Callable]]] = None,
+    alternative: Optional[Union[Callable, Iterable[Callable]]] = None,
     raise_error: bool = False,
 ) -> Callable:
     '''
@@ -85,7 +84,7 @@ def deprecator(
     deprecated : callable, optional
         被弃用的函数。使用装饰器时不需要显式指定该参数。
 
-    alternatives : callable or list of callable, optional
+    alternative : callable or list of callable, optional
         替代被弃用函数的函数。可以是 None、一个或多个函数。
 
     raise_error: bool, optional
@@ -93,12 +92,12 @@ def deprecator(
     '''
     if deprecated is None:
         return partial(
-            deprecator, alternatives=alternatives, raise_error=raise_error
+            deprecator, alternative=alternative, raise_error=raise_error
         )
 
     msg = f'{deprecated.__name__} 已弃用'
-    if alternatives is not None:
-        alternatives = to_list(alternatives)
+    if alternative is not None:
+        alternatives = to_list(alternative)
         sub = '、'.join([func.__name__ for func in alternatives])
         sub = ' 或 '.join(sub.rsplit('、', 1))
         msg += f'，建议换用 {sub}'

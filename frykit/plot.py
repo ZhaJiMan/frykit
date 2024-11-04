@@ -1335,7 +1335,7 @@ def set_map_ticks(
         目标 Axes
 
     extents : (4,) tuple of float or {'global'}, optional
-        经纬度范围 [lon0, lon1, lat0, lat1]。默认为 'global'，表示显示全球。
+        经纬度范围 (lon0, lon1, lat0, lat1)。默认为 'global'，表示显示全球。
         当 GeoAxes 的投影不是 PlateCarree 或 Mercator 时 extents 不能为 'global'。
 
     xticks : array_like, optional
@@ -1418,7 +1418,7 @@ def set_map_ticks(
 
 
 def quick_cn_map(
-    extents: Optional[tuple[float, float, float, float]] = None,
+    extents: tuple[float, float, float, float] = (70, 140, 0, 60),
     use_geoaxes: bool = True,
     figsize: Optional[tuple[float, float]] = None,
 ) -> Axes:
@@ -1428,7 +1428,7 @@ def quick_cn_map(
     Parameters
     ----------
     extents : (4,) tuple of float, optional
-        经纬度范围 [lon0, lon1, lat0, lat1]。默认为None，表示 [70, 140, 0, 60]。
+        经纬度范围 (lon0, lon1, lat0, lat1)。默认为 (70, 140, 0, 60)。
 
     use_geoaxes : bool, optional
         是否使用 GeoAxes。默认为 True。
@@ -1441,8 +1441,6 @@ def quick_cn_map(
     ax : Axes
         表示地图的 Axes
     '''
-    if extents is None:
-        extents = (70, 140, 10, 60)
     fig = plt.figure(figsize=figsize)
     if use_geoaxes:
         ax = fig.add_subplot(projection=PLATE_CARREE)
@@ -1662,7 +1660,7 @@ def add_box(
         目标 Axes
 
     extents : (4,) tuple of float
-        方框范围 [x0, x1, y0, y1]
+        方框范围 (x0, x1, y0, y1)
 
     steps: int, optional
         在方框上重采样出 N*steps 个点。默认为 100。
@@ -2070,6 +2068,6 @@ def get_font_names(sub: Optional[str] = None) -> list[str]:
     return names
 
 
-@deprecator(alternatives=add_geoms)
+@deprecator(alternative=add_geoms)
 def add_polygons(*args, **kwargs):
     return add_geoms(*args, **kwargs)

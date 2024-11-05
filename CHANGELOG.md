@@ -1,3 +1,9 @@
+## `0.6.9`
+
+- 修正 `path_to_polygon` 函数里的拼写错误，之前会导致部分行政区划裁剪失败。
+- 移除 `region_ind` 函数，换为只返回布尔数组的 `region_mask` 函数。
+- 修改 `deprecator` 装饰器的 `alternatives` 参数为 `alternative`。
+
 ## `0.6.8`
 
 - 新增对多个参数应用 `np.asarray` 的 `asarrays` 函数。
@@ -79,7 +85,7 @@
 
 ## `0.6.2`
 
-- 修正 `clip_by_poylgon` 对 `clabel` 的返回值和任意 `Text` 的处理。
+- 修正 `clip_by_polygon` 对 `clabel` 的返回值和任意 `Text` 的处理。
 - 新增同时裁剪 `contour` 和 `contourf` 的例子 `clabel.py`。
 
 ## `0.6.1`

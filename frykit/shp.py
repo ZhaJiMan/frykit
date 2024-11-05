@@ -608,7 +608,7 @@ def path_to_polygon(path: Path) -> PolygonType:
         ring = sgeom.LinearRing(verts)
         if ring.is_ccw:
             if not invalid_flag:
-                collection[-1][1].apend(ring)
+                collection[-1][1].append(ring)
         else:
             collection.append((ring, []))
             invalid_flag = False

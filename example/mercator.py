@@ -28,7 +28,7 @@ rhumb_line = data_crs.transform_points(map_crs, xs, ys)[:, :2]
 # 大圆航线
 geod = Geod(ellps='WGS84')
 r = geod.inv_intermediate(lon1, lat1, lon2, lat2, npts)
-greate_circle_line = np.c_[r.lons, r.lats]
+great_circle_line = np.c_[r.lons, r.lats]
 
 fig = plt.figure(figsize=(8, 8))
 ax = fig.add_subplot(projection=map_crs)
@@ -51,8 +51,8 @@ ax.plot(
     label='PlateCarre Line',
 )
 ax.plot(
-    greate_circle_line[:, 0],
-    greate_circle_line[:, 1],
+    great_circle_line[:, 0],
+    great_circle_line[:, 1],
     'b--',
     transform=data_crs,
     label='Great Circle Line',

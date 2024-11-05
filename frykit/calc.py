@@ -331,11 +331,6 @@ def region_mask(
         return xm, ym
 
 
-@deprecator(alternative=region_mask, raise_error=True)
-def region_ind(*args, **kwargs):
-    pass
-
-
 def count_consecutive_trues(mask: ArrayLike) -> NDArray:
     '''统计布尔序列里真值连续出现的次数，返回相同长度的序列。'''
     mask = np.asarray(mask, dtype=bool)
@@ -538,3 +533,8 @@ def binned_average_2d(
     yc = (ybins[1:] + ybins[:-1]) / 2
 
     return xc, yc, avg
+
+
+@deprecator(alternative=region_mask, raise_error=True)
+def region_ind(*args, **kwargs):
+    pass

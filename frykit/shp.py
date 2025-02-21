@@ -1,7 +1,7 @@
 import math
 from collections.abc import Callable, Iterable, Sized
 from itertools import chain
-from typing import Any, Optional, TypedDict, TypeVar, Union
+from typing import Any, TypedDict, TypeVar
 
 import numpy as np
 import pandas as pd  # 加载 overhead 还挺高
@@ -15,20 +15,19 @@ from shapely.prepared import prep
 
 from frykit import SHP_DIRPATH
 from frykit._shp import BinaryReader
-from frykit._typing import StrOrInt
 from frykit.calc import asarrays, split_coords
-from frykit.help import deprecator
+from frykit.utils import deprecator
 
-'''
+"""
 数据源
 
 - 省市县: https://lbs.amap.com/api/webservice/guide/api/district
 - 九段线: https://datav.aliyun.com/portal/school/atlas/area_selector
 - 所有国家: http://meteothink.org/downloads/index.html
 - 海陆: https://www.naturalearthdata.com/downloads/50m-physical-vectors/
-'''
+"""
 
-PolygonType = Union[sgeom.Polygon, sgeom.MultiPolygon]
+PolygonType = sgeom.Polygon | sgeom.MultiPolygon
 
 
 class PrDict(TypedDict):
@@ -50,59 +49,59 @@ class DtDict(TypedDict):
     dt_adcode: int
 
 
-AdmKey = Union[StrOrInt, Iterable[StrOrInt]]
-PrResult = Union[PolygonType, list[PolygonType], PrDict, list[PrDict]]
-CtResult = Union[PolygonType, list[PolygonType], CtDict, list[CtDict]]
-DtResult = Union[PolygonType, list[PolygonType], DtDict, list[DtDict]]
+AdmKey = str | int | Iterable[str | int]
+PrResult = PolygonType | list[PolygonType] | PrDict | list[PrDict]
+CtResult = PolygonType | list[PolygonType] | CtDict | list[CtDict]
+DtResult = PolygonType | list[PolygonType] | DtDict | list[DtDict]
 
 # 缓存多边形数据
-_data_cache: dict[str, Union[BaseGeometry, list[BaseGeometry]]] = {}
+_data_cache: dict[str, BaseGeometry | list[BaseGeometry]] = {}
 
 
 def clear_data_cache() -> None:
-    '''清除缓存的 shp 数据'''
+    """清除缓存的 shp 数据"""
     _data_cache.clear()
 
 
 def get_cn_border() -> sgeom.MultiPolygon:
-    '''获取中国国界的多边形'''
-    polygon = _data_cache.get('cn_border')
+    """获取中国国界的多边形"""
+    polygon = _data_cache.get("cn_border")
     if polygon is None:
-        filepath = SHP_DIRPATH / 'cn_border.bin'
-        with BinaryReader(filepath, region='china') as reader:
+        filepath = SHP_DIRPATH / "cn_border.bin"
+        with BinaryReader(filepath, region="china") as reader:
             polygon = reader.shape(0)
-        _data_cache['cn_border'] = polygon
+        _data_cache["cn_border"] = polygon
 
     return polygon
 
 
 def get_nine_line() -> sgeom.MultiPolygon:
-    '''获取九段线的多边形'''
-    polygon = _data_cache.get('nine_line')
+    """获取九段线的多边形"""
+    polygon = _data_cache.get("nine_line")
     if polygon is None:
-        filepath = SHP_DIRPATH / 'nine_line.bin'
-        with BinaryReader(filepath, region='china') as reader:
+        filepath = SHP_DIRPATH / "nine_line.bin"
+        with BinaryReader(filepath, region="china") as reader:
             polygon = reader.shape(0)
-        _data_cache['nine_line'] = polygon
+        _data_cache["nine_line"] = polygon
 
     return polygon
 
 
 def get_cn_province_table() -> pd.DataFrame:
-    '''获取省界元数据的表格'''
-    filepath = SHP_DIRPATH / 'cn_province.csv'
+    """获取省界元数据的表格"""
+    filepath = SHP_DIRPATH / "cn_province.csv"
     return pd.read_csv(str(filepath))
 
 
 def get_cn_city_table() -> pd.DataFrame:
-    '''获取市界元数据的表格'''
-    filepath = SHP_DIRPATH / 'cn_city.csv'
+    """获取市界元数据的表格"""
+    filepath = SHP_DIRPATH / "cn_city.csv"
     return pd.read_csv(str(filepath))
 
 
 def get_cn_district_table() -> pd.DataFrame:
-    '''获取县界元数据的表格'''
-    filepath = SHP_DIRPATH / 'cn_district.csv'
+    """获取县界元数据的表格"""
+    filepath = SHP_DIRPATH / "cn_district.csv"
     return pd.read_csv(str(filepath))
 
 
@@ -112,7 +111,7 @@ _DT_TABLE = None
 
 
 def _get_pr_table() -> pd.DataFrame:
-    '''获取缓存的省界元数据的表格'''
+    """获取缓存的省界元数据的表格"""
     global _PR_TABLE
     if _PR_TABLE is None:
         _PR_TABLE = get_cn_province_table()
@@ -121,7 +120,7 @@ def _get_pr_table() -> pd.DataFrame:
 
 
 def _get_ct_table() -> pd.DataFrame:
-    '''获取缓存的市界元数据的表格'''
+    """获取缓存的市界元数据的表格"""
     global _CT_TABLE
     if _CT_TABLE is None:
         _CT_TABLE = get_cn_city_table()
@@ -130,7 +129,7 @@ def _get_ct_table() -> pd.DataFrame:
 
 
 def _get_dt_table() -> pd.DataFrame:
-    '''获取缓存的县界元数据的表格'''
+    """获取缓存的县界元数据的表格"""
     global _DT_TABLE
     if _DT_TABLE is None:
         _DT_TABLE = get_cn_district_table()
@@ -139,7 +138,7 @@ def _get_dt_table() -> pd.DataFrame:
 
 
 def _get_locs(index: pd.Index, key: Any) -> list[int]:
-    '''保证返回整数下标列表的 Index.get_loc'''
+    """保证返回整数下标列表的 Index.get_loc"""
     loc = index.get_loc(key)
     if isinstance(loc, slice):
         return list(range(len(index))[loc])
@@ -149,14 +148,14 @@ def _get_locs(index: pd.Index, key: Any) -> list[int]:
         return [loc]
 
 
-def _get_pr_locs(province: Optional[AdmKey] = None) -> list[int]:
-    '''查询省界元数据表格的下标'''
+def _get_pr_locs(province: AdmKey | None = None) -> list[int]:
+    """查询省界元数据表格的下标"""
     df = _get_pr_table()
     if province is None:
         return list(range(len(df)))
 
-    names = pd.Index(df['pr_name'])
-    adcodes = pd.Index(df['pr_adcode'])
+    names = pd.Index(df["pr_name"])
+    adcodes = pd.Index(df["pr_adcode"])
 
     def func(key: AdmKey) -> list[int]:
         if isinstance(key, str):
@@ -170,23 +169,23 @@ def _get_pr_locs(province: Optional[AdmKey] = None) -> list[int]:
 
 
 def _get_ct_locs(
-    city: Optional[AdmKey] = None, province: Optional[AdmKey] = None
+    city: AdmKey | None = None, province: AdmKey | None = None
 ) -> list[int]:
-    '''查询市界元数据表格的下标'''
+    """查询市界元数据表格的下标"""
     df = _get_ct_table()
     if city is None and province is None:
         return list(range(len(df)))
     if city is not None and province is not None:
-        raise ValueError('不能同时指定 city 和 province')
+        raise ValueError("不能同时指定 city 和 province")
 
     if city is not None:
-        names = pd.Index(df['ct_name'])
-        adcodes = pd.Index(df['ct_adcode'])
+        names = pd.Index(df["ct_name"])
+        adcodes = pd.Index(df["ct_adcode"])
         key = city
 
     if province is not None:
-        names = pd.Index(df['pr_name'])
-        adcodes = pd.Index(df['pr_adcode'])
+        names = pd.Index(df["pr_name"])
+        adcodes = pd.Index(df["pr_adcode"])
         key = province
 
     def func(key: AdmKey) -> list[int]:
@@ -201,31 +200,31 @@ def _get_ct_locs(
 
 
 def _get_dt_locs(
-    district: Optional[AdmKey] = None,
-    city: Optional[AdmKey] = None,
-    province: Optional[AdmKey] = None,
+    district: AdmKey | None = None,
+    city: AdmKey | None = None,
+    province: AdmKey | None = None,
 ) -> list[int]:
-    '''查询县界元数据表格的下标'''
+    """查询县界元数据表格的下标"""
     df = _get_dt_table()
     num_keys = sum(key is not None for key in [district, city, province])
     if num_keys == 0:
         return list(range(len(df)))
     if num_keys >= 2:
-        raise ValueError('district、city 和 province 三个参数中只能指定一个')
+        raise ValueError("district、city 和 province 三个参数中只能指定一个")
 
     if district is not None:
-        names = pd.Index(df['dt_name'])
-        adcodes = pd.Index(df['dt_adcode'])
+        names = pd.Index(df["dt_name"])
+        adcodes = pd.Index(df["dt_adcode"])
         key = district
 
     if city is not None:
-        names = pd.Index(df['ct_name'])
-        adcodes = pd.Index(df['ct_adcode'])
+        names = pd.Index(df["ct_name"])
+        adcodes = pd.Index(df["ct_adcode"])
         key = city
 
     if province is not None:
-        names = pd.Index(df['pr_name'])
-        adcodes = pd.Index(df['pr_adcode'])
+        names = pd.Index(df["pr_name"])
+        adcodes = pd.Index(df["pr_adcode"])
         key = province
 
     def func(key: AdmKey) -> list[int]:
@@ -241,60 +240,56 @@ def _get_dt_locs(
         lines = []
         for row in df.iloc[locs].itertuples(index=False):
             parts = [
-                f'province={row.pr_name}',
-                f'city={row.ct_name}',
-                f'district={row.dt_name}',
-                f'adcode={row.dt_adcode}',
+                f"province={row.pr_name}",
+                f"city={row.ct_name}",
+                f"district={row.dt_name}",
+                f"adcode={row.dt_adcode}",
             ]
-            line = ', '.join(parts)
+            line = ", ".join(parts)
             lines.append(line)
 
-        lines = '\n'.join(lines)
-        msg = f'存在复数个同名的区县，请用 adcode 指定\n{lines}'
+        lines = "\n".join(lines)
+        msg = f"存在复数个同名的区县，请用 adcode 指定\n{lines}"
         raise ValueError(msg)
 
     return locs
 
 
 def get_cn_province_names(short: bool = False) -> list[str]:
-    '''获取中国省名'''
+    """获取中国省名"""
     df = _get_pr_table()
-    key = 'short_name' if short else 'pr_name'
+    key = "short_name" if short else "pr_name"
     names = df[key].tolist()
 
     return names
 
 
-def get_cn_city_names(
-    province: Optional[AdmKey] = None, short=False
-) -> list[str]:
-    '''获取中国市名。可以指定获取某个省的所有市名。'''
+def get_cn_city_names(province: AdmKey | None = None, short=False) -> list[str]:
+    """获取中国市名。可以指定获取某个省的所有市名。"""
     df = _get_ct_table()
     locs = _get_ct_locs(province=province)
-    key = 'short_name' if short else 'ct_name'
+    key = "short_name" if short else "ct_name"
     names = df[key].iloc[locs].tolist()
 
     return names
 
 
 def get_cn_district_names(
-    city: Optional[AdmKey] = None,
-    province: Optional[AdmKey] = None,
+    city: AdmKey | None = None,
+    province: AdmKey | None = None,
     short: bool = False,
 ) -> list[str]:
-    '''获取中国县名。可以指定获取某个市或某个省的所有县名。'''
+    """获取中国县名。可以指定获取某个市或某个省的所有县名。"""
     df = _get_dt_table()
     locs = _get_dt_locs(city=city, province=province)
-    key = 'short_name' if short else 'dt_name'
+    key = "short_name" if short else "dt_name"
     names = df[key].iloc[locs].tolist()
 
     return names
 
 
-def get_cn_province(
-    province: Optional[AdmKey] = None, as_dict: bool = False
-) -> PrResult:
-    '''
+def get_cn_province(province: AdmKey | None = None, as_dict: bool = False) -> PrResult:
+    """
     获取中国省界的多边形
 
     Parameters
@@ -310,22 +305,22 @@ def get_cn_province(
     -------
     result : PrResult
         表示省界的多边形或字典
-    '''
-    polygons = _data_cache.get('cn_province')
+    """
+    polygons = _data_cache.get("cn_province")
     if polygons is None:
-        filepath = SHP_DIRPATH / 'cn_province.bin'
-        with BinaryReader(filepath, region='china') as reader:
+        filepath = SHP_DIRPATH / "cn_province.bin"
+        with BinaryReader(filepath, region="china") as reader:
             polygons = reader.shapes()
-        _data_cache['cn_province'] = polygons
+        _data_cache["cn_province"] = polygons
 
     locs = _get_pr_locs(province)
     polygons = [polygons[i] for i in locs]
 
     if as_dict:
         df = _get_pr_table().iloc[locs]
-        result = df.to_dict(orient='records')
+        result = df.to_dict(orient="records")
         for d, polygon in zip(result, polygons):
-            d['geometry'] = polygon
+            d["geometry"] = polygon
     else:
         result = polygons
 
@@ -335,11 +330,11 @@ def get_cn_province(
 
 
 def get_cn_city(
-    city: Optional[AdmKey] = None,
-    province: Optional[AdmKey] = None,
+    city: AdmKey | None = None,
+    province: AdmKey | None = None,
     as_dict: bool = False,
 ) -> CtResult:
-    '''
+    """
     获取中国市界的多边形
 
     Parameters
@@ -359,22 +354,22 @@ def get_cn_city(
     -------
     result : CtResult
         表示市界的多边形或字典
-    '''
-    polygons = _data_cache.get('cn_city')
+    """
+    polygons = _data_cache.get("cn_city")
     if polygons is None:
-        filepath = SHP_DIRPATH / 'cn_city.bin'
-        with BinaryReader(filepath, region='china') as reader:
+        filepath = SHP_DIRPATH / "cn_city.bin"
+        with BinaryReader(filepath, region="china") as reader:
             polygons = reader.shapes()
-        _data_cache['cn_city'] = polygons
+        _data_cache["cn_city"] = polygons
 
     locs = _get_ct_locs(city, province)
     polygons = [polygons[i] for i in locs]
 
     if as_dict:
         df = _get_ct_table().iloc[locs]
-        result = df.to_dict(orient='records')
+        result = df.to_dict(orient="records")
         for d, polygon in zip(result, polygons):
-            d['geometry'] = polygon
+            d["geometry"] = polygon
     else:
         result = polygons
 
@@ -384,12 +379,12 @@ def get_cn_city(
 
 
 def get_cn_district(
-    district: Optional[AdmKey] = None,
-    city: Optional[AdmKey] = None,
-    province: Optional[AdmKey] = None,
+    district: AdmKey | None = None,
+    city: AdmKey | None = None,
+    province: AdmKey | None = None,
     as_dict: bool = False,
 ) -> DtResult:
-    '''
+    """
     获取中国县界的多边形
 
     Parameters
@@ -413,22 +408,22 @@ def get_cn_district(
     -------
     result : DtResult
         表示县界的多边形或字典
-    '''
-    polygons = _data_cache.get('cn_district')
+    """
+    polygons = _data_cache.get("cn_district")
     if polygons is None:
-        filepath = SHP_DIRPATH / 'cn_district.bin'
-        with BinaryReader(filepath, region='china') as reader:
+        filepath = SHP_DIRPATH / "cn_district.bin"
+        with BinaryReader(filepath, region="china") as reader:
             polygons = reader.shapes()
-        _data_cache['cn_district'] = polygons
+        _data_cache["cn_district"] = polygons
 
     locs = _get_dt_locs(district, city, province)
     polygons = [polygons[i] for i in locs]
 
     if as_dict:
         df = _get_dt_table().iloc[locs]
-        result = df.to_dict(orient='records')
+        result = df.to_dict(orient="records")
         for d, polygon in zip(result, polygons):
-            d['geometry'] = polygon
+            d["geometry"] = polygon
     else:
         result = polygons
 
@@ -438,63 +433,63 @@ def get_cn_district(
 
 
 def get_countries() -> list[PolygonType]:
-    '''获取所有国家国界的多边形'''
-    polygons = _data_cache.get('country')
+    """获取所有国家国界的多边形"""
+    polygons = _data_cache.get("country")
     if polygons is None:
-        filepath = SHP_DIRPATH / 'country.bin'
-        with BinaryReader(filepath, region='world') as reader:
+        filepath = SHP_DIRPATH / "country.bin"
+        with BinaryReader(filepath, region="world") as reader:
             polygons = reader.shapes()
-        _data_cache['country'] = polygons
+        _data_cache["country"] = polygons
 
     return polygons
 
 
 def get_land() -> sgeom.MultiPolygon:
-    '''获取陆地多边形'''
-    polygon = _data_cache.get('land')
+    """获取陆地多边形"""
+    polygon = _data_cache.get("land")
     if polygon is None:
-        filepath = SHP_DIRPATH / 'land.bin'
-        with BinaryReader(filepath, region='world') as reader:
+        filepath = SHP_DIRPATH / "land.bin"
+        with BinaryReader(filepath, region="world") as reader:
             polygon = reader.shape(0)
-        _data_cache['land'] = polygon
+        _data_cache["land"] = polygon
 
     return polygon
 
 
 def get_ocean() -> sgeom.MultiPolygon:
-    '''获取海洋多边形'''
-    polygon = _data_cache.get('ocean')
+    """获取海洋多边形"""
+    polygon = _data_cache.get("ocean")
     if polygon is None:
-        filepath = SHP_DIRPATH / 'ocean.bin'
-        with BinaryReader(filepath, region='world') as reader:
+        filepath = SHP_DIRPATH / "ocean.bin"
+        with BinaryReader(filepath, region="world") as reader:
             polygon = reader.shape(0)
-        _data_cache['ocean'] = polygon
+        _data_cache["ocean"] = polygon
 
     return polygon
 
 
 def is_geometry(obj: Any) -> bool:
-    '''是否为几何对象'''
+    """是否为几何对象"""
     return isinstance(obj, BaseGeometry)
 
 
 def is_point(obj: Any) -> bool:
-    '''是否为点对象'''
+    """是否为点对象"""
     return isinstance(obj, (sgeom.Point, sgeom.MultiPoint))
 
 
 def is_line_string(obj: Any) -> bool:
-    '''是否为线段'''
+    """是否为线段"""
     return isinstance(obj, (sgeom.LineString, sgeom.MultiLineString))
 
 
 def is_linear_ring(obj: Any) -> bool:
-    '''是否为线性环'''
+    """是否为线性环"""
     return isinstance(obj, sgeom.LinearRing)
 
 
 def is_polygon(obj: Any) -> bool:
-    '''是否为多边形'''
+    """是否为多边形"""
     return isinstance(obj, (sgeom.Polygon, sgeom.MultiPolygon))
 
 
@@ -525,7 +520,7 @@ EMPTY_POLYGON = sgeom.Polygon()
 
 
 def geom_to_path(geom: BaseGeometry) -> Path:
-    '''
+    """
     几何对象转为 Path
 
     - 空几何对象对应空 Path
@@ -537,9 +532,9 @@ def geom_to_path(geom: BaseGeometry) -> Path:
     See Also
     --------
     cartopy.mpl.patch.geos_to_path
-    '''
+    """
     if not is_geometry(geom):
-        raise TypeError('geom 不是几何对象')
+        raise TypeError("geom 不是几何对象")
     if geom.is_empty:
         return EMPTY_PATH
 
@@ -579,12 +574,12 @@ def geom_to_path(geom: BaseGeometry) -> Path:
 
 
 def _is_finite(arr: NDArray) -> bool:
-    '''判断数组是否含 NaN 或 Inf'''
+    """判断数组是否含 NaN 或 Inf"""
     return bool(np.isfinite(arr).all())
 
 
 def path_to_polygon(path: Path) -> PolygonType:
-    '''
+    """
     Path 对象转为多边形
 
     - 空 Path 对应空多边形
@@ -594,7 +589,7 @@ def path_to_polygon(path: Path) -> PolygonType:
     See Also
     --------
     cartopy.mpl.patch.path_to_geos
-    '''
+    """
     if len(path.vertices) == 0:
         return EMPTY_POLYGON
 
@@ -623,7 +618,7 @@ def path_to_polygon(path: Path) -> PolygonType:
 
 
 def polygon_to_polys(polygon: PolygonType) -> list[list[tuple[float, float]]]:
-    '''多边形转为适用于 shapefile 的坐标序列'''
+    """多边形转为适用于 shapefile 的坐标序列"""
     if isinstance(polygon, sgeom.Polygon):
         polys = []
         coords = polygon.exterior.coords[:]
@@ -642,13 +637,11 @@ def polygon_to_polys(polygon: PolygonType) -> list[list[tuple[float, float]]]:
     if isinstance(polygon, sgeom.MultiPolygon):
         return list(chain(*map(polygon_to_polys, polygon.geoms)))
 
-    raise TypeError('polygon 不是多边形')
+    raise TypeError("polygon 不是多边形")
 
 
-def polygon_to_mask(
-    polygon: PolygonType, x: ArrayLike, y: ArrayLike
-) -> NDArray:
-    '''
+def polygon_to_mask(polygon: PolygonType, x: ArrayLike, y: ArrayLike) -> NDArray:
+    """
     用多边形制作掩膜（mask）数组
 
     Parameters
@@ -670,19 +663,19 @@ def polygon_to_mask(
     See Also
     --------
     shapely.vectorized.contains
-    '''
+    """
     if not is_polygon(polygon):
-        raise TypeError('polygon 不是多边形')
+        raise TypeError("polygon 不是多边形")
 
     x, y = asarrays(x, y)
     if x.shape != y.shape:
-        raise ValueError('x 和 y 的形状不匹配')
+        raise ValueError("x 和 y 的形状不匹配")
     if x.ndim == 0 and y.ndim == 0:
         return polygon.contains(sgeom.Point(x, y))
     prepared = prep(polygon)
 
     def recursion(x: np.ndarray, y: np.ndarray) -> np.ndarray:
-        '''递归判断坐标为 x 和 y 的点集是否落入多边形中'''
+        """递归判断坐标为 x 和 y 的点集是否落入多边形中"""
         xmin, xmax = x.min(), x.max()
         ymin, ymax = y.min(), y.max()
         xflag = math.isclose(xmin, xmax)
@@ -747,20 +740,20 @@ def polygon_to_mask(
 
 
 def box_path(x0: float, x1: float, y0: float, y1: float) -> Path:
-    '''构造方框 Path。顺时针绕行。'''
+    """构造方框 Path。顺时针绕行。"""
     verts = [(x0, y0), (x0, y1), (x1, y1), (x1, y0), (x0, y0)]
     return Path(verts, _ring_codes(verts))
 
 
-_GeometryT = TypeVar('_GeometryT', bound=BaseGeometry)
+_GeometryT = TypeVar("_GeometryT", bound=BaseGeometry)
 
 
 def _transform(
     func: Callable[[CoordinateSequence], NDArray], geom: _GeometryT
 ) -> _GeometryT:
-    '''shapely.ops.transform 的修改版，会将坐标含无效值的对象设为空对象。'''
+    """shapely.ops.transform 的修改版，会将坐标含无效值的对象设为空对象。"""
     if not is_geometry(geom):
-        raise TypeError('geom 不是几何对象')
+        raise TypeError("geom 不是几何对象")
 
     T = type(geom)
     if geom.is_empty:
@@ -796,7 +789,7 @@ def _transform(
 
 
 class GeometryTransformer:
-    '''
+    """
     对几何对象做坐标变换的类
 
     基于 pyproj.Transformer 实现，可能在地图边界出现错误的结果。
@@ -805,10 +798,10 @@ class GeometryTransformer:
     See Also
     --------
     cartopy.crs.Projection.project_geometry
-    '''
+    """
 
     def __init__(self, crs_from: CRS, crs_to: CRS) -> None:
-        '''
+        """
         Parameters
         ----------
         crs_from : CRS
@@ -816,7 +809,7 @@ class GeometryTransformer:
 
         crs_to : CRS
             目标坐标系
-        '''
+        """
         self.crs_from = crs_from
         self.crs_to = crs_to
 
@@ -836,7 +829,7 @@ class GeometryTransformer:
         self._func = lambda x: _transform(func, x)
 
     def __call__(self, geom: _GeometryT) -> _GeometryT:
-        '''
+        """
         对几何对象做变换
 
         Parameters
@@ -848,7 +841,7 @@ class GeometryTransformer:
         -------
         geom : BaseGeometry
             目标坐标系上的几何对象
-        '''
+        """
         return self._func(geom)
 
 

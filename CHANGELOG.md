@@ -1,3 +1,12 @@
+## `0.7.0`
+
+- `help` 模块改名为 `utils`，其中：
+  - 新增用中文连接多个字符串的 `join_with_cn_comma` 函数。
+  - 新增构造 `TypeError` 信息的 `format_type_error` 函数。
+  - `deprecator` 装饰器的 `alternative` 参数可以接受字符串类型。
+  - `is_sequence` 函数改名为 `is_iterable`，增加 `include_str` 参数。
+  - `to_list` 函数改名为 `as_list`。
+
 ## `0.6.9`
 
 - 修正 `path_to_polygon` 函数里的拼写错误，之前会导致部分行政区划裁剪失败。

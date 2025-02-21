@@ -1,7 +1,7 @@
 import math
 from collections.abc import Collection, Iterable
 from functools import wraps
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal
 
 import cartopy.crs as ccrs
 import matplotlib as mpl
@@ -38,7 +38,7 @@ import frykit._artist as fa
 import frykit.shp as fshp
 from frykit import DATA_DIRPATH
 from frykit.calc import asarrays, lon_to_180
-from frykit.help import deprecator, to_list
+from frykit.utils import as_list, deprecator
 
 # 等经纬度投影
 PLATE_CARREE = ccrs.PlateCarree()
@@ -56,13 +56,13 @@ CN_AZIMUTHAL_EQUIDISTANT = ccrs.AzimuthalEquidistant(
 # TODO: 模仿 scatter 绘制 Point？
 def add_geoms(
     ax: Axes,
-    geoms: Union[BaseGeometry, Iterable[BaseGeometry]],
-    crs: Optional[ccrs.CRS] = None,
+    geoms: BaseGeometry | Iterable[BaseGeometry],
+    crs: ccrs.CRS | None = None,
     fast_transform: bool = True,
     skip_outside: bool = True,
     **kwargs: Any,
 ) -> fa.GeomCollection:
-    '''
+    """
     将几何对象添加到 Axes 上
 
     BUG：Point 和 MultiPoint 画不出来
@@ -99,7 +99,7 @@ def add_geoms(
     See Also
     --------
     cartopy.mpl.geoaxes.GeoAxes.add_geometries
-    '''
+    """
     if fshp.is_geometry(geoms):
         geoms = [geoms]
     else:
@@ -116,7 +116,7 @@ def add_geoms(
 
 
 def _get_geoaxes_boundary(ax: GeoAxes) -> sgeom.Polygon:
-    '''将 GeoAxes.patch 转为 data 坐标系里的多边形'''
+    """将 GeoAxes.patch 转为 data 坐标系里的多边形"""
     patch = ax.patch
     patch._adjust_location()
     trans = patch.get_transform() - ax.transData
@@ -127,14 +127,14 @@ def _get_geoaxes_boundary(ax: GeoAxes) -> sgeom.Polygon:
 
 
 def clip_by_polygon(
-    artist: Union[Artist, Iterable[Artist]],
-    polygon: Union[fshp.PolygonType, Collection[fshp.PolygonType]],
-    crs: Optional[ccrs.CRS] = None,
-    ax: Optional[Axes] = None,
+    artist: Artist | Iterable[Artist],
+    polygon: fshp.PolygonType | Collection[fshp.PolygonType],
+    crs: ccrs.CRS | None = None,
+    ax: Axes | None = None,
     fast_transform: bool = True,
     strict_clip: bool = False,
 ) -> None:
-    '''
+    """
     用多边形裁剪 Artist，只显示多边形内的内容。
 
     Parameters
@@ -171,16 +171,16 @@ def clip_by_polygon(
     裁剪后再调整 Axes 的 xlim 和 ylim 会导致裁剪错位的场景：
     - 开启 strict_clip 时
     - 非 data 或投影坐标系的 Text 和 TextCollection
-    '''
+    """
     artists = []
-    for a in to_list(artist):
+    for a in as_list(artist):
         if isinstance(a, Artist):
             artists.append(a)
         else:
             if isinstance(a, ContourSet):  # MPL < 3.8
                 artists.extend(a.collections)
             else:
-                raise TypeError(f'{a} 不是 Artist')
+                raise TypeError(f"{a} 不是 Artist")
 
     # 推测 ax
     if ax is None:
@@ -189,7 +189,7 @@ def clip_by_polygon(
                 ax = a.axes
                 break
         else:
-            raise ValueError('需要指定 ax')
+            raise ValueError("需要指定 ax")
 
     # 合并结果无法缓存
     if not fshp.is_geometry(polygon):
@@ -211,7 +211,7 @@ def clip_by_polygon(
             path = fshp.geom_to_path(polygon)
     else:
         if crs is not None:
-            raise ValueError('ax 不是 GeoAxes 时 crs 只能为 None')
+            raise ValueError("ax 不是 GeoAxes 时 crs 只能为 None")
         (path,) = fa._geoms_to_paths([polygon])
 
     # TODO
@@ -234,12 +234,12 @@ def clip_by_polygon(
 
 
 def _init_pc_kwargs(kwargs: dict) -> dict:
-    '''初始化传给 PathCollection 类的参数'''
+    """初始化传给 PathCollection 类的参数"""
     kwargs = normalize_kwargs(kwargs, PathCollection)
-    kwargs.setdefault('linewidth', 0.5)
-    kwargs.setdefault('edgecolor', 'k')
-    kwargs.setdefault('facecolor', 'none')
-    kwargs.setdefault('zorder', 1.5)
+    kwargs.setdefault("linewidth", 0.5)
+    kwargs.setdefault("edgecolor", "k")
+    kwargs.setdefault("facecolor", "none")
+    kwargs.setdefault("zorder", 1.5)
 
     return kwargs
 
@@ -250,7 +250,7 @@ def add_cn_border(
     skip_outside: bool = True,
     **kwargs: Any,
 ) -> fa.GeomCollection:
-    '''
+    """
     在 Axes 上添加中国国界
 
     Parameters
@@ -273,7 +273,7 @@ def add_cn_border(
     -------
     col : GeomCollection
         表示国界的集合对象
-    '''
+    """
     return add_geoms(
         ax=ax,
         geoms=fshp.get_cn_border(),
@@ -289,7 +289,7 @@ def add_nine_line(
     skip_outside: bool = True,
     **kwargs: Any,
 ) -> fa.GeomCollection:
-    '''
+    """
     在 Axes 上添加九段线
 
     Parameters
@@ -312,7 +312,7 @@ def add_nine_line(
     -------
     col : GeomCollection
         表示九段线的集合对象
-    '''
+    """
     return add_geoms(
         ax=ax,
         geoms=fshp.get_nine_line(),
@@ -324,12 +324,12 @@ def add_nine_line(
 
 def add_cn_province(
     ax: Axes,
-    province: Optional[fshp.AdmKey] = None,
+    province: fshp.AdmKey | None = None,
     fast_transform: bool = True,
     skip_outside: bool = True,
     **kwargs: Any,
 ) -> fa.GeomCollection:
-    '''
+    """
     在 Axes 上添加中国省界
 
     Parameters
@@ -356,7 +356,7 @@ def add_cn_province(
     -------
     col : GeomCollection
         表示省界的集合对象
-    '''
+    """
     return add_geoms(
         ax=ax,
         geoms=fshp.get_cn_province(province),
@@ -368,13 +368,13 @@ def add_cn_province(
 
 def add_cn_city(
     ax: Axes,
-    city: Optional[fshp.AdmKey] = None,
-    province: Optional[fshp.AdmKey] = None,
+    city: fshp.AdmKey | None = None,
+    province: fshp.AdmKey | None = None,
     fast_transform: bool = True,
     skip_outside: bool = True,
     **kwargs: Any,
 ) -> fa.GeomCollection:
-    '''
+    """
     在 Axes 上添加中国市界
 
     Parameters
@@ -405,7 +405,7 @@ def add_cn_city(
     -------
     col : GeomCollection
         表示市界的集合对象
-    '''
+    """
     return add_geoms(
         ax=ax,
         geoms=fshp.get_cn_city(city, province),
@@ -417,14 +417,14 @@ def add_cn_city(
 
 def add_cn_district(
     ax: Axes,
-    district: Optional[fshp.AdmKey] = None,
-    city: Optional[fshp.AdmKey] = None,
-    province: Optional[fshp.AdmKey] = None,
+    district: fshp.AdmKey | None = None,
+    city: fshp.AdmKey | None = None,
+    province: fshp.AdmKey | None = None,
     fast_transform: bool = True,
     skip_outside: bool = True,
     **kwargs: Any,
 ) -> fa.GeomCollection:
-    '''
+    """
     在 Axes 上添加中国县界
 
     Parameters
@@ -459,7 +459,7 @@ def add_cn_district(
     -------
     col : GeomCollection
         表示县界的集合对象
-    '''
+    """
     return add_geoms(
         ax=ax,
         geoms=fshp.get_cn_district(district, city, province),
@@ -475,7 +475,7 @@ def add_countries(
     skip_outside: bool = True,
     **kwargs: Any,
 ) -> fa.GeomCollection:
-    '''
+    """
     在 Axes 上添加所有国家的国界
 
     注意全球数据可能在地图边界出现错误的结果。
@@ -500,7 +500,7 @@ def add_countries(
     -------
     col : GeomCollection
         表示国界的集合对象
-    '''
+    """
     return add_geoms(
         ax=ax,
         geoms=fshp.get_countries(),
@@ -516,7 +516,7 @@ def add_land(
     skip_outside: bool = True,
     **kwargs: Any,
 ) -> fa.GeomCollection:
-    '''
+    """
     在 Axes 上添加陆地
 
     注意全球数据可能在地图边界出现错误的结果。
@@ -541,7 +541,7 @@ def add_land(
     -------
     col : GeomCollection
         表示陆地的集合对象
-    '''
+    """
     return add_geoms(
         ax=ax,
         geoms=fshp.get_land(),
@@ -557,7 +557,7 @@ def add_ocean(
     skip_outside: bool = True,
     **kwargs: Any,
 ) -> fa.GeomCollection:
-    '''
+    """
     在 Axes 上添加海洋
 
     注意全球数据可能在地图边界出现错误的结果。
@@ -582,7 +582,7 @@ def add_ocean(
     -------
     col : GeomCollection
         表示海洋的集合对象
-    '''
+    """
     return add_geoms(
         ax=ax,
         geoms=fshp.get_ocean(),
@@ -593,12 +593,12 @@ def add_ocean(
 
 
 def clip_by_cn_border(
-    artist: Union[Artist, Iterable[Artist]],
-    ax: Optional[Axes] = None,
+    artist: Artist | Iterable[Artist],
+    ax: Axes | None = None,
     fast_transform: bool = True,
     strict_clip: bool = False,
 ) -> None:
-    '''
+    """
     用中国国界裁剪 Artist
 
     Parameters
@@ -621,7 +621,7 @@ def clip_by_cn_border(
     strict_clip : bool, optional
         是否使用更严格的裁剪方法。默认为 False。
         为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
-    '''
+    """
     clip_by_polygon(
         artist=artist,
         polygon=fshp.get_cn_border(),
@@ -632,13 +632,13 @@ def clip_by_cn_border(
 
 
 def clip_by_cn_province(
-    artist: Union[Artist, Iterable[Artist]],
+    artist: Artist | Iterable[Artist],
     province: fshp.AdmKey,
-    ax: Optional[Axes] = None,
+    ax: Axes | None = None,
     fast_transform: bool = True,
     strict_clip: bool = False,
 ) -> None:
-    '''
+    """
     用中国省界裁剪 Artist
 
     Parameters
@@ -664,7 +664,7 @@ def clip_by_cn_province(
     strict_clip : bool, optional
         是否使用更严格的裁剪方法。默认为 False。
         为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
-    '''
+    """
     clip_by_polygon(
         artist=artist,
         polygon=fshp.get_cn_province(province),
@@ -675,13 +675,13 @@ def clip_by_cn_province(
 
 
 def clip_by_cn_city(
-    artist: Union[Artist, Iterable[Artist]],
+    artist: Artist | Iterable[Artist],
     city: fshp.AdmKey,
-    ax: Optional[Axes] = None,
+    ax: Axes | None = None,
     fast_transform: bool = True,
     strict_clip: bool = False,
 ) -> None:
-    '''
+    """
     用中国市界裁剪 Artist
 
     Parameters
@@ -707,7 +707,7 @@ def clip_by_cn_city(
     strict_clip : bool, optional
         是否使用更严格的裁剪方法。默认为 False。
         为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
-    '''
+    """
     clip_by_polygon(
         artist=artist,
         polygon=fshp.get_cn_city(city),
@@ -718,13 +718,13 @@ def clip_by_cn_city(
 
 
 def clip_by_cn_district(
-    artist: Union[Artist, Iterable[Artist]],
+    artist: Artist | Iterable[Artist],
     district: fshp.AdmKey,
-    ax: Optional[Axes] = None,
+    ax: Axes | None = None,
     fast_transform: bool = True,
     strict_clip: bool = False,
 ) -> None:
-    '''
+    """
     用中国县界裁剪 Artist
 
     Parameters
@@ -750,7 +750,7 @@ def clip_by_cn_district(
     strict_clip : bool, optional
         是否使用更严格的裁剪方法。默认为 False。
         为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
-    '''
+    """
     clip_by_polygon(
         artist=artist,
         polygon=fshp.get_cn_district(district),
@@ -761,12 +761,12 @@ def clip_by_cn_district(
 
 
 def clip_by_land(
-    artist: Union[Artist, Iterable[Artist]],
-    ax: Optional[Axes] = None,
+    artist: Artist | Iterable[Artist],
+    ax: Axes | None = None,
     fast_transform: bool = True,
     strict_clip: bool = False,
 ) -> None:
-    '''
+    """
     用陆地边界裁剪 Artist
 
     注意全球数据可能在地图边界出现错误的结果。
@@ -791,7 +791,7 @@ def clip_by_land(
     strict_clip : bool, optional
         是否使用更严格的裁剪方法。默认为 False。
         为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
-    '''
+    """
     clip_by_polygon(
         artist=artist,
         polygon=fshp.get_land(),
@@ -802,12 +802,12 @@ def clip_by_land(
 
 
 def clip_by_ocean(
-    artist: Union[Artist, Iterable[Artist]],
-    ax: Optional[Axes] = None,
+    artist: Artist | Iterable[Artist],
+    ax: Axes | None = None,
     fast_transform: bool = True,
     strict_clip: bool = False,
 ) -> None:
-    '''
+    """
     用海洋边界裁剪 Artist
 
     注意全球数据可能在地图边界出现错误的结果。
@@ -832,7 +832,7 @@ def clip_by_ocean(
     strict_clip : bool, optional
         是否使用更严格的裁剪方法。默认为 False。
         为 True 时即便 GeoAxes 的边界不是矩形也能避免出界。
-    '''
+    """
     clip_by_polygon(
         artist=artist,
         polygon=fshp.get_ocean(),
@@ -850,7 +850,7 @@ def add_texts(
     skip_outside: bool = True,
     **kwargs: Any,
 ) -> fa.TextCollection:
-    '''
+    """
     在 Axes 上添加一组文本
 
     Parameters
@@ -878,7 +878,7 @@ def add_texts(
     -------
     tc : TextCollection
         表示 Text 的集合对象
-    '''
+    """
     tc = fa.TextCollection(x, y, s, skip_outside, **kwargs)
     ax.add_artist(tc)
     for text in tc.texts:
@@ -898,21 +898,21 @@ def _add_cn_texts(
     skip_outside: bool = True,
     **kwargs: Any,
 ) -> fa.TextCollection:
-    '''在 Axes 上标注中国地名'''
+    """在 Axes 上标注中国地名"""
     kwargs = normalize_kwargs(kwargs, Text)
-    kwargs.setdefault('fontsize', 'x-small')
+    kwargs.setdefault("fontsize", "x-small")
     if isinstance(ax, GeoAxes):
-        kwargs.setdefault('transform', PLATE_CARREE)
+        kwargs.setdefault("transform", PLATE_CARREE)
 
     if (
-        kwargs.get('fontname') is None
-        and kwargs.get('fontfamily') is None
-        and mpl.rcParams['font.family'][0] == 'sans-serif'
-        and mpl.rcParams['font.sans-serif'][0] == 'DejaVu Sans'
+        kwargs.get("fontname") is None
+        and kwargs.get("fontfamily") is None
+        and mpl.rcParams["font.family"][0] == "sans-serif"
+        and mpl.rcParams["font.sans-serif"][0] == "DejaVu Sans"
     ):
         # 用户不修改字体时使用自带的中文字体
-        filepath = DATA_DIRPATH / 'zh_font.otf'
-        kwargs.setdefault('fontproperties', filepath)
+        filepath = DATA_DIRPATH / "zh_font.otf"
+        kwargs.setdefault("fontproperties", filepath)
 
     return add_texts(
         ax=ax,
@@ -926,12 +926,12 @@ def _add_cn_texts(
 
 def label_cn_province(
     ax: Axes,
-    province: Optional[fshp.AdmKey] = None,
+    province: fshp.AdmKey | None = None,
     short: bool = True,
     skip_outside: bool = True,
     **kwargs: Any,
 ) -> fa.TextCollection:
-    '''
+    """
     在 Axes 上标注中国省名
 
     Parameters
@@ -957,15 +957,15 @@ def label_cn_province(
     -------
     tc : TextCollection
         表示 Text 的集合对象
-    '''
+    """
     locs = fshp._get_pr_locs(province)
     df = fshp._get_pr_table().iloc[locs]
-    key = 'short_name' if short else 'pr_name'
+    key = "short_name" if short else "pr_name"
 
     return _add_cn_texts(
         ax=ax,
-        lons=df['lon'],
-        lats=df['lat'],
+        lons=df["lon"],
+        lats=df["lat"],
         names=df[key],
         skip_outside=skip_outside,
         **kwargs,
@@ -974,13 +974,13 @@ def label_cn_province(
 
 def label_cn_city(
     ax: Axes,
-    city: Optional[fshp.AdmKey] = None,
-    province: Optional[fshp.AdmKey] = None,
+    city: fshp.AdmKey | None = None,
+    province: fshp.AdmKey | None = None,
     short: bool = True,
     skip_outside: bool = True,
     **kwargs: Any,
 ) -> fa.TextCollection:
-    '''
+    """
     在 Axes 上标注中国市名
 
     Parameters
@@ -1010,15 +1010,15 @@ def label_cn_city(
     -------
     tc : TextCollection
         表示 Text 的集合对象
-    '''
+    """
     locs = fshp._get_ct_locs(city, province)
     df = fshp._get_ct_table().iloc[locs]
-    key = 'short_name' if short else 'ct_name'
+    key = "short_name" if short else "ct_name"
 
     return _add_cn_texts(
         ax=ax,
-        lons=df['lon'],
-        lats=df['lat'],
+        lons=df["lon"],
+        lats=df["lat"],
         names=df[key],
         skip_outside=skip_outside,
         **kwargs,
@@ -1027,14 +1027,14 @@ def label_cn_city(
 
 def label_cn_district(
     ax: Axes,
-    district: Optional[fshp.AdmKey] = None,
-    city: Optional[fshp.AdmKey] = None,
-    province: Optional[fshp.AdmKey] = None,
+    district: fshp.AdmKey | None = None,
+    city: fshp.AdmKey | None = None,
+    province: fshp.AdmKey | None = None,
     short: bool = True,
     skip_outside: bool = True,
     **kwargs: Any,
 ) -> fa.TextCollection:
-    '''
+    """
     在 Axes 上标注中国县名
 
     省名和市名的位置经过微调，但县名太多了，所以简单使用 Shapely 的
@@ -1071,15 +1071,15 @@ def label_cn_district(
     -------
     tc : TextCollection
         表示 Text 的集合对象
-    '''
+    """
     locs = fshp._get_dt_locs(district, city, province)
     df = fshp._get_dt_table().iloc[locs]
-    key = 'short_name' if short else 'dt_name'
+    key = "short_name" if short else "dt_name"
 
     return _add_cn_texts(
         ax=ax,
-        lons=df['lon'],
-        lats=df['lat'],
+        lons=df["lon"],
+        lats=df["lat"],
         names=df[key],
         skip_outside=skip_outside,
         **kwargs,
@@ -1088,7 +1088,7 @@ def label_cn_district(
 
 def _set_axes_ticks(
     ax: Axes,
-    extents: Union[tuple[float, float, float, float], Literal['global']],
+    extents: tuple[float, float, float, float] | Literal["global"],
     major_xticks: NDArray,
     major_yticks: NDArray,
     minor_xticks: NDArray,
@@ -1096,8 +1096,8 @@ def _set_axes_ticks(
     xformatter: Formatter,
     yformatter: Formatter,
 ) -> None:
-    '''设置 PlateCarree 投影的 Axes 的范围和刻度'''
-    if extents == 'global':
+    """设置 PlateCarree 投影的 Axes 的范围和刻度"""
+    if extents == "global":
         extents = (-180, 180, -90, 90)
     lon0, lon1, lat0, lat1 = extents
     ax.set_xlim(lon0, lon1)
@@ -1118,7 +1118,7 @@ def _set_axes_ticks(
 
 def _set_simple_geoaxes_ticks(
     ax: GeoAxes,
-    extents: Union[tuple[float, float, float, float], Literal['global']],
+    extents: tuple[float, float, float, float] | Literal["global"],
     major_xticks: NDArray,
     major_yticks: NDArray,
     minor_xticks: NDArray,
@@ -1126,9 +1126,9 @@ def _set_simple_geoaxes_ticks(
     xformatter: Formatter,
     yformatter: Formatter,
 ) -> None:
-    '''设置简单投影的 GeoAxes 的范围和刻度'''
+    """设置简单投影的 GeoAxes 的范围和刻度"""
     crs = PLATE_CARREE
-    if extents == 'global':
+    if extents == "global":
         ax.set_global()
         lat0, lat1 = -90, 90
         if isinstance(ax.projection, ccrs.Mercator):
@@ -1158,7 +1158,7 @@ def _set_simple_geoaxes_ticks(
 # TODO: 非矩形边框
 def _set_complex_geoaxes_ticks(
     ax: GeoAxes,
-    extents: Union[tuple[float, float, float, float], Literal['global']],
+    extents: tuple[float, float, float, float] | Literal["global"],
     major_xticks: NDArray,
     major_yticks: NDArray,
     minor_xticks: NDArray,
@@ -1166,11 +1166,11 @@ def _set_complex_geoaxes_ticks(
     xformatter: Formatter,
     yformatter: Formatter,
 ) -> None:
-    '''设置复杂投影的 GeoAxes 的范围和刻度'''
+    """设置复杂投影的 GeoAxes 的范围和刻度"""
     # 将地图边框设置为矩形
     crs = PLATE_CARREE
-    if extents == 'global':
-        proj_type = str(type(ax.projection)).split("'")[1].split('.')[-1]
+    if extents == "global":
+        proj_type = str(type(ax.projection)).split("'")[1].split(".")[-1]
         raise ValueError(f"使用 {proj_type} 投影时必须设置 extents 范围")
     ax.set_extent(extents, crs=crs)
 
@@ -1194,7 +1194,7 @@ def _set_complex_geoaxes_ticks(
     def get_two_xticks(
         xticks: NDArray, npts: int = 100
     ) -> tuple[list[float], list[float], list[str], list[str]]:
-        '''获取地图上下边框的 x 刻度和刻度标签'''
+        """获取地图上下边框的 x 刻度和刻度标签"""
         xticksB = []
         xticksT = []
         xticklabelsB = []
@@ -1220,7 +1220,7 @@ def _set_complex_geoaxes_ticks(
     def get_two_yticks(
         yticks: NDArray, npts: int = 100
     ) -> tuple[list[float], list[float], list[str], list[str]]:
-        '''获取地图左右边框的 y 刻度和刻度标签'''
+        """获取地图左右边框的 y 刻度和刻度标签"""
         yticksL = []
         yticksR = []
         yticklabelsL = []
@@ -1287,12 +1287,12 @@ def _set_complex_geoaxes_ticks(
 
 # TODO: 浮点数精度问题
 def _get_ticks_in(ticks: NDArray, vmin: float, vmax: float) -> NDArray:
-    '''获取 v0 <= ticks <= v1 的刻度'''
+    """获取 v0 <= ticks <= v1 的刻度"""
     return ticks[(ticks >= vmin) & (ticks <= vmax)]
 
 
 def _interp_minor_ticks(major_ticks: NDArray, m: int) -> NDArray:
-    '''在主刻度的每段间隔内线性插值出 m 个次刻度'''
+    """在主刻度的每段间隔内线性插值出 m 个次刻度"""
     assert m >= 0
     n = len(major_ticks)
     if n <= 1 or m == 0:
@@ -1309,20 +1309,18 @@ def _interp_minor_ticks(major_ticks: NDArray, m: int) -> NDArray:
 
 def set_map_ticks(
     ax: Axes,
-    extents: Union[
-        tuple[float, float, float, float], Literal['global']
-    ] = 'global',
-    xticks: Optional[ArrayLike] = None,
-    yticks: Optional[ArrayLike] = None,
+    extents: tuple[float, float, float, float] | Literal["global"] = "global",
+    xticks: ArrayLike | None = None,
+    yticks: ArrayLike | None = None,
     *,
     dx: float = 10,
     dy: float = 10,
     mx: int = 0,
     my: int = 0,
-    xformatter: Optional[Formatter] = None,
-    yformatter: Optional[Formatter] = None,
+    xformatter: Formatter | None = None,
+    yformatter: Formatter | None = None,
 ) -> None:
-    '''
+    """
     设置地图的范围和刻度
 
     当 ax 是普通 Axes 时，认为其投影为PlateCarree()。
@@ -1365,14 +1363,14 @@ def set_map_ticks(
 
     yformatter : Formatter, optional
         y 轴刻度标签的 Formatter。默认为 None，表示LatitudeFormatter()。
-    '''
-    if extents != 'global':
+    """
+    if extents != "global":
         lon0, lon1, lat0, lat1 = extents
         if lon0 >= lon1 or lat0 >= lat1:
-            raise ValueError('要求 lon0 < lon1 且 lat0 < lat1')
+            raise ValueError("要求 lon0 < lon1 且 lat0 < lat1")
 
     if dx < 0 or dy < 0:
-        raise ValueError('dx 和 dy 必须是正数')
+        raise ValueError("dx 和 dy 必须是正数")
 
     if xticks is None:
         major_xticks = np.arange(math.floor(360 / dx) + 1) * dx - 180
@@ -1385,11 +1383,11 @@ def set_map_ticks(
         major_yticks = np.asarray(yticks)
 
     if not isinstance(mx, int) or mx < 0:
-        raise ValueError('mx 只能是非负整数')
+        raise ValueError("mx 只能是非负整数")
     minor_xticks = _interp_minor_ticks(major_xticks, mx)
 
     if not isinstance(my, int) or my < 0:
-        raise ValueError('my 只能是非负整数')
+        raise ValueError("my 只能是非负整数")
     minor_yticks = _interp_minor_ticks(major_yticks, my)
 
     if xformatter is None:
@@ -1420,9 +1418,9 @@ def set_map_ticks(
 def quick_cn_map(
     extents: tuple[float, float, float, float] = (70, 140, 0, 60),
     use_geoaxes: bool = True,
-    figsize: Optional[tuple[float, float]] = None,
+    figsize: tuple[float, float] | None = None,
 ) -> Axes:
-    '''
+    """
     快速制作带省界和九段线的中国地图
 
     Parameters
@@ -1440,7 +1438,7 @@ def quick_cn_map(
     -------
     ax : Axes
         表示地图的 Axes
-    '''
+    """
     fig = plt.figure(figsize=figsize)
     if use_geoaxes:
         ax = fig.add_subplot(projection=PLATE_CARREE)
@@ -1457,16 +1455,16 @@ def quick_cn_map(
 def add_quiver_legend(
     Q: Quiver,
     U: float,
-    units: str = 'm/s',
+    units: str = "m/s",
     width: float = 0.15,
     height: float = 0.15,
     loc: Literal[
-        'lower left', 'lower right', 'upper left', 'upper right'
-    ] = 'lower right',
-    qk_kwargs: Optional[dict] = None,
-    patch_kwargs: Optional[dict] = None,
+        "lower left", "lower right", "upper left", "upper right"
+    ] = "lower right",
+    qk_kwargs: dict | None = None,
+    patch_kwargs: dict | None = None,
 ) -> fa.QuiverLegend:
-    '''
+    """
     在 Axes 上添加 Quiver 的图例（带矩形背景的 QuiverKey）
 
     箭头下方有形如 '{U} {units}' 的标签。
@@ -1505,7 +1503,7 @@ def add_quiver_legend(
     -------
     quiver_legend : QuiverLegend
         图例对象
-    '''
+    """
     quiver_legend = fa.QuiverLegend(
         Q=Q,
         U=U,
@@ -1525,13 +1523,13 @@ def add_compass(
     ax: Axes,
     x: float,
     y: float,
-    angle: Optional[float] = None,
+    angle: float | None = None,
     size: float = 20,
-    style: Literal['arrow', 'star', 'circle'] = 'arrow',
-    pc_kwargs: Optional[dict] = None,
-    text_kwargs: Optional[dict] = None,
+    style: Literal["arrow", "star", "circle"] = "arrow",
+    pc_kwargs: dict | None = None,
+    text_kwargs: dict | None = None,
 ) -> fa.Compass:
-    '''
+    """
     在 Axes 上添加指北针
 
     Parameters
@@ -1565,7 +1563,7 @@ def add_compass(
     -------
     compass : Compass
         指北针对象
-    '''
+    """
     compass = fa.Compass(
         x=x,
         y=y,
@@ -1585,9 +1583,9 @@ def add_scale_bar(
     x: float,
     y: float,
     length: float = 1000,
-    units: Literal['m', 'km'] = 'km',
+    units: Literal["m", "km"] = "km",
 ) -> fa.ScaleBar:
-    '''
+    """
     在 Axes 上添加地图比例尺
 
     会根据 Axes 的投影计算比例尺大小。假设 Axes 的投影是 PlateCarree。
@@ -1610,12 +1608,12 @@ def add_scale_bar(
     -------
     scale_bar : ScaleBar
         比例尺对象。刻度可以通过 set_xticks、tick_params 等方法修改。
-    '''
+    """
     return fa.ScaleBar(ax, x, y, length, units)
 
 
 def add_frame(ax: Axes, width: float = 5, **kwargs: Any) -> fa.Frame:
-    '''
+    """
     在 Axes 上添加 GMT 风格的边框
 
     需要先设置好 Axes 的刻度，再调用该函数。
@@ -1638,7 +1636,7 @@ def add_frame(ax: Axes, width: float = 5, **kwargs: Any) -> fa.Frame:
     -------
     frame : Frame
         边框对象
-    '''
+    """
     frame = fa.Frame(width, **kwargs)
     ax.add_artist(frame)
 
@@ -1651,7 +1649,7 @@ def add_box(
     steps: int = 100,
     **kwargs: Any,
 ) -> PathPatch:
-    '''
+    """
     在 Axes 上添加一个方框
 
     Parameters
@@ -1675,11 +1673,11 @@ def add_box(
     -------
     patch : PathPatch
         方框对象
-    '''
+    """
     # 设置参数
     kwargs = normalize_kwargs(kwargs, PathPatch)
-    kwargs.setdefault('edgecolor', 'r')
-    kwargs.setdefault('facecolor', 'none')
+    kwargs.setdefault("edgecolor", "r")
+    kwargs.setdefault("facecolor", "none")
 
     # 添加 Patch
     path = fshp.box_path(*extents).interpolated(steps)
@@ -1695,11 +1693,11 @@ def add_mini_axes(
     shrink: float = 0.4,
     aspect: float = 1,
     loc: Literal[
-        'lower left', 'lower right', 'upper left', 'upper right'
-    ] = 'lower right',
-    projection: Union[Literal['same', None], ccrs.CRS] = 'same',
+        "lower left", "lower right", "upper left", "upper right"
+    ] = "lower right",
+    projection: Literal["same", None] | ccrs.CRS = "same",
 ) -> Axes:
-    '''
+    """
     在 Axes 的角落添加一个迷你 Axes 并返回
 
     Parameters
@@ -1724,16 +1722,16 @@ def add_mini_axes(
     -------
     new_ax : Axes
         新的迷你 Axes
-    '''
-    if projection == 'same':
-        projection = getattr(ax, 'projection', None)
+    """
+    if projection == "same":
+        projection = getattr(ax, "projection", None)
     new_ax = ax.figure.add_subplot(projection=projection)
     new_ax.set_aspect(aspect)
     draw = new_ax.draw
 
     @wraps(draw)
     def wrapper(renderer: RendererBase) -> None:
-        '''在原先的 draw 前调整 new_ax 的大小位置'''
+        """在原先的 draw 前调整 new_ax 的大小位置"""
         bbox = ax.get_position()
         new_bbox = new_ax.get_position()
         # shrink=1 时 new_ax 恰好有一边填满 ax
@@ -1744,22 +1742,22 @@ def add_mini_axes(
         width = new_bbox.width * ratio
         height = new_bbox.height * ratio
 
-        if loc == 'lower left':
+        if loc == "lower left":
             x0 = bbox.x0
             x1 = bbox.x0 + width
             y0 = bbox.y0
             y1 = bbox.y0 + height
-        elif loc == 'lower right':
+        elif loc == "lower right":
             x0 = bbox.x1 - width
             x1 = bbox.x1
             y0 = bbox.y0
             y1 = bbox.y0 + height
-        elif loc == 'upper left':
+        elif loc == "upper left":
             x0 = bbox.x0
             x1 = bbox.x0 + width
             y0 = bbox.y1 - height
             y1 = bbox.y1
-        elif loc == 'upper right':
+        elif loc == "upper right":
             x0 = bbox.x1 - width
             x1 = bbox.x1
             y0 = bbox.y1 - height
@@ -1780,12 +1778,12 @@ def add_mini_axes(
 
 # TODO: mpl_toolkits.axes_grid1 实现
 def add_side_axes(
-    ax: Union[Axes, ArrayLike],
-    loc: Literal['left', 'right', 'bottom', 'top'],
+    ax: Axes | ArrayLike,
+    loc: Literal["left", "right", "bottom", "top"],
     pad: float,
     width: float,
 ) -> Axes:
-    '''
+    """
     在原有的 Axes 旁边新添一个等高或等宽的 Axes 并返回该对象
 
     Parameters
@@ -1806,28 +1804,28 @@ def add_side_axes(
     -------
     new_ax : Axes
         新 Axes
-    '''
+    """
     # 获取一组 Axes 的位置
     axs = np.atleast_1d(ax).ravel()
     bbox = Bbox.union([ax.get_position() for ax in axs])
 
     # 可选四个方向
-    if loc == 'left':
+    if loc == "left":
         x0 = bbox.x0 - pad - width
         x1 = x0 + width
         y0 = bbox.y0
         y1 = bbox.y1
-    elif loc == 'right':
+    elif loc == "right":
         x0 = bbox.x1 + pad
         x1 = x0 + width
         y0 = bbox.y0
         y1 = bbox.y1
-    elif loc == 'bottom':
+    elif loc == "bottom":
         x0 = bbox.x0
         x1 = bbox.x1
         y0 = bbox.y0 - pad - width
         y1 = y0 + width
-    elif loc == 'top':
+    elif loc == "top":
         x0 = bbox.x0
         x1 = bbox.x1
         y0 = bbox.y1 + pad
@@ -1844,10 +1842,10 @@ def get_cross_section_xticks(
     lon: ArrayLike,
     lat: ArrayLike,
     nticks: int = 6,
-    lon_formatter: Optional[Formatter] = None,
-    lat_formatter: Optional[Formatter] = None,
+    lon_formatter: Formatter | None = None,
+    lat_formatter: Formatter | None = None,
 ) -> tuple[NDArray, NDArray, list[str]]:
-    '''
+    """
     返回垂直截面图所需的横坐标，刻度位置和刻度标签。
 
     用经纬度的欧式距离表示横坐标，在横坐标上取 nticks 个等距的刻度，
@@ -1882,12 +1880,12 @@ def get_cross_section_xticks(
 
     xticklabels : (nticks,) list of str
         用经纬度表示的刻度标签
-    '''
+    """
     # 线性插值计算刻度的经纬度值
     lon, lat = asarrays(lon, lat)
     npts = len(lon)
     if npts <= 1:
-        raise ValueError('lon 和 lat 至少有 2 个元素')
+        raise ValueError("lon 和 lat 至少有 2 个元素")
     dlon = lon - lon[0]
     dlat = lat - lat[0]
     x = np.hypot(dlon, dlat)
@@ -1898,21 +1896,21 @@ def get_cross_section_xticks(
     # 获取字符串形式的刻度标签
     xticklabels = []
     if lon_formatter is None:
-        lon_formatter = LongitudeFormatter(number_format='.1f')
+        lon_formatter = LongitudeFormatter(number_format=".1f")
     if lat_formatter is None:
-        lat_formatter = LatitudeFormatter(number_format='.1f')
+        lat_formatter = LatitudeFormatter(number_format=".1f")
     for i in range(nticks):
         lon_label = lon_formatter(tlon[i])
         lat_label = lat_formatter(tlat[i])
-        xticklabels.append(lon_label + '\n' + lat_label)
+        xticklabels.append(lon_label + "\n" + lat_label)
 
     return x, xticks, xticklabels
 
 
 def get_qualitative_palette(
-    colors: Union[list, NDArray]
+    colors: list | NDArray,
 ) -> tuple[mcolors.ListedColormap, mcolors.Normalize, NDArray]:
-    '''
+    """
     创建一组定性的 colormap 和 norm，同时返回刻度位置。
 
     Parameters
@@ -1930,7 +1928,7 @@ def get_qualitative_palette(
 
     ticks : (N,) ndarray
         colorbar 刻度的坐标
-    '''
+    """
     N = len(colors)
     cmap = mcolors.ListedColormap(colors)
     norm = mcolors.Normalize(vmin=-0.5, vmax=N - 0.5)
@@ -1940,30 +1938,26 @@ def get_qualitative_palette(
 
 
 def get_aod_cmap() -> mcolors.ListedColormap:
-    '''返回适用于 AOD 的 cmap'''
-    filepath = DATA_DIRPATH / 'NEO_modis_aer_od.csv'
-    rgb = np.loadtxt(str(filepath), delimiter=',') / 256
+    """返回适用于 AOD 的 cmap"""
+    filepath = DATA_DIRPATH / "NEO_modis_aer_od.csv"
+    rgb = np.loadtxt(str(filepath), delimiter=",") / 256
     cmap = mcolors.ListedColormap(rgb)
 
     return cmap
 
 
 class CenteredBoundaryNorm(mcolors.BoundaryNorm):
-    '''将 vcenter 所在的 bin 映射到 cmap 中间的 BoundaryNorm'''
+    """将 vcenter 所在的 bin 映射到 cmap 中间的 BoundaryNorm"""
 
-    def __init__(
-        self, boundaries: Any, vcenter: float = 0, clip: bool = False
-    ) -> None:
+    def __init__(self, boundaries: Any, vcenter: float = 0, clip: bool = False) -> None:
         super().__init__(boundaries, len(boundaries) - 1, clip)
         boundaries = np.asarray(boundaries)
         self.N1 = np.count_nonzero(boundaries < vcenter)
         self.N2 = np.count_nonzero(boundaries > vcenter)
         if self.N1 < 1 or self.N2 < 1:
-            raise ValueError('vcenter 两侧至少各有一条边界')
+            raise ValueError("vcenter 两侧至少各有一条边界")
 
-    def __call__(
-        self, value: Any, clip: Optional[bool] = None
-    ) -> np.ma.MaskedArray:
+    def __call__(self, value: Any, clip: bool | None = None) -> np.ma.MaskedArray:
         # 将 BoundaryNorm 的 [0, N-1] 映射到 [0.0, 1.0] 内
         result = super().__call__(value, clip)
         if self.N1 + self.N2 == self.N - 1:
@@ -1985,18 +1979,16 @@ class CenteredBoundaryNorm(mcolors.BoundaryNorm):
 
 def plot_colormap(
     cmap: mcolors.Colormap,
-    norm: Optional[mcolors.Normalize] = None,
-    extend: Optional[Literal['neither', 'both', 'min', 'max']] = None,
-    ax: Optional[Axes] = None,
+    norm: mcolors.Normalize | None = None,
+    extend: Literal["neither", "both", "min", "max"] | None = None,
+    ax: Axes | None = None,
 ) -> Colorbar:
-    '''快速展示一条 colormap'''
+    """快速展示一条 colormap"""
     if ax is None:
         fig, ax = plt.subplots(figsize=(8, 1))
         fig.subplots_adjust(bottom=0.5)
     mappable = ScalarMappable(norm=norm, cmap=cmap)
-    cbar = plt.colorbar(
-        mappable, cax=ax, orientation='horizontal', extend=extend
-    )
+    cbar = plt.colorbar(mappable, cax=ax, orientation="horizontal", extend=extend)
 
     return cbar
 
@@ -2004,7 +1996,7 @@ def plot_colormap(
 def letter_axes(
     axes: ArrayLike, x: ArrayLike, y: ArrayLike, **kwargs: Any
 ) -> list[Text]:
-    '''
+    """
     给一组 Axes 按顺序标注字母
 
     Parameters
@@ -2023,7 +2015,7 @@ def letter_axes(
     **kwargs
         Axes.text 的关键字参数。
         例如 fontsize、fontfamily 和 color 等。
-    '''
+    """
     axes = np.atleast_1d(axes)
     x = np.full_like(axes, x) if np.isscalar(x) else np.asarray(x)
     y = np.full_like(axes, y) if np.isscalar(y) else np.asarray(y)
@@ -2034,9 +2026,9 @@ def letter_axes(
         text = ax.text(
             x=xi,
             y=yi,
-            s=f'({letter})',
-            ha='center',
-            va='center',
+            s=f"({letter})",
+            ha="center",
+            va="center",
             transform=ax.transAxes,
             **kwargs,
         )
@@ -2046,22 +2038,22 @@ def letter_axes(
 
 
 def load_test_data() -> NpzFile:
-    '''读取测试用的数据。包含地表 2m 气温（K）和水平 10m 风速。'''
-    filepath = DATA_DIRPATH / 'test.npz'
+    """读取测试用的数据。包含地表 2m 气温（K）和水平 10m 风速。"""
+    filepath = DATA_DIRPATH / "test.npz"
     return np.load(str(filepath))
 
 
-def savefig(fname: Any, fig: Optional[Figure] = None, **kwargs) -> None:
-    '''保存 Figure 为图片'''
+def savefig(fname: Any, fig: Figure | None = None, **kwargs) -> None:
+    """保存 Figure 为图片"""
     if fig is None:
         fig = plt.gcf()
-    kwargs.setdefault('dpi', 300)
-    kwargs.setdefault('bbox_inches', 'tight')
+    kwargs.setdefault("dpi", 300)
+    kwargs.setdefault("bbox_inches", "tight")
     fig.savefig(fname, **kwargs)
 
 
-def get_font_names(sub: Optional[str] = None) -> list[str]:
-    '''获取 Matplotlib 可用的字体名称'''
+def get_font_names(sub: str | None = None) -> list[str]:
+    """获取 Matplotlib 可用的字体名称"""
     names = font_manager.get_font_names()
     if sub is not None:
         return [name for name in names if sub.lower() in name.lower()]

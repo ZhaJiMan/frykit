@@ -1,25 +1,24 @@
 from collections.abc import Sequence
-from typing import Any, Optional, Union
+from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 from PIL import Image
 
-from frykit._typing import PathType
+from frykit.typing import PathType
 
-ImageInput = Union[PathType, Image.Image]
+ImageInput = PathType | Image.Image
 
 
 def _read_image(image: ImageInput) -> Image.Image:
-    '''读取图片为 Image 对象'''
+    """读取图片为 Image 对象"""
     if isinstance(image, Image.Image):
         return image
     return Image.open(str(image))
 
 
-def make_gif(
-    images: Sequence[ImageInput], filepath: PathType, **kwargs: Any
-) -> None:
-    '''
+def make_gif(images: Sequence[ImageInput], filepath: PathType, **kwargs: Any) -> None:
+    """
     制作 GIF 图。结果的 mode 和尺寸由第一张图决定。
 
     Parameters
@@ -34,30 +33,26 @@ def make_gif(
         用 pillow 保存 GIF 时的参数。
         例如 duration、loop、disposal、transparency 等。
         https://pillow.readthedocs.io/en/stable/handbook/image-file-formats.html
-    '''
+    """
     if not images:
-        raise ValueError('至少需要一张图片')
+        raise ValueError("至少需要一张图片")
 
-    kwargs.setdefault('duration', 500)
-    kwargs.setdefault('loop', 0)
+    kwargs.setdefault("duration", 500)
+    kwargs.setdefault("loop", 0)
 
     images = [_read_image(image) for image in images]
     images[0].save(
-        str(filepath),
-        format='gif',
-        save_all=True,
-        append_images=images[1:],
-        **kwargs
+        str(filepath), format="gif", save_all=True, append_images=images[1:], **kwargs
     )
 
 
 def merge_images(
     images: Sequence[ImageInput],
-    shape: Optional[tuple[int, int]] = None,
-    mode: Optional[str] = None,
-    bgcolor: Any = 'white',
+    shape: tuple[int, int] | None = None,
+    mode: str | None = None,
+    bgcolor: Any = "white",
 ) -> Image.Image:
-    '''
+    """
     合并一组图片
 
     合并结果可以分为 shape[0] 行和 shape[1] 列个格子。将图片从左到右，从上到下
@@ -82,9 +77,9 @@ def merge_images(
     -------
     merged : Image
         合并后的图片
-    '''
+    """
     if not images:
-        raise ValueError('至少需要一张图片')
+        raise ValueError("至少需要一张图片")
 
     # 获取最大宽高
     images = [_read_image(image) for image in images]
@@ -97,9 +92,9 @@ def merge_images(
         shape = (num, 1)
     row, col = shape
     if row == 0 or row < -1 or col == 0 or col < -1:
-        raise ValueError('shape 的元素只能为正整数或 -1')
+        raise ValueError("shape 的元素只能为正整数或 -1")
     if row == -1 and col == -1:
-        raise ValueError('shape 的元素不能同时为 -1')
+        raise ValueError("shape 的元素不能同时为 -1")
     if row == -1:
         row = (num - 1) // col + 1
     if col == -1:
@@ -120,10 +115,8 @@ def merge_images(
     return merged
 
 
-def split_image(
-    image: ImageInput, shape: Union[int, tuple[int, int]]
-) -> np.ndarray:
-    '''
+def split_image(image: ImageInput, shape: int | tuple[int, int]) -> NDArray:
+    """
     将一张图片分割成形如 shape 的图片数组
 
     Parameters
@@ -138,11 +131,11 @@ def split_image(
     -------
     split : ndarray of Image
         形如 shape 的图片数组
-    '''
+    """
     is_1d = isinstance(shape, int)
     row, col = (1, shape) if is_1d else shape
     if row <= 0 or col <= 0:
-        raise ValueError('shape 只能含正整数维度')
+        raise ValueError("shape 只能含正整数维度")
 
     # 可能无法整除
     image = _read_image(image)
@@ -162,7 +155,7 @@ def split_image(
 
 
 def compare_images(image1: ImageInput, image2: ImageInput) -> Image.Image:
-    '''
+    """
     通过求两张图片的绝对差值比较前后差异
 
     要求两张图片大小和模式相同。
@@ -179,13 +172,13 @@ def compare_images(image1: ImageInput, image2: ImageInput) -> Image.Image:
     -------
     images : list of Image
         两张图片的绝对差值构成的图片
-    '''
+    """
     image1 = _read_image(image1)
     image2 = _read_image(image2)
     if image1.size != image2.size:
-        raise ValueError('两张图片的宽高不同')
+        raise ValueError("两张图片的宽高不同")
     if image1.mode != image2.mode:
-        raise ValueError('两张图片的 mode 不同')
+        raise ValueError("两张图片的 mode 不同")
     arr1 = np.asarray(image1, np.int16)
     arr2 = np.asarray(image2, np.int16)
     diff = np.abs(arr1 - arr2).astype(np.uint8)

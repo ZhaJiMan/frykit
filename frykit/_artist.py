@@ -1,7 +1,7 @@
 import math
 from collections.abc import Collection, Iterable
 from functools import partial
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 from weakref import WeakKeyDictionary, WeakValueDictionary
 
 import cartopy.crs as ccrs
@@ -35,14 +35,12 @@ _key_to_path = WeakKeyDictionary()
 _key_to_crs_to_path = WeakKeyDictionary()
 
 _key_to_geom: WeakValueDictionary[_GeomKey, BaseGeometry]
-_key_to_path: WeakKeyDictionary[_GeomKey, Optional[Path]]
-_key_to_crs_to_path: WeakKeyDictionary[
-    _GeomKey, dict[ccrs.CRS, tuple[bool, Path]]
-]
+_key_to_path: WeakKeyDictionary[_GeomKey, Path | None]
+_key_to_crs_to_path: WeakKeyDictionary[_GeomKey, dict[ccrs.CRS, tuple[bool, Path]]]
 
 
 def _geoms_to_paths(geoms: Iterable[BaseGeometry]) -> list[Path]:
-    '''将一组几何对象转为 Path 并缓存结果'''
+    """将一组几何对象转为 Path 并缓存结果"""
     paths = []
     for geom in geoms:
         key = _GeomKey(geom)
@@ -68,7 +66,7 @@ def _transform_geoms_to_paths(
         # 直接变换 vertices 会在 clip 环节产生麻烦
         transform_geom = fshp.GeometryTransformer(crs_from, crs_to)
     else:
-        transform_geom = lambda x: crs_to.project_geometry(x, crs_from)
+        transform_geom = lambda x: crs_to.project_geometry(x, crs_from)  # noqa: E731
 
     paths = []
     for geom in geoms:
@@ -89,8 +87,8 @@ def _transform_geoms_to_paths(
 
 def _get_geoms_extents(
     geoms: Iterable[BaseGeometry],
-) -> Optional[tuple[float, float, float, float]]:
-    '''返回一组几何对象的边界范围。全部为空对象时返回 None。'''
+) -> tuple[float, float, float, float] | None:
+    """返回一组几何对象的边界范围。全部为空对象时返回 None。"""
     bounds = [geom.bounds for geom in geoms if not geom.is_empty]
     if bounds:
         bounds = np.array(bounds)
@@ -105,13 +103,13 @@ def _get_geoms_extents(
 
 # TODO: 类持有对几何对象的引用，会存在问题吗？
 class GeomCollection(PathCollection):
-    '''投影并绘制多边形对象的 Collection 类'''
+    """投影并绘制多边形对象的 Collection 类"""
 
     def __init__(
         self,
         ax: Axes,
         geoms: Collection[BaseGeometry],
-        crs: Optional[ccrs.CRS],
+        crs: ccrs.CRS | None,
         fast_transform: bool = True,
         skip_outside: bool = True,
         **kwargs: Any,
@@ -133,7 +131,7 @@ class GeomCollection(PathCollection):
             )
         else:
             if self.crs is not None:
-                raise ValueError('ax 不是 GeoAxes 时 crs 只能为 None')
+                raise ValueError("ax 不是 GeoAxes 时 crs 只能为 None")
             self._geoms_to_paths = _geoms_to_paths
 
         # 尝试用椭圆作为初始化的 paths
@@ -197,7 +195,7 @@ class GeomCollection(PathCollection):
 
 
 class TextCollection(Artist):
-    '''Text 集合'''
+    """Text 集合"""
 
     def __init__(
         self,
@@ -209,22 +207,21 @@ class TextCollection(Artist):
     ) -> None:
         super().__init__()
         self.skip_outside = skip_outside
-        self.set_zorder(kwargs.get('zorder', 3))
-        if 'transform' in kwargs:
-            self.set_transform(kwargs['transform'])
+        self.set_zorder(kwargs.get("zorder", 3))
+        if "transform" in kwargs:
+            self.set_transform(kwargs["transform"])
 
         self.x, self.y, self.s = map(np.atleast_1d, [x, y, s])
         if not len(self.x) == len(self.y) == len(self.s):
-            raise ValueError('x、y 和 s 长度必须相同')
+            raise ValueError("x、y 和 s 长度必须相同")
         self.coords = np.c_[self.x, self.y]
 
         kwargs = normalize_kwargs(kwargs, Text)
-        kwargs.setdefault('horizontalalignment', 'center')
-        kwargs.setdefault('verticalalignment', 'center')
-        kwargs.setdefault('clip_on', True)
+        kwargs.setdefault("horizontalalignment", "center")
+        kwargs.setdefault("verticalalignment", "center")
+        kwargs.setdefault("clip_on", True)
         self.texts = [
-            Text(xi, yi, si, **kwargs)
-            for xi, yi, si in zip(self.x, self.y, self.s)
+            Text(xi, yi, si, **kwargs) for xi, yi, si in zip(self.x, self.y, self.s)
         ]
 
     def set_figure(self, fig: Figure) -> None:
@@ -263,36 +260,36 @@ class TextCollection(Artist):
 
 
 class QuiverLegend(QuiverKey):
-    '''Quiver 图例'''
+    """Quiver 图例"""
 
     def __init__(
         self,
         Q: Quiver,
         U: float,
-        units: str = 'm/s',
+        units: str = "m/s",
         width: float = 0.15,
         height: float = 0.15,
         loc: Literal[
-            'lower left', 'lower right', 'upper left', 'upper right'
-        ] = 'lower right',
-        qk_kwargs: Optional[dict] = None,
-        patch_kwargs: Optional[dict] = None,
+            "lower left", "lower right", "upper left", "upper right"
+        ] = "lower right",
+        qk_kwargs: dict | None = None,
+        patch_kwargs: dict | None = None,
     ) -> None:
         self.units = units
         self.width = width
         self.height = height
         self.loc = loc
 
-        if loc == 'lower left':
+        if loc == "lower left":
             X = width / 2
             Y = height / 2
-        elif loc == 'lower right':
+        elif loc == "lower right":
             X = 1 - width / 2
             Y = height / 2
-        elif loc == 'upper left':
+        elif loc == "upper left":
             X = width / 2
             Y = 1 - height / 2
-        elif loc == 'upper right':
+        elif loc == "upper right":
             X = 1 - width / 2
             Y = 1 - height / 2
         else:
@@ -306,27 +303,25 @@ class QuiverLegend(QuiverKey):
             X=X,
             Y=Y,
             U=U,
-            label=f'{U} {units}',
-            labelpos='S',
-            coordinates='axes',
+            label=f"{U} {units}",
+            labelpos="S",
+            coordinates="axes",
             **qk_kwargs,
         )
         # zorder 必须在初始化后设置
-        zorder = qk_kwargs.get('zorder', 5)
+        zorder = qk_kwargs.get("zorder", 5)
         self.set_zorder(zorder)
 
         # 将 qk 调整至 patch 的中心
         fontsize = self.text.get_fontsize() / 72
         dy = (self._labelsep_inches + fontsize) / 2
-        trans = mtransforms.offset_copy(
-            Q.axes.transAxes, Q.figure.figure, 0, dy
-        )
+        trans = mtransforms.offset_copy(Q.axes.transAxes, Q.figure.figure, 0, dy)
         self.set_transform(trans)
 
         patch_kwargs = normalize_kwargs(patch_kwargs, Rectangle)
-        patch_kwargs.setdefault('linewidth', 0.8)
-        patch_kwargs.setdefault('edgecolor', 'k')
-        patch_kwargs.setdefault('facecolor', 'w')
+        patch_kwargs.setdefault("linewidth", 0.8)
+        patch_kwargs.setdefault("edgecolor", "k")
+        patch_kwargs.setdefault("facecolor", "w")
         self.patch = Rectangle(
             xy=(X - width / 2, Y - height / 2),
             width=width,
@@ -351,17 +346,17 @@ class QuiverLegend(QuiverKey):
 
 # TODO: Geodetic 配合 Mercator.GOOGLE 时速度很慢？
 class Compass(PathCollection):
-    '''地图指北针'''
+    """地图指北针"""
 
     def __init__(
         self,
         x: float,
         y: float,
-        angle: Optional[float] = None,
+        angle: float | None = None,
         size: float = 20,
-        style: Literal['arrow', 'star', 'circle'] = 'arrow',
-        pc_kwargs: Optional[dict] = None,
-        text_kwargs: Optional[dict] = None,
+        style: Literal["arrow", "star", "circle"] = "arrow",
+        pc_kwargs: dict | None = None,
+        text_kwargs: dict | None = None,
     ) -> None:
         self.x = x
         self.y = y
@@ -370,19 +365,19 @@ class Compass(PathCollection):
         self.style = style
 
         head = size / 72
-        if style == 'arrow':
+        if style == "arrow":
             width = axis = head * 2 / 3
             paths = self._make_paths(width, head, axis)
-            colors = ['k', 'w']
-        elif style == 'circle':
+            colors = ["k", "w"]
+        elif style == "circle":
             width = axis = head * 2 / 3
             radius = head * 2 / 5
             paths = [
                 Path.circle((0, head / 9), radius),
                 *self._make_paths(width, head, axis),
             ]
-            colors = ['none', 'k', 'w']
-        elif style == 'star':
+            colors = ["none", "k", "w"]
+        elif style == "star":
             width = head / 3
             axis = head + width / 2
             paths = []
@@ -391,38 +386,36 @@ class Compass(PathCollection):
                 rotation = mtransforms.Affine2D().rotate_deg(deg)
                 paths.append(path1.transformed(rotation))
                 paths.append(path2.transformed(rotation))
-            colors = ['k', 'w']
+            colors = ["k", "w"]
         else:
             raise ValueError("style: {'arrow', 'circle', 'star'}")
 
         pc_kwargs = normalize_kwargs(pc_kwargs, PathCollection)
-        pc_kwargs.setdefault('linewidth', 1)
-        pc_kwargs.setdefault('edgecolor', 'k')
-        pc_kwargs.setdefault('facecolor', colors)
-        pc_kwargs.setdefault('clip_on', False)
-        pc_kwargs.setdefault('zorder', 5)
+        pc_kwargs.setdefault("linewidth", 1)
+        pc_kwargs.setdefault("edgecolor", "k")
+        pc_kwargs.setdefault("facecolor", colors)
+        pc_kwargs.setdefault("clip_on", False)
+        pc_kwargs.setdefault("zorder", 5)
         super().__init__(paths, transform=None, **pc_kwargs)
 
         # 文字在箭头上方
         pad = head / 2.5
         text_kwargs = normalize_kwargs(text_kwargs, Text)
-        text_kwargs.setdefault('fontsize', size / 1.5)
+        text_kwargs.setdefault("fontsize", size / 1.5)
         self.text = Text(
             x=0,
             y=axis + pad,
-            text='N',
-            ha='center',
-            va='center',
+            text="N",
+            ha="center",
+            va="center",
             rotation=0,
             transform=None,
             **text_kwargs,
         )
 
     @staticmethod
-    def _make_paths(
-        width: float, head: float, axis: float
-    ) -> tuple[Path, Path]:
-        '''width：箭头宽度，head：箭头长度，axis：箭头中轴长度。且箭头方向朝上。'''
+    def _make_paths(width: float, head: float, axis: float) -> tuple[Path, Path]:
+        """width：箭头宽度，head：箭头长度，axis：箭头中轴长度。且箭头方向朝上。"""
         path1 = Path([(0, 0), (0, axis), (-width / 2, axis - head), (0, 0)])
         path2 = Path([(0, 0), (width / 2, axis - head), (0, axis), (0, 0)])
 
@@ -447,9 +440,7 @@ class Compass(PathCollection):
             azimuth = self.angle
 
         rotation = mtransforms.Affine2D().rotate_deg(-azimuth)
-        translation = mtransforms.ScaledTranslation(
-            self.x, self.y, self.axes.transAxes
-        )
+        translation = mtransforms.ScaledTranslation(self.x, self.y, self.axes.transAxes)
         trans = self.axes.figure.dpi_scale_trans + rotation + translation
         self.text.set_transform(trans)
         self.text.set_rotation(-azimuth)
@@ -467,7 +458,7 @@ class Compass(PathCollection):
 
 
 class ScaleBar(Axes):
-    '''地图比例尺'''
+    """地图比例尺"""
 
     def __init__(
         self,
@@ -475,16 +466,16 @@ class ScaleBar(Axes):
         x: float,
         y: float,
         length: float = 1000,
-        units: Literal['m', 'km'] = 'km',
+        units: Literal["m", "km"] = "km",
     ) -> None:
         self.x = x
         self.y = y
         self.length = length
         self.units = units
 
-        if units == 'm':
+        if units == "m":
             self._units = 1
-        elif units == 'km':
+        elif units == "km":
             self._units = 1000
         else:
             raise ValueError("units: {'m', 'km'}")
@@ -493,17 +484,17 @@ class ScaleBar(Axes):
         ax.add_child_axes(self)
 
         # 只显示上边框的刻度
-        self.set_xlabel(units, fontsize='medium')
+        self.set_xlabel(units, fontsize="medium")
         self.set_xlim(0, length)
         self.tick_params(
-            which='both',
+            which="both",
             left=False,
             labelleft=False,
             bottom=False,
             labelbottom=False,
             top=True,
             labeltop=True,
-            labelsize='small',
+            labelsize="small",
         )
 
     def _init(self) -> None:
@@ -549,7 +540,7 @@ class ScaleBar(Axes):
 
 # TODO: 非矩形边框
 class Frame(Artist):
-    '''GMT风格的边框'''
+    """GMT风格的边框"""
 
     def __init__(self, width: float = 5, **kwargs: Any) -> None:
         self.width = width
@@ -558,20 +549,20 @@ class Frame(Artist):
         self.set_zorder(2.5)
 
         kwargs = normalize_kwargs(kwargs, PathCollection)
-        kwargs.setdefault('linewidth', 1)
-        kwargs.setdefault('edgecolor', 'k')
-        kwargs.setdefault('facecolor', ['k', 'w'])
+        kwargs.setdefault("linewidth", 1)
+        kwargs.setdefault("edgecolor", "k")
+        kwargs.setdefault("facecolor", ["k", "w"])
 
         # 暂时用空 paths 占位
         self.pcs = {}
-        for key in ['left', 'right', 'top', 'bottom', 'corner']:
+        for key in ["left", "right", "top", "bottom", "corner"]:
             self.pcs[key] = PathCollection([], transform=None, **kwargs)
 
     def _init(self) -> None:
         if isinstance(self.axes, GeoAxes) and not isinstance(
             self.axes.projection, (ccrs.PlateCarree, ccrs.Mercator)
         ):
-            raise ValueError('只支持 PlateCarree 和 Mercator 投影')
+            raise ValueError("只支持 PlateCarree 和 Mercator 投影")
 
         # 将 inches 坐标系的 width 转为 axes 坐标系里的 dx 和 dy
         inches_to_axes = self.axes.figure.dpi_scale_trans - self.axes.transAxes
@@ -581,11 +572,11 @@ class Frame(Artist):
 
         xtrans = self.axes.get_xaxis_transform()
         ytrans = self.axes.get_yaxis_transform()
-        self.pcs['top'].set_transform(xtrans)
-        self.pcs['bottom'].set_transform(xtrans)
-        self.pcs['left'].set_transform(ytrans)
-        self.pcs['right'].set_transform(ytrans)
-        self.pcs['corner'].set_transform(self.axes.transAxes)
+        self.pcs["top"].set_transform(xtrans)
+        self.pcs["bottom"].set_transform(xtrans)
+        self.pcs["left"].set_transform(ytrans)
+        self.pcs["right"].set_transform(ytrans)
+        self.pcs["corner"].set_transform(self.axes.transAxes)
 
         # 收集 xlim 和 ylim 范围内所有刻度并去重
         major_xticks = self.axes.xaxis.get_majorticklocs()
@@ -605,41 +596,37 @@ class Frame(Artist):
         ny = len(yticks)
 
         top_paths = [
-            fshp.box_path(xticks[i], xticks[i + 1], 1, 1 + dy)
-            for i in range(nx - 1)
+            fshp.box_path(xticks[i], xticks[i + 1], 1, 1 + dy) for i in range(nx - 1)
         ]
         # 即便 xaxis 方向反转也维持边框的颜色顺序
         if self.axes.xaxis.get_inverted():
             top_paths.reverse()
-        self.pcs['top'].set_paths(top_paths)
+        self.pcs["top"].set_paths(top_paths)
 
         # 比例尺对象只设置上边框
         if isinstance(self.axes, ScaleBar):
             return None
 
         bottom_paths = [
-            fshp.box_path(xticks[i], xticks[i + 1], -dy, 0)
-            for i in range(nx - 1)
+            fshp.box_path(xticks[i], xticks[i + 1], -dy, 0) for i in range(nx - 1)
         ]
         if self.axes.xaxis.get_inverted():
             bottom_paths.reverse()
-        self.pcs['bottom'].set_paths(bottom_paths)
+        self.pcs["bottom"].set_paths(bottom_paths)
 
         left_paths = [
-            fshp.box_path(-dx, 0, yticks[i], yticks[i + 1])
-            for i in range(ny - 1)
+            fshp.box_path(-dx, 0, yticks[i], yticks[i + 1]) for i in range(ny - 1)
         ]
         if self.axes.yaxis.get_inverted():
             left_paths.reverse()
-        self.pcs['left'].set_paths(left_paths)
+        self.pcs["left"].set_paths(left_paths)
 
         right_paths = [
-            fshp.box_path(1, 1 + dx, yticks[i], yticks[i + 1])
-            for i in range(ny - 1)
+            fshp.box_path(1, 1 + dx, yticks[i], yticks[i + 1]) for i in range(ny - 1)
         ]
         if self.axes.yaxis.get_inverted():
             right_paths.reverse()
-        self.pcs['right'].set_paths(right_paths)
+        self.pcs["right"].set_paths(right_paths)
 
         # 单独画出四个角落的方块
         corner_paths = [
@@ -648,9 +635,9 @@ class Frame(Artist):
             fshp.box_path(-dx, 0, 1, 1 + dy),
             fshp.box_path(1, 1 + dx, 1, 1 + dy),
         ]
-        self.pcs['corner'].set_paths(corner_paths)
-        fc = self.pcs['top'].get_facecolor()[-1]
-        self.pcs['corner'].set_facecolor(fc)
+        self.pcs["corner"].set_paths(corner_paths)
+        fc = self.pcs["top"].get_facecolor()[-1]
+        self.pcs["corner"].set_facecolor(fc)
 
     def set_figure(self, fig: Figure) -> None:
         super().set_figure(fig)

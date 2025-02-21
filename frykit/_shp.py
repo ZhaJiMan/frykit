@@ -1,18 +1,18 @@
 import struct
 from io import BytesIO
-from typing import Any, Literal, TypedDict, Union
+from typing import Any, Literal, TypedDict
 
 import numpy as np
 import shapefile
 import shapely.geometry as sgeom
 from numpy.typing import NDArray
 
-from frykit._typing import PathType
+from frykit.typing import PathType
 
-'''
+"""
 利用类似 NetCDF 的有损压缩方式，将 64-bit 的 shapefile 转换成 32-bit 的整数。
 高德地图数据的精度为 1e-6，压缩参数能保证 1e-7 的精度。大概够用了？
-'''
+"""
 
 # 几何类型
 POINT = 0
@@ -23,10 +23,10 @@ POLYGON = 4
 MULTI_POLYGON = 5
 
 # 数据类型
-DTYPE = '<I'
+DTYPE = "<I"
 DTYPE_SIZE = struct.calcsize(DTYPE)
 
-Regions = Literal['china', 'world']
+Regions = Literal["china", "world"]
 Coords1 = list[float]
 Coords2 = list[Coords1]
 Coords3 = list[Coords2]
@@ -36,19 +36,19 @@ Coords4 = list[Coords3]
 # 暂不考虑 GeometryCollection
 class GeometryDict(TypedDict):
     type: Literal[
-        'Point',
-        'MultiPoint',
-        'LineString',
-        'MultiLineString',
-        'Polygon',
-        'MultiPolygon',
+        "Point",
+        "MultiPoint",
+        "LineString",
+        "MultiLineString",
+        "Polygon",
+        "MultiPolygon",
     ]
-    coordinates: Union[Coords1, Coords2, Coords3, Coords4]
+    coordinates: Coords1 | Coords2 | Coords3 | Coords4
 
 
 class FeatureDict(TypedDict):
-    type: Literal['Feature']
-    properties: dict[str, Union[str, float]]
+    type: Literal["Feature"]
+    properties: dict[str, str | float]
     geometry: GeometryDict
 
 
@@ -58,15 +58,15 @@ class GeoJsonDict(TypedDict):
 
 
 class Compressor:
-    '''进行压缩的类'''
+    """进行压缩的类"""
 
-    def __init__(self, region: Regions = 'china') -> None:
-        if region == 'china':
+    def __init__(self, region: Regions = "china") -> None:
+        if region == "china":
             self.LON0 = 70
             self.LON1 = 140
             self.LAT0 = 0
             self.LAT1 = 60
-        elif region == 'world':
+        elif region == "world":
             self.LON0 = -180
             self.LON1 = 180
             self.LAT0 = -90
@@ -79,8 +79,8 @@ class Compressor:
             [self.LON1 - self.LON0, self.LAT1 - self.LAT0]
         ) / (2 ** (DTYPE_SIZE * 8) - 1)
 
-    def __call__(self, coords: Union[Coords1, Coords2]) -> bytes:
-        '''将坐标数组压缩为 DTYPE 二进制'''
+    def __call__(self, coords: Coords1 | Coords2) -> bytes:
+        """将坐标数组压缩为 DTYPE 二进制"""
         coords = np.array(coords)
         coords = (coords - self.ADD_OFFSETS) / self.SCALE_FACTORS
         data = coords.round().astype(DTYPE).tobytes()
@@ -88,7 +88,7 @@ class Compressor:
         return data
 
     def inv(self, data: bytes) -> NDArray:
-        '''将 DTYPE 二进制解压为二维坐标数组'''
+        """将 DTYPE 二进制解压为二维坐标数组"""
         coords = np.frombuffer(data, DTYPE).reshape(-1, 2)
         coords = coords * self.SCALE_FACTORS + self.ADD_OFFSETS
 
@@ -96,26 +96,26 @@ class Compressor:
 
 
 class BinaryPacker:
-    '''将 shapefile 或 GeoJSON 的坐标数据打包成二进制的类'''
+    """将 shapefile 或 GeoJSON 的坐标数据打包成二进制的类"""
 
-    def __init__(self, region: Regions = 'china') -> None:
+    def __init__(self, region: Regions = "china") -> None:
         self.compressor = Compressor(region)
 
     def pack_shapefile(self, filepath: PathType) -> bytes:
-        '''打包 shapefile'''
+        """打包 shapefile"""
         with shapefile.Reader(str(filepath)) as reader:
             return self.pack_geojson(reader.__geo_interface__)
 
     def pack_geojson(self, geoj: GeoJsonDict) -> bytes:
-        '''打包 GeoJSON'''
+        """打包 GeoJSON"""
         shapes = []
         shape_sizes = []
-        for feature in geoj['features']:
-            shape = self.pack_geometry(feature['geometry'])
+        for feature in geoj["features"]:
+            shape = self.pack_geometry(feature["geometry"])
             shape_sizes.append(len(shape))
             shapes.append(shape)
 
-        shapes = b''.join(shapes)
+        shapes = b"".join(shapes)
         num_shapes = struct.pack(DTYPE, len(shape_sizes))
         shape_sizes = np.array(shape_sizes, DTYPE).tobytes()
         content = num_shapes + shape_sizes + shapes
@@ -123,51 +123,51 @@ class BinaryPacker:
         return content
 
     def pack_geometry(self, geometry: GeometryDict) -> bytes:
-        '''打包 GeoJSON 的 geometry 对象'''
-        geometry_type = geometry['type']
-        coords = geometry['coordinates']
-        if geometry_type == 'Point':
+        """打包 GeoJSON 的 geometry 对象"""
+        geometry_type = geometry["type"]
+        coords = geometry["coordinates"]
+        if geometry_type == "Point":
             shape_data = self.pack_point(coords)
             shape_type = POINT
-        elif geometry_type == 'MultiPoint':
+        elif geometry_type == "MultiPoint":
             shape_data = self.pack_multi_point(coords)
             shape_type = MULTI_POINT
-        elif geometry_type == 'LineString':
+        elif geometry_type == "LineString":
             shape_data = self.pack_line_string(coords)
             shape_type = LINE_STRING
-        elif geometry_type == 'MultiLineString':
+        elif geometry_type == "MultiLineString":
             shape_data = self.pack_multi_line_string(coords)
             shape_type = MULTI_LINE_STRING
-        elif geometry_type == 'Polygon':
+        elif geometry_type == "Polygon":
             shape_data = self.pack_polygon(coords)
             shape_type = POLYGON
-        elif geometry_type == 'MultiPolygon':
+        elif geometry_type == "MultiPolygon":
             shape_data = self.pack_multi_polygon(coords)
             shape_type = MULTI_POLYGON
         else:
-            raise ValueError(f'不支持的类型: {geometry_type}')
+            raise ValueError(f"不支持的类型: {geometry_type}")
         shape_type = struct.pack(DTYPE, shape_type)
         shape = shape_type + shape_data
 
         return shape
 
     def pack_point(self, coords: Coords1) -> bytes:
-        '''打包 Point 对象的坐标数据'''
+        """打包 Point 对象的坐标数据"""
         return self.compressor(coords)
 
     def pack_multi_point(self, coords: Coords2) -> bytes:
-        '''打包 MultiPoint 对象的坐标数据'''
+        """打包 MultiPoint 对象的坐标数据"""
         return self.compressor(coords)
 
     def pack_line_string(self, coords: Coords2) -> bytes:
-        '''打包 LineString 对象的坐标数据'''
+        """打包 LineString 对象的坐标数据"""
         return self.compressor(coords)
 
     def pack_multi_line_string(self, coords: Coords3) -> bytes:
-        '''打包 MultiLineString 对象的坐标数据'''
+        """打包 MultiLineString 对象的坐标数据"""
         parts = list(map(self.compressor, coords))
         part_sizes = list(map(len, parts))
-        parts = b''.join(parts)
+        parts = b"".join(parts)
         num_parts = struct.pack(DTYPE, len(coords))
         part_sizes = np.array(part_sizes, DTYPE).tobytes()
         data = num_parts + part_sizes + parts
@@ -175,14 +175,14 @@ class BinaryPacker:
         return data
 
     def pack_polygon(self, coords: Coords3) -> bytes:
-        '''打包 Polygon 对象的坐标数据'''
+        """打包 Polygon 对象的坐标数据"""
         return self.pack_multi_line_string(coords)
 
     def pack_multi_polygon(self, coords: Coords4) -> bytes:
-        '''打包 MultiPolygon 对象的坐标数据'''
+        """打包 MultiPolygon 对象的坐标数据"""
         parts = list(map(self.pack_polygon, coords))
         part_sizes = list(map(len, parts))
-        parts = b''.join(parts)
+        parts = b"".join(parts)
         num_parts = struct.pack(DTYPE, len(coords))
         part_sizes = np.array(part_sizes, DTYPE).tobytes()
         data = num_parts + part_sizes + parts
@@ -190,21 +190,21 @@ class BinaryPacker:
         return data
 
 
-ShapeType = Union[
-    sgeom.Point,
-    sgeom.MultiPoint,
-    sgeom.LineString,
-    sgeom.MultiLineString,
-    sgeom.Polygon,
-    sgeom.MultiPolygon,
-]
+ShapeType = (
+    sgeom.Point
+    | sgeom.MultiPoint
+    | sgeom.LineString
+    | sgeom.MultiLineString
+    | sgeom.Polygon
+    | sgeom.MultiPolygon
+)
 
 
 class BinaryReader:
-    '''读取 BinaryPacker 类打包的二进制文件的类'''
+    """读取 BinaryPacker 类打包的二进制文件的类"""
 
-    def __init__(self, filepath: PathType, region: Regions = 'china') -> None:
-        self.file = open(str(filepath), 'rb')
+    def __init__(self, filepath: PathType, region: Regions = "china") -> None:
+        self.file = open(str(filepath), "rb")
         self.num_shapes = struct.unpack(DTYPE, self.file.read(DTYPE_SIZE))[0]
         self.shape_sizes = np.frombuffer(
             self.file.read(self.num_shapes * DTYPE_SIZE), DTYPE
@@ -228,7 +228,7 @@ class BinaryReader:
         self.close()
 
     def shape(self, i: int = 0) -> ShapeType:
-        '''读取第 i 个几何对象'''
+        """读取第 i 个几何对象"""
         self.file.seek(self.shape_offsets[i])
         shape_type = struct.unpack(DTYPE, self.file.read(DTYPE_SIZE))[0]
         shape_data = self.file.read(self.shape_sizes[i] - DTYPE_SIZE)
@@ -245,26 +245,26 @@ class BinaryReader:
         elif shape_type == MULTI_POLYGON:
             return self.unpack_multi_polygon(shape_data)
         else:
-            raise ValueError(f'不支持的类型: {shape_type}')
+            raise ValueError(f"不支持的类型: {shape_type}")
 
     def shapes(self) -> list[ShapeType]:
-        '''读取所有几何对象'''
+        """读取所有几何对象"""
         return list(map(self.shape, range(self.num_shapes)))
 
     def unpack_point(self, data: bytes) -> sgeom.Point:
-        '''解包 Point 对象的坐标数据'''
+        """解包 Point 对象的坐标数据"""
         return sgeom.Point(self.compressor.inv(data))
 
     def unpack_multi_point(self, data: bytes) -> sgeom.MultiPoint:
-        '''解包 MultiPoint 对象的坐标数据'''
+        """解包 MultiPoint 对象的坐标数据"""
         return sgeom.MultiPoint(self.compressor.inv(data))
 
     def unpack_line_string(self, data: bytes) -> sgeom.LineString:
-        '''解包 LineString 对象的坐标数据'''
+        """解包 LineString 对象的坐标数据"""
         return sgeom.LineString(self.compressor.inv(data))
 
     def unpack_multi_line_string(self, data: bytes) -> sgeom.MultiLineString:
-        '''解包 MultiLineString 对象的坐标数据'''
+        """解包 MultiLineString 对象的坐标数据"""
         with BytesIO(data) as f:
             num_parts = struct.unpack(DTYPE, f.read(DTYPE_SIZE))[0]
             part_sizes = np.frombuffer(f.read(num_parts * DTYPE_SIZE), DTYPE)
@@ -274,7 +274,7 @@ class BinaryReader:
         return multi_line
 
     def unpack_polygon(self, data: bytes) -> sgeom.Polygon:
-        '''解包 Polygon 对象的坐标数据'''
+        """解包 Polygon 对象的坐标数据"""
         with BytesIO(data) as f:
             num_parts = struct.unpack(DTYPE, f.read(DTYPE_SIZE))[0]
             part_sizes = np.frombuffer(f.read(num_parts * DTYPE_SIZE), DTYPE)
@@ -284,13 +284,11 @@ class BinaryReader:
         return polygon
 
     def unpack_multi_polygon(self, data: bytes) -> sgeom.MultiPolygon:
-        '''解包 MultiPolygon 对象的坐标数据'''
+        """解包 MultiPolygon 对象的坐标数据"""
         with BytesIO(data) as f:
             num_parts = struct.unpack(DTYPE, f.read(DTYPE_SIZE))[0]
             part_sizes = np.frombuffer(f.read(num_parts * DTYPE_SIZE), DTYPE)
-            polygons = [
-                self.unpack_polygon(f.read(size)) for size in part_sizes
-            ]
+            polygons = [self.unpack_polygon(f.read(size)) for size in part_sizes]
             multi_polygon = sgeom.MultiPolygon(polygons)
 
         return multi_polygon

@@ -3,27 +3,27 @@ import statistics
 import time
 from collections.abc import Callable
 from functools import partial, wraps
-from typing import Any, Optional, Union
+from typing import Any
 
-from frykit._typing import PathType
+from frykit.typing import PathType
 
-TimedCallable = Callable[..., Union[float, list[float]]]
+TimedCallable = Callable[..., float | list[float]]
 
 
 def timer(
-    func: Optional[Callable] = None,
+    func: Callable | None = None,
     *,
     repeat: int = 1,
     number: int = 1,
     mean: bool = True,
-) -> Union[TimedCallable, Callable[[Callable], TimedCallable]]:
-    '''计时装饰器。使被包装的函数返回 repeat 个运行 number 次的耗时，单位为秒。'''
+) -> TimedCallable | Callable[[Callable], TimedCallable]:
+    """计时装饰器。使被包装的函数返回 repeat 个运行 number 次的耗时，单位为秒。"""
     if func is None:
         return partial(timer, repeat=repeat, number=number, mean=mean)
     assert repeat > 0 and number > 0
 
     @wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Union[float, list[float]]:
+    def wrapper(*args: Any, **kwargs: Any) -> float | list[float]:
         dt_list = []
         for _ in range(repeat):
             t0 = time.perf_counter()
@@ -43,7 +43,7 @@ def timer(
 
 
 def cprofiler(filepath: PathType) -> Callable:
-    '''cProfile 的装饰器。保存结果到指定路径。'''
+    """cProfile 的装饰器。保存结果到指定路径。"""
 
     def decorator(func: Callable) -> Callable:
         @wraps(func)
@@ -59,7 +59,7 @@ def cprofiler(filepath: PathType) -> Callable:
 
 
 def lprofiler(filepath: PathType) -> Callable:
-    '''line_profiler 的装饰器。保存结果到指定路径。'''
+    """line_profiler 的装饰器。保存结果到指定路径。"""
     from line_profiler import LineProfiler
 
     def decorator(func: Callable) -> Callable:

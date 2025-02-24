@@ -15,7 +15,7 @@ from shapely.prepared import prep
 
 from frykit import SHP_DIRPATH
 from frykit._shp import BinaryReader
-from frykit.calc import asarrays, split_coords
+from frykit.calc import asarrays
 from frykit.utils import deprecator
 
 """
@@ -822,8 +822,9 @@ class GeometryTransformer:
         transformer = Transformer.from_crs(crs_from, crs_to, always_xy=True)
 
         def func(coords: CoordinateSequence) -> NDArray:
+            coords = np.asarray(coords)
             return np.column_stack(
-                transformer.transform(*split_coords(coords))
+                transformer.transform(coords[:, 0], coords[:, 1])
             ).squeeze()
 
         self._func = lambda x: _transform(func, x)

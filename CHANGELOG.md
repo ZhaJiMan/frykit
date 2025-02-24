@@ -2,18 +2,14 @@
 
 - `calc` 模块：
   - `lon_lat_to_xyz` 函数改名为 `lonlat_to_xyz`。
-  - `hms_to_degrees` 函数改名为 `dms_to_dd`；移除 `hms_to_degrees2` 函数，希望用户自行用正则处理字符串后再调用 `dms_to_dd` 函数。另外新增 `dm_to_dd`、`dd_to_dm`、`dd_to_dms` 函数。
+  - `hms_to_degrees` 函数改名为 `dms_to_dd`；移除 `hms_to_degrees2` 函数。
   - `region_mask` 函数的 `apply_AND` 参数改名为 `apply_and`。
   - `interp_nearest_dd` 和 `interp_nearest_2d` 函数新增 `in_channels_last` 和 `out_channels_last` 参数，用来控制输入输出的通道维度是否放在最后。
-  - 新增判断一维数组单调性的 `is_monotonic_increasing` 和 `is_monotonic_decreasing` 函数。
-  - 移除 `binned_average_2d` 函数，改用 pandas 实现的 `binning2d` 函数。
-  - 新增用于生成分箱的 `arange2` 和 `make_evenly_bins` 函数。
+  - 移除 `binned_average_2d` 函数，改用 pandas 实现的 `binning2d` 函数，功能更多。
   - 移除 `split_coords` 函数。
 - `help` 模块改名为 `utils`，其中：
-  - 新增用中文连接多个字符串的 `join_with_cn_comma` 函数。
   - 新增构造 `TypeError` 信息的 `format_type_error` 函数。
   - `deprecator` 装饰器的 `alternative` 参数可以接受字符串类型。
-  - `is_sequence` 函数改名为 `is_iterable`，增加 `include_str` 参数。
   - `to_list` 函数改名为 `as_list`。
 
 ## `0.6.9`

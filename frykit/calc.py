@@ -368,7 +368,7 @@ def split_consecutive_trues(mask: ArrayLike) -> list[NDArray]:
     if mask.ndim != 1:
         raise ValueError("mask 必须是一维数组")
 
-    (ii,) = np.nonzero(mask)
+    ii = np.nonzero(mask)[0]
     if len(ii) == 0:
         return []
     elif len(ii) == 1:

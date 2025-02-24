@@ -25,7 +25,7 @@ from shapely.geometry.base import BaseGeometry
 from shapely.vectorized import contains
 
 import frykit.shp as fshp
-from frykit.calc import make_ellipse, split_coords, t_to_az
+from frykit.calc import make_ellipse, t_to_az
 
 PLATE_CARREE = ccrs.PlateCarree()
 
@@ -234,7 +234,7 @@ class TextCollection(Artist):
         trans = self.get_transform() - self.axes.transData
         coords = trans.transform(self.coords)
         # contains 不包含落在边界上的点
-        mask = contains(polygon, *split_coords(coords))
+        mask = contains(polygon, coords[:, 0], coords[:, 1])
         for i in np.nonzero(~mask)[0]:
             self.texts[i].set_visible(False)
 

@@ -29,6 +29,8 @@
 
 这个包只是作者自用的小工具集，函数编写粗糙，可能存在不少 bug，还请多多交流指正。类似的更完备的包还请移步 [cnmaps](https://github.com/cnmetlab/cnmaps)、[gma](https://gma.luosgeo.com/) 或 [EOmaps](https://github.com/raphaelquast/EOmaps)。
 
+> 答疑交流可加 QQ 群：1017694471
+
 ## 安装
 
 ```

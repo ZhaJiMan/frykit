@@ -4,7 +4,7 @@ from typing import Any, Literal, TypedDict
 
 import numpy as np
 import shapefile
-import shapely.geometry as sgeom
+import shapely
 from numpy.typing import NDArray
 
 from frykit.typing import PathType
@@ -191,12 +191,12 @@ class BinaryPacker:
 
 
 ShapeType = (
-    sgeom.Point
-    | sgeom.MultiPoint
-    | sgeom.LineString
-    | sgeom.MultiLineString
-    | sgeom.Polygon
-    | sgeom.MultiPolygon
+    shapely.Point
+    | shapely.MultiPoint
+    | shapely.LineString
+    | shapely.MultiLineString
+    | shapely.Polygon
+    | shapely.MultiPolygon
 )
 
 
@@ -251,44 +251,44 @@ class BinaryReader:
         """读取所有几何对象"""
         return list(map(self.shape, range(self.num_shapes)))
 
-    def unpack_point(self, data: bytes) -> sgeom.Point:
+    def unpack_point(self, data: bytes) -> shapely.Point:
         """解包 Point 对象的坐标数据"""
-        return sgeom.Point(self.compressor.inv(data))
+        return shapely.Point(self.compressor.inv(data))
 
-    def unpack_multi_point(self, data: bytes) -> sgeom.MultiPoint:
+    def unpack_multi_point(self, data: bytes) -> shapely.MultiPoint:
         """解包 MultiPoint 对象的坐标数据"""
-        return sgeom.MultiPoint(self.compressor.inv(data))
+        return shapely.MultiPoint(self.compressor.inv(data))
 
-    def unpack_line_string(self, data: bytes) -> sgeom.LineString:
+    def unpack_line_string(self, data: bytes) -> shapely.LineString:
         """解包 LineString 对象的坐标数据"""
-        return sgeom.LineString(self.compressor.inv(data))
+        return shapely.LineString(self.compressor.inv(data))
 
-    def unpack_multi_line_string(self, data: bytes) -> sgeom.MultiLineString:
+    def unpack_multi_line_string(self, data: bytes) -> shapely.MultiLineString:
         """解包 MultiLineString 对象的坐标数据"""
         with BytesIO(data) as f:
             num_parts = struct.unpack(DTYPE, f.read(DTYPE_SIZE))[0]
             part_sizes = np.frombuffer(f.read(num_parts * DTYPE_SIZE), DTYPE)
             lines = [self.compressor.inv(f.read(size)) for size in part_sizes]
-            multi_line = sgeom.MultiLineString(lines)
+            multi_line = shapely.MultiLineString(lines)
 
         return multi_line
 
-    def unpack_polygon(self, data: bytes) -> sgeom.Polygon:
+    def unpack_polygon(self, data: bytes) -> shapely.Polygon:
         """解包 Polygon 对象的坐标数据"""
         with BytesIO(data) as f:
             num_parts = struct.unpack(DTYPE, f.read(DTYPE_SIZE))[0]
             part_sizes = np.frombuffer(f.read(num_parts * DTYPE_SIZE), DTYPE)
             rings = [self.compressor.inv(f.read(size)) for size in part_sizes]
-            polygon = sgeom.Polygon(rings[0], rings[1:])
+            polygon = shapely.Polygon(rings[0], rings[1:])
 
         return polygon
 
-    def unpack_multi_polygon(self, data: bytes) -> sgeom.MultiPolygon:
+    def unpack_multi_polygon(self, data: bytes) -> shapely.MultiPolygon:
         """解包 MultiPolygon 对象的坐标数据"""
         with BytesIO(data) as f:
             num_parts = struct.unpack(DTYPE, f.read(DTYPE_SIZE))[0]
             part_sizes = np.frombuffer(f.read(num_parts * DTYPE_SIZE), DTYPE)
             polygons = [self.unpack_polygon(f.read(size)) for size in part_sizes]
-            multi_polygon = sgeom.MultiPolygon(polygons)
+            multi_polygon = shapely.MultiPolygon(polygons)
 
         return multi_polygon

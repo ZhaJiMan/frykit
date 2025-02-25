@@ -1,22 +1,15 @@
-import math
-from collections.abc import Callable, Iterable, Sized
+from collections.abc import Iterable
 from itertools import chain
-from typing import Any, TypedDict, TypeVar
+from typing import Any, TypedDict
 
 import numpy as np
-import pandas as pd  # 加载 overhead 还挺高
-import shapely.geometry as sgeom
-from matplotlib.path import Path
-from numpy.typing import ArrayLike, NDArray
-from pyproj import CRS, Transformer
-from shapely.coords import CoordinateSequence
+import pandas as pd
+import shapely
 from shapely.geometry.base import BaseGeometry
-from shapely.prepared import prep
 
 from frykit import SHP_DIRPATH
-from frykit._shp import BinaryReader
-from frykit.calc import asarrays
-from frykit.utils import deprecator
+from frykit.shp.binary import BinaryReader
+from frykit.shp.typing import PolygonType
 
 """
 数据源
@@ -26,8 +19,6 @@ from frykit.utils import deprecator
 - 所有国家: http://meteothink.org/downloads/index.html
 - 海陆: https://www.naturalearthdata.com/downloads/50m-physical-vectors/
 """
-
-PolygonType = sgeom.Polygon | sgeom.MultiPolygon
 
 
 class PrDict(TypedDict):
@@ -63,7 +54,7 @@ def clear_data_cache() -> None:
     _data_cache.clear()
 
 
-def get_cn_border() -> sgeom.MultiPolygon:
+def get_cn_border() -> shapely.MultiPolygon:
     """获取中国国界的多边形"""
     polygon = _data_cache.get("cn_border")
     if polygon is None:
@@ -75,7 +66,7 @@ def get_cn_border() -> sgeom.MultiPolygon:
     return polygon
 
 
-def get_nine_line() -> sgeom.MultiPolygon:
+def get_nine_line() -> shapely.MultiPolygon:
     """获取九段线的多边形"""
     polygon = _data_cache.get("nine_line")
     if polygon is None:
@@ -444,7 +435,7 @@ def get_countries() -> list[PolygonType]:
     return polygons
 
 
-def get_land() -> sgeom.MultiPolygon:
+def get_land() -> shapely.MultiPolygon:
     """获取陆地多边形"""
     polygon = _data_cache.get("land")
     if polygon is None:
@@ -456,7 +447,7 @@ def get_land() -> sgeom.MultiPolygon:
     return polygon
 
 
-def get_ocean() -> sgeom.MultiPolygon:
+def get_ocean() -> shapely.MultiPolygon:
     """获取海洋多边形"""
     polygon = _data_cache.get("ocean")
     if polygon is None:
@@ -466,386 +457,3 @@ def get_ocean() -> sgeom.MultiPolygon:
         _data_cache["ocean"] = polygon
 
     return polygon
-
-
-def is_geometry(obj: Any) -> bool:
-    """是否为几何对象"""
-    return isinstance(obj, BaseGeometry)
-
-
-def is_point(obj: Any) -> bool:
-    """是否为点对象"""
-    return isinstance(obj, (sgeom.Point, sgeom.MultiPoint))
-
-
-def is_line_string(obj: Any) -> bool:
-    """是否为线段"""
-    return isinstance(obj, (sgeom.LineString, sgeom.MultiLineString))
-
-
-def is_linear_ring(obj: Any) -> bool:
-    """是否为线性环"""
-    return isinstance(obj, sgeom.LinearRing)
-
-
-def is_polygon(obj: Any) -> bool:
-    """是否为多边形"""
-    return isinstance(obj, (sgeom.Polygon, sgeom.MultiPolygon))
-
-
-def _point_codes() -> list[np.uint8]:
-    return [Path.MOVETO]
-
-
-def _line_codes(coords: Sized) -> list[np.uint8]:
-    codes = [Path.LINETO] * len(coords)
-    if codes:
-        codes[0] = Path.MOVETO
-
-    return codes
-
-
-def _ring_codes(coords: Sized) -> list[np.uint8]:
-    codes = [Path.LINETO] * len(coords)
-    if codes:
-        codes[0] = Path.MOVETO
-        codes[-1] = Path.CLOSEPOLY
-
-    return codes
-
-
-# 用于占位的 Path，不会被画出。
-EMPTY_PATH = Path(np.empty((0, 2)))
-EMPTY_POLYGON = sgeom.Polygon()
-
-
-def geom_to_path(geom: BaseGeometry) -> Path:
-    """
-    几何对象转为 Path
-
-    - 空几何对象对应空 Path
-    - Point 和 LineString 保留原来的坐标顺序
-    - LinearRing 对应的 Path 里坐标沿顺时针绕行
-    - Polygon 对应的 Path 里外环坐标沿顺时针绕行，内环坐标沿逆时针绕行。
-    - Multi 对象和 GeometryCollection 使用 Path.make_compound_path
-
-    See Also
-    --------
-    cartopy.mpl.patch.geos_to_path
-    """
-    if not is_geometry(geom):
-        raise TypeError("geom 不是几何对象")
-    if geom.is_empty:
-        return EMPTY_PATH
-
-    if isinstance(geom, sgeom.LinearRing):
-        coords = np.asarray(geom.coords)
-        if geom.is_ccw:
-            coords = coords[::-1]
-        return Path(coords, _ring_codes(coords))
-
-    if isinstance(geom, sgeom.Point):
-        return Path([[geom.x, geom.y]], _point_codes())
-
-    if isinstance(geom, sgeom.LineString):
-        coords = np.asarray(geom.coords)
-        return Path(coords, _line_codes(coords))
-
-    if isinstance(geom, sgeom.Polygon):
-        verts = []
-        codes = []
-        coords = np.asarray(geom.exterior.coords)
-        if geom.exterior.is_ccw:
-            coords = coords[::-1]
-        verts.append(coords)
-        codes.extend(_ring_codes(coords))
-
-        for interior in geom.interiors:
-            coords = np.asarray(interior.coords)
-            if not interior.is_ccw:
-                coords = coords[::-1]
-            verts.append(coords)
-            codes.extend(_ring_codes(coords))
-
-        verts = np.vstack(verts)
-        return Path(verts, codes)
-
-    return Path.make_compound_path(*map(geom_to_path, geom.geoms))
-
-
-def _is_finite(arr: NDArray) -> bool:
-    """判断数组是否含 NaN 或 Inf"""
-    return bool(np.isfinite(arr).all())
-
-
-def path_to_polygon(path: Path) -> PolygonType:
-    """
-    Path 对象转为多边形
-
-    - 空 Path 对应空多边形
-    - 要求输入是 geom_to_path(polygon) 的结果，其它输入不保证结果正确。
-    - 含 NaN 或 Inf 的部分对应空多边形
-
-    See Also
-    --------
-    cartopy.mpl.patch.path_to_geos
-    """
-    if len(path.vertices) == 0:
-        return EMPTY_POLYGON
-
-    collection = []
-    invalid_flag = False
-    inds = np.nonzero(path.codes == Path.MOVETO)[0][1:]
-    for verts in np.vsplit(path.vertices, inds):
-        if not _is_finite(verts):
-            invalid_flag = True
-            continue
-        ring = sgeom.LinearRing(verts)
-        if ring.is_ccw:
-            if not invalid_flag:
-                collection[-1][1].append(ring)
-        else:
-            collection.append((ring, []))
-            invalid_flag = False
-
-    polygons = [sgeom.Polygon(shell, holes) for shell, holes in collection]
-    if not polygons:
-        return EMPTY_POLYGON
-    if len(polygons) == 1:
-        return polygons[0]
-
-    return sgeom.MultiPolygon(polygons)
-
-
-def polygon_to_polys(polygon: PolygonType) -> list[list[tuple[float, float]]]:
-    """多边形转为适用于 shapefile 的坐标序列"""
-    if isinstance(polygon, sgeom.Polygon):
-        polys = []
-        coords = polygon.exterior.coords[:]
-        if polygon.exterior.is_ccw:
-            coords.reverse()
-        polys.append(coords)
-
-        for interior in polygon.interiors:
-            coords = interior.coords[:]
-            if not interior.is_ccw:
-                coords.reverse()
-            polys.append(coords)
-
-        return polys
-
-    if isinstance(polygon, sgeom.MultiPolygon):
-        return list(chain(*map(polygon_to_polys, polygon.geoms)))
-
-    raise TypeError("polygon 不是多边形")
-
-
-def polygon_to_mask(polygon: PolygonType, x: ArrayLike, y: ArrayLike) -> NDArray:
-    """
-    用多边形制作掩膜（mask）数组
-
-    Parameters
-    ----------
-    polygon : PolygonType
-        用于裁剪的多边形
-
-    x : array_like
-        数据点的横坐标。要求形状与 y 相同。
-
-    y : array_like
-        数据点的纵坐标。要求形状与 x 相同。
-
-    Returns
-    -------
-    mask : ndarray
-        布尔类型的掩膜数组，真值表示数据点落入多边形内部。形状与 x 和 y 相同。
-
-    See Also
-    --------
-    shapely.vectorized.contains
-    """
-    if not is_polygon(polygon):
-        raise TypeError("polygon 不是多边形")
-
-    x, y = asarrays(x, y)
-    if x.shape != y.shape:
-        raise ValueError("x 和 y 的形状不匹配")
-    if x.ndim == 0 and y.ndim == 0:
-        return polygon.contains(sgeom.Point(x, y))
-    prepared = prep(polygon)
-
-    def recursion(x: np.ndarray, y: np.ndarray) -> np.ndarray:
-        """递归判断坐标为 x 和 y 的点集是否落入多边形中"""
-        xmin, xmax = x.min(), x.max()
-        ymin, ymax = y.min(), y.max()
-        xflag = math.isclose(xmin, xmax)
-        yflag = math.isclose(ymin, ymax)
-        mask = np.zeros(x.shape, dtype=bool)
-
-        # 散点重合为单点的情况
-        if xflag and yflag:
-            point = sgeom.Point(xmin, ymin)
-            if prepared.contains(point):
-                mask[:] = True
-            else:
-                mask[:] = False
-            return mask
-
-        xmid = (xmin + xmax) / 2
-        ymid = (ymin + ymax) / 2
-
-        # 散点落在水平和垂直直线上的情况
-        if xflag or yflag:
-            line = sgeom.LineString([(xmin, ymin), (xmax, ymax)])
-            if prepared.contains(line):
-                mask[:] = True
-            elif prepared.intersects(line):
-                if xflag:
-                    m1 = (y >= ymin) & (y <= ymid)
-                    m2 = (y >= ymid) & (y <= ymax)
-                if yflag:
-                    m1 = (x >= xmin) & (x <= xmid)
-                    m2 = (x >= xmid) & (x <= xmax)
-                if m1.any():
-                    mask[m1] = recursion(x[m1], y[m1])
-                if m2.any():
-                    mask[m2] = recursion(x[m2], y[m2])
-            else:
-                mask[:] = False
-            return mask
-
-        # 散点可以张成矩形的情况
-        box = sgeom.box(xmin, ymin, xmax, ymax)
-        if prepared.contains(box):
-            mask[:] = True
-        elif prepared.intersects(box):
-            m1 = (x >= xmid) & (x <= xmax) & (y >= ymid) & (y <= ymax)
-            m2 = (x >= xmin) & (x <= xmid) & (y >= ymid) & (y <= ymax)
-            m3 = (x >= xmin) & (x <= xmid) & (y >= ymin) & (y <= ymid)
-            m4 = (x >= xmid) & (x <= xmax) & (y >= ymin) & (y <= ymid)
-            if m1.any():
-                mask[m1] = recursion(x[m1], y[m1])
-            if m2.any():
-                mask[m2] = recursion(x[m2], y[m2])
-            if m3.any():
-                mask[m3] = recursion(x[m3], y[m3])
-            if m4.any():
-                mask[m4] = recursion(x[m4], y[m4])
-        else:
-            mask[:] = False
-
-        return mask
-
-    return recursion(x, y)
-
-
-def box_path(x0: float, x1: float, y0: float, y1: float) -> Path:
-    """构造方框 Path。顺时针绕行。"""
-    verts = [(x0, y0), (x0, y1), (x1, y1), (x1, y0), (x0, y0)]
-    return Path(verts, _ring_codes(verts))
-
-
-_GeometryT = TypeVar("_GeometryT", bound=BaseGeometry)
-
-
-def _transform(
-    func: Callable[[CoordinateSequence], NDArray], geom: _GeometryT
-) -> _GeometryT:
-    """shapely.ops.transform 的修改版，会将坐标含无效值的对象设为空对象。"""
-    if not is_geometry(geom):
-        raise TypeError("geom 不是几何对象")
-
-    T = type(geom)
-    if geom.is_empty:
-        return T()
-
-    if issubclass(T, (sgeom.Point, sgeom.LineString, sgeom.LinearRing)):
-        coords = func(geom.coords)
-        if _is_finite(coords):
-            return T(coords)
-        return T()
-
-    if issubclass(T, sgeom.Polygon):
-        shell = func(geom.exterior.coords)
-        if not _is_finite(shell):
-            return T()
-
-        holes = []
-        for interior in geom.interiors:
-            hole = func(interior.coords)
-            if _is_finite(hole):
-                holes.append(hole)
-        return T(shell, holes)
-
-    parts = []
-    for part in geom.geoms:
-        part = _transform(func, part)
-        if not part.is_empty:
-            parts.append(part)
-
-    if parts:
-        return T(parts)
-    return T()
-
-
-class GeometryTransformer:
-    """
-    对几何对象做坐标变换的类
-
-    基于 pyproj.Transformer 实现，可能在地图边界出现错误的结果。
-    如果变换后的坐标存在 NaN 或无穷值，会将对应的几何对象设为空对象。
-
-    See Also
-    --------
-    cartopy.crs.Projection.project_geometry
-    """
-
-    def __init__(self, crs_from: CRS, crs_to: CRS) -> None:
-        """
-        Parameters
-        ----------
-        crs_from : CRS
-            源坐标系
-
-        crs_to : CRS
-            目标坐标系
-        """
-        self.crs_from = crs_from
-        self.crs_to = crs_to
-
-        # 坐标系相同时直接复制
-        if crs_from == crs_to:
-            self._func = lambda x: type(x)(x)
-            return None
-
-        # 避免反复创建Transformer的开销
-        transformer = Transformer.from_crs(crs_from, crs_to, always_xy=True)
-
-        def func(coords: CoordinateSequence) -> NDArray:
-            coords = np.asarray(coords)
-            return np.column_stack(
-                transformer.transform(coords[:, 0], coords[:, 1])
-            ).squeeze()
-
-        self._func = lambda x: _transform(func, x)
-
-    def __call__(self, geom: _GeometryT) -> _GeometryT:
-        """
-        对几何对象做变换
-
-        Parameters
-        ----------
-        geom : BaseGeometry
-            源坐标系上的几何对象
-
-        Returns
-        -------
-        geom : BaseGeometry
-            目标坐标系上的几何对象
-        """
-        return self._func(geom)
-
-
-@deprecator(alternative=geom_to_path)
-def polygon_to_path(polygon: PolygonType) -> Path:
-    return geom_to_path(polygon)

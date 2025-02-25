@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import math
 from collections.abc import Collection, Iterable
 from functools import wraps
@@ -9,7 +11,7 @@ import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import shapely.geometry as sgeom
+import shapely
 from cartopy.mpl.geoaxes import GeoAxes
 from cartopy.mpl.ticker import LatitudeFormatter, LongitudeFormatter
 from matplotlib import font_manager
@@ -36,9 +38,10 @@ from shapely.prepared import prep
 
 import frykit._artist as fa
 import frykit.shp as fshp
+import frykit.shp.data as fdata
 from frykit import DATA_DIRPATH
 from frykit.calc import asarrays, lon_to_180
-from frykit.utils import as_list, deprecator
+from frykit.utils import as_list
 
 # 等经纬度投影
 PLATE_CARREE = ccrs.PlateCarree()
@@ -100,7 +103,7 @@ def add_geoms(
     --------
     cartopy.mpl.geoaxes.GeoAxes.add_geometries
     """
-    if fshp.is_geometry(geoms):
+    if isinstance(geoms, BaseGeometry):
         geoms = [geoms]
     else:
         geoms = list(geoms)
@@ -115,13 +118,13 @@ def add_geoms(
     )
 
 
-def _get_geoaxes_boundary(ax: GeoAxes) -> sgeom.Polygon:
+def _get_geoaxes_boundary(ax: GeoAxes) -> shapely.Polygon:
     """将 GeoAxes.patch 转为 data 坐标系里的多边形"""
     patch = ax.patch
     patch._adjust_location()
     trans = patch.get_transform() - ax.transData
     path = patch.get_path().transformed(trans)
-    boundary = sgeom.Polygon(path.vertices)
+    boundary = shapely.Polygon(path.vertices)
 
     return boundary
 
@@ -192,7 +195,7 @@ def clip_by_polygon(
             raise ValueError("需要指定 ax")
 
     # 合并结果无法缓存
-    if not fshp.is_geometry(polygon):
+    if not isinstance(polygon, (shapely.Polygon, shapely.MultiPolygon)):
         polygon = unary_union(polygon)
 
     # 通过缓存节省投影的时间
@@ -225,7 +228,7 @@ def clip_by_polygon(
         if isinstance(a, Text):
             trans = a.get_transform() - ax.transData
             coords = trans.transform(a.get_position())
-            if not prepared.contains(sgeom.Point(coords)):
+            if not prepared.contains(shapely.Point(coords)):
                 a.set_visible(False)
         elif isinstance(a, fa.TextCollection):
             a._set_clip_polygon(polygon)
@@ -958,8 +961,8 @@ def label_cn_province(
     tc : TextCollection
         表示 Text 的集合对象
     """
-    locs = fshp._get_pr_locs(province)
-    df = fshp._get_pr_table().iloc[locs]
+    locs = fdata._get_pr_locs(province)
+    df = fdata._get_pr_table().iloc[locs]
     key = "short_name" if short else "pr_name"
 
     return _add_cn_texts(
@@ -1011,8 +1014,8 @@ def label_cn_city(
     tc : TextCollection
         表示 Text 的集合对象
     """
-    locs = fshp._get_ct_locs(city, province)
-    df = fshp._get_ct_table().iloc[locs]
+    locs = fdata._get_ct_locs(city, province)
+    df = fdata._get_ct_table().iloc[locs]
     key = "short_name" if short else "ct_name"
 
     return _add_cn_texts(
@@ -1072,8 +1075,8 @@ def label_cn_district(
     tc : TextCollection
         表示 Text 的集合对象
     """
-    locs = fshp._get_dt_locs(district, city, province)
-    df = fshp._get_dt_table().iloc[locs]
+    locs = fdata._get_dt_locs(district, city, province)
+    df = fdata._get_dt_table().iloc[locs]
     key = "short_name" if short else "dt_name"
 
     return _add_cn_texts(
@@ -1186,10 +1189,10 @@ def _set_complex_geoaxes_ticks(
     lat1 = min(90, lat1 + eps)
 
     # 在 data 坐标系用 LineString 表示地图边框的四条边
-    lineB = sgeom.LineString([(x0, y0), (x1, y0)])
-    lineT = sgeom.LineString([(x0, y1), (x1, y1)])
-    lineL = sgeom.LineString([(x0, y0), (x0, y1)])
-    lineR = sgeom.LineString([(x1, y0), (x1, y1)])
+    lineB = shapely.LineString([(x0, y0), (x1, y0)])
+    lineT = shapely.LineString([(x0, y1), (x1, y1)])
+    lineL = shapely.LineString([(x0, y0), (x0, y1)])
+    lineR = shapely.LineString([(x1, y0), (x1, y1)])
 
     def get_two_xticks(
         xticks: NDArray, npts: int = 100
@@ -1204,14 +1207,14 @@ def _set_complex_geoaxes_ticks(
         xticks = _get_ticks_in(xticks, lon0, lon1)
         for xtick in xticks:
             lons = np.full_like(lats, xtick)
-            lon_line = sgeom.LineString(np.c_[lons, lats])
+            lon_line = shapely.LineString(np.c_[lons, lats])
             lon_line = ax.projection.project_geometry(lon_line, crs)
             pointB = lineB.intersection(lon_line)
-            if isinstance(pointB, sgeom.Point) and not pointB.is_empty:
+            if isinstance(pointB, shapely.Point) and not pointB.is_empty:
                 xticksB.append(pointB.x)
                 xticklabelsB.append(xformatter(xtick))
             pointT = lineT.intersection(lon_line)
-            if isinstance(pointT, sgeom.Point) and not pointT.is_empty:
+            if isinstance(pointT, shapely.Point) and not pointT.is_empty:
                 xticksT.append(pointT.x)
                 xticklabelsT.append(xformatter(xtick))
 
@@ -1229,14 +1232,14 @@ def _set_complex_geoaxes_ticks(
         yticks = _get_ticks_in(yticks, lat0, lat1)
         for ytick in yticks:
             lats = np.full_like(lons, ytick)
-            lat_line = sgeom.LineString(np.c_[lons, lats])
+            lat_line = shapely.LineString(np.c_[lons, lats])
             lat_line = ax.projection.project_geometry(lat_line, crs)
             pointL = lineL.intersection(lat_line)
-            if isinstance(pointL, sgeom.Point) and not pointL.is_empty:
+            if isinstance(pointL, shapely.Point) and not pointL.is_empty:
                 yticksL.append(pointL.y)
                 yticklabelsL.append(yformatter(ytick))
             pointR = lineR.intersection(lat_line)
-            if isinstance(pointR, sgeom.Point) and not pointR.is_empty:
+            if isinstance(pointR, shapely.Point) and not pointR.is_empty:
                 yticksR.append(pointR.y)
                 yticklabelsR.append(yformatter(ytick))
 
@@ -2058,8 +2061,3 @@ def get_font_names(sub: str | None = None) -> list[str]:
     if sub is not None:
         return [name for name in names if sub.lower() in name.lower()]
     return names
-
-
-@deprecator(alternative=add_geoms)
-def add_polygons(*args, **kwargs):
-    return add_geoms(*args, **kwargs)

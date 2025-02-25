@@ -723,6 +723,11 @@ def binning2d(
     return result
 
 
+def is_finite(a: ArrayLike) -> bool:
+    """判断数组是否不含 nan 或 inf"""
+    return bool(np.isfinite(a).all())
+
+
 @deprecator(raise_error=True)
 def split_coords(*args, **kwargs): ...
 

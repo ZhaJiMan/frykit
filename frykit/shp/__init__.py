@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from frykit.shp.data import (
     AdmKey,
     clear_data_cache,
@@ -16,7 +18,7 @@ from frykit.shp.data import (
     get_nine_line,
     get_ocean,
 )
-from frykit.shp.mask import polygon_mask, polygon_mask2
+from frykit.shp.mask import polygon_mask, polygon_mask2, polygon_to_mask
 from frykit.shp.typing import PolygonType
 from frykit.shp.utils import (
     EMPTY_PATH,
@@ -29,6 +31,8 @@ from frykit.shp.utils import (
     get_geojson_geometries,
     get_geojson_properties,
     get_representative_xy,
+    get_shapefile_geometries,
+    get_shapefile_properties,
     make_feature,
     make_geojson,
     orient_polygon,

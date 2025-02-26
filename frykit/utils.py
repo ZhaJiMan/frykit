@@ -41,7 +41,7 @@ T = TypeVar("T")
 
 
 def split_list(lst: list[T], n: int) -> Iterator[list[T]]:
-    """将列表尽量等分为 n 份"""
+    """列表尽量等分为 n 份"""
     size, rest = divmod(len(lst), n)
     start = 0
     for i in range(n):
@@ -77,7 +77,7 @@ def as_list(obj: T) -> list[T]: ...
 
 
 def as_list(obj: Any) -> list:
-    """将对象转为列表"""
+    """对象转为列表"""
     if is_iterable(obj, include_str=False):
         return list(obj)
     else:
@@ -100,7 +100,7 @@ def compare_sets(
 
 
 def join_with_cn_comma(strings: Iterable[str]) -> str:
-    """将一组字符串用中文顿号和或字连接"""
+    """用中文顿号和或字连接一组字符串"""
     return " 或 ".join("、".join(strings).rsplit("、", 1))
 
 

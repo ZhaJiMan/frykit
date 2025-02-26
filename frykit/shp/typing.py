@@ -13,6 +13,7 @@ PolygonCoordinates = Sequence[LineStringCoordinates]
 MultiPolygonCoordinates = Sequence[PolygonCoordinates]
 
 
+# TODO: 用 NotRequired 标注 bbox 字段
 class PointDict(TypedDict):
     type: Literal["Point"]
     coordinates: PointCoordinates

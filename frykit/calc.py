@@ -19,7 +19,7 @@ R540 = 3 * R180
 
 
 def lon_to_180(lon: ArrayLike, degrees: bool = True) -> NDArray:
-    """将经度从 [0, 360] 范围换算到 (-180, 180]，180 会映射到 180。默认使用角度。"""
+    """经度从 [0, 360] 范围换算到 (-180, 180]，180 会映射到 180。默认使用角度。"""
     lon = np.asarray(lon)
     if degrees:
         return (lon - 540) % -360 + 180
@@ -28,7 +28,7 @@ def lon_to_180(lon: ArrayLike, degrees: bool = True) -> NDArray:
 
 
 def lon_to_360(lon: ArrayLike, degrees: bool = True) -> NDArray:
-    """将经度从 [-180, 180] 范围换算到 [0, 360)，0 会映射到 0。默认使用角度。"""
+    """经度从 [-180, 180] 范围换算到 [0, 360)，0 会映射到 0。默认使用角度。"""
     lon = np.asarray(lon)
     if degrees:
         return lon % 360
@@ -37,7 +37,7 @@ def lon_to_360(lon: ArrayLike, degrees: bool = True) -> NDArray:
 
 
 def month_to_season(month: ArrayLike) -> NDArray:
-    """将 [1, 12] 范围的月份换算为 [1, 4] 的季节"""
+    """[1, 12] 范围的月份换算为 [1, 4] 的季节"""
     month = np.asarray(month)
     return (month - 3) % 12 // 3 + 1
 

@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from functools import partial
 from itertools import chain
-from typing import TYPE_CHECKING, Callable, TypeVar, cast, overload
+from typing import Callable, TypeVar, cast, overload
 
 import numpy as np
+import pandas as pd
+import shapefile
 import shapely
 import shapely.geometry as sgeom
 from matplotlib.path import Path
@@ -31,10 +33,8 @@ from frykit.shp.typing import (
     PolygonDict,
     PolygonType,
 )
+from frykit.typing import PathType
 from frykit.utils import format_type_error
-
-if TYPE_CHECKING:
-    import pandas as pd
 
 
 @overload
@@ -105,6 +105,11 @@ def geometry_to_shape(
             return [geometry.x, geometry.y]
         case shapely.MultiPoint():
             return get_coordinates(geometry)
+        case shapely.LinearRing():
+            raise TypeError(
+                "geometry 是 shapely.LinearRing 类型，"
+                "需要先转换成 shapely.LineString 或 shapely.Polygon 类型"
+            )
         case shapely.LineString():
             return [get_coordinates(geometry)]
         case shapely.MultiLineString():
@@ -113,11 +118,6 @@ def geometry_to_shape(
             return polygon_to_shape(geometry)
         case shapely.MultiPolygon():
             return list(chain(*map(polygon_to_shape, geometry.geoms)))
-        case shapely.LinearRing():
-            raise TypeError(
-                "geometry 是 shapely.LinearRing 类型，"
-                "需要先转换成 shapely.LineString 或 shapely.Polygon 类型"
-            )
         case shapely.GeometryCollection():
             raise TypeError(
                 "geometry 是 shapely.GeometryCollection 类型，在 shapefile 中没有直接对应的类型"
@@ -157,7 +157,7 @@ def geometry_to_dict(
 
 
 def geometry_to_dict(geometry: BaseGeometry) -> GeometryDict:
-    """几何对象转为 geojson 的 geometry 字典"""
+    """几何对象转为 GeoJSON 的 geometry 字典"""
     if not isinstance(geometry, BaseGeometry):
         raise TypeError(format_type_error("geometry", geometry, BaseGeometry))
 
@@ -174,17 +174,28 @@ def geometry_to_dict(geometry: BaseGeometry) -> GeometryDict:
     return cast(GeometryDict, geometry_dict)
 
 
-def get_geojson_properties(data: GeoJSONDict) -> pd.DataFrame:
-    """提取 geojson 字典的所有 properties 为 DataFrame"""
-    import pandas as pd
-
-    records = [feature["properties"] for feature in data["features"]]
+def get_geojson_properties(geojson_dict: GeoJSONDict) -> pd.DataFrame:
+    """提取 GeoJSON 字典里的所有 properties 为 DataFrame"""
+    records = [feature["properties"] for feature in geojson_dict["features"]]
     return pd.DataFrame.from_records(records)
 
 
-def get_geojson_geometries(data: GeoJSONDict) -> list[BaseGeometry]:
-    """提取 geojson 字典的所有 geometry 为几何对象"""
-    return [sgeom.shape(feature["geometry"]) for feature in data["features"]]  # type: ignore
+def get_geojson_geometries(geojson_dict: GeoJSONDict) -> list[BaseGeometry]:
+    """提取 GeoJSON 字典里的所有几何对象"""
+    return [sgeom.shape(feature["geometry"]) for feature in geojson_dict["features"]]  # type: ignore
+
+
+def get_shapefile_properties(filepath: PathType) -> pd.DataFrame:
+    """提取 shapefile 文件里的所有属性为 DataFrame"""
+    with shapefile.Reader(filepath) as reader:
+        records = [record.as_dict() for record in reader.iterRecords()]
+    return pd.DataFrame.from_records(records)
+
+
+def get_shapefile_geometries(filepath: PathType) -> list[BaseGeometry]:
+    """提取 shapefile 文件里的所有几何对象"""
+    with shapefile.Reader(filepath) as reader:
+        return list(map(sgeom.shape, reader.iterShapes()))
 
 
 def get_representative_xy(geometry: BaseGeometry) -> tuple[float, float]:
@@ -194,12 +205,12 @@ def get_representative_xy(geometry: BaseGeometry) -> tuple[float, float]:
 
 
 def make_feature(geometry_dict: GeometryDict, properties: dict) -> FeatureDict:
-    """用 geometry 和 properties 字典构造 geojson 的 feature 字典"""
+    """用 geometry 和 properties 字典构造 GeoJSON 的 feature 字典"""
     return {"type": "Feature", "geometry": geometry_dict, "properties": properties}
 
 
 def make_geojson(features: list[FeatureDict]) -> GeoJSONDict:
-    """用一组 features 字典构造 geojson 字典"""
+    """用一组 feature 字典构造 GeoJSON 字典"""
     return {"type": "FeatureCollection", "features": features}
 
 

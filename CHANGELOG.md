@@ -2,7 +2,7 @@
 
 - `shp` 模块：
   - 新增 GeoJSON 相关的函数：`geometry_to_dict`、`get_geojson_geometries`、`get_geojson_properties`、`make_feature`、`make_geojson`。
-  - 新增 Shapefile 相关的函数：`geometry_to_shape`。
+  - 新增 Shapefile 相关的函数：`geometry_to_shape`、`get_shapefile_geometries`、`get_shapefile_properties`。
   - 新增调整多边形绕行方向的函数 `orient_polygon`。
   - `polygon_to_mask` 函数改名为 `polygon_mask`，修正点落在边界上的行为，新增 `include_boundary` 参数，优化效率。同时新增二维直线网格专用的 `polygon_mask2` 函数。
 - `calc` 模块：

@@ -65,18 +65,18 @@ def is_iterable(obj: Any, include_str: bool = True) -> bool:
 
 
 @overload
-def as_list(obj: str) -> list[str]: ...
+def to_list(obj: str) -> list[str]: ...
 
 
 @overload
-def as_list(obj: Iterable[T]) -> list[T]: ...
+def to_list(obj: Iterable[T]) -> list[T]: ...
 
 
 @overload
-def as_list(obj: T) -> list[T]: ...
+def to_list(obj: T) -> list[T]: ...
 
 
-def as_list(obj: Any) -> list:
+def to_list(obj: Any) -> list:
     """对象转为列表"""
     if is_iterable(obj, include_str=False):
         return list(obj)
@@ -146,7 +146,7 @@ def format_type_error(
         消息字符串
     """
     names = []
-    for typ in as_list(expected_type):
+    for typ in to_list(expected_type):
         if isinstance(typ, str):
             names.append(typ)
         elif isinstance(typ, type):
@@ -157,6 +157,35 @@ def format_type_error(
     expected_type_str = join_with_cn_comma(names)
     actual_type_str = _get_full_name(type(param_value))
     msg = f"{param_name} 必须是 {expected_type_str} 类型，但传入的是 {actual_type_str} 类型"
+
+    return msg
+
+
+def format_literal_error(
+    param_name: str, param_value: Any, literal_value: Any | Iterable[Any]
+) -> str:
+    """
+    构造用于字面值 ValueError 的消息字符串
+
+    Parameters
+    ----------
+    param_name : str
+        参数名
+
+    param_value
+        参数值
+
+    literal_value
+        要求的字面值。可以是一组字面值。
+
+    Returns
+    -------
+    msg : str
+        消息字符串
+    """
+    param_value_str = repr(param_value)
+    literal_value_str = "{" + ", ".join(map(repr, to_list(literal_value))) + "}"
+    msg = f"{param_name} 只能是 {literal_value_str} 中的一项，但传入的是 {param_value_str}"
 
     return msg
 
@@ -220,7 +249,7 @@ def deprecator(
     msg = f"{_get_full_name(deprecated)} 已弃用"
     if alternative is not None:
         names = []
-        for func in as_list(alternative):
+        for func in to_list(alternative):
             if isinstance(func, str):
                 names.append(func)
             elif callable(func):

@@ -3,19 +3,19 @@
 - `shp` 模块：
   - 新增 GeoJSON 相关的函数：`geometry_to_dict`、`get_geojson_geometries`、`get_geojson_properties`、`make_feature`、`make_geojson`。
   - 新增 Shapefile 相关的函数：`geometry_to_shape`、`get_shapefile_geometries`、`get_shapefile_properties`。
-  - 新增调整多边形绕行方向的函数 `orient_polygon`。
+  - 新增调整多边形绕行方向的函数 `orient_polygon`
   - `polygon_to_mask` 函数改名为 `polygon_mask`，修正点落在边界上的行为，新增 `include_boundary` 参数，优化效率。同时新增二维直线网格专用的 `polygon_mask2` 函数。
 - `calc` 模块：
-  - `lon_lat_to_xyz` 函数改名为 `lonlat_to_xyz`。
+  - `lon_lat_to_xyz` 函数改名为 `lonlat_to_xyz`
   - `hms_to_degrees` 函数改名为 `dms_to_dd`；移除 `hms_to_degrees2` 函数。
-  - `region_mask` 函数的 `apply_AND` 参数改名为 `apply_and`。
+  - `region_mask` 函数的 `apply_AND` 参数改名为 `apply_and`
   - `interp_nearest_dd` 和 `interp_nearest_2d` 函数新增 `in_channels_last` 和 `out_channels_last` 参数，用来控制输入输出的通道维度是否放在最后。
   - 移除 `binned_average_2d` 函数，改用 pandas 实现的 `binning2d` 函数，功能更多。
-  - 移除 `split_coords` 函数。
-- `help` 模块改名为 `utils`，其中：
-  - 新增构造 `TypeError` 信息的 `format_type_error` 函数。
+  - 移除 `split_coords` 函数
+- `help` 模块改名为 `utils`：
+  - `is_sequence` 函数改名为 `is_iterable`
   - `deprecator` 装饰器的 `alternative` 参数可以接受字符串类型。
-  - `to_list` 函数改名为 `as_list`。
+- 新增 `option` 模块，提供修改全局配置的函数。
 
 ## `0.6.9`
 

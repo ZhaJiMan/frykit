@@ -41,7 +41,7 @@ import frykit.shp as fshp
 import frykit.shp.data as fdata
 from frykit import DATA_DIRPATH
 from frykit.calc import asarrays, lon_to_180
-from frykit.utils import as_list
+from frykit.utils import to_list
 
 # 等经纬度投影
 PLATE_CARREE = ccrs.PlateCarree()
@@ -68,7 +68,7 @@ def add_geoms(
     """
     将几何对象添加到 Axes 上
 
-    BUG：Point 和 MultiPoint 画不出来
+    BUG: Point 和 MultiPoint 画不出来
 
     Parameters
     ----------
@@ -176,7 +176,7 @@ def clip_by_polygon(
     - 非 data 或投影坐标系的 Text 和 TextCollection
     """
     artists = []
-    for a in as_list(artist):
+    for a in to_list(artist):
         if isinstance(a, Artist):
             artists.append(a)
         else:

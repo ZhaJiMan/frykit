@@ -3,9 +3,9 @@ from __future__ import annotations
 import shutil
 import warnings
 from collections.abc import Callable, Hashable, Iterable, Iterator
-from functools import partial, wraps
+from functools import wraps
 from pathlib import Path
-from typing import Any, Protocol, TypeVar, overload
+from typing import Any, TypeVar, overload
 
 from frykit.typing import PathType
 
@@ -51,23 +51,6 @@ def split_list(lst: list[T], n: int) -> Iterator[list[T]]:
         start = stop
 
 
-# https://docs.python.org/3/library/collections.abc.html#collections.abc.Iterable
-def is_iterable(obj: Any, include_str: bool = True) -> bool:
-    """对象是否可迭代"""
-    if isinstance(obj, str):
-        return include_str
-
-    try:
-        iter(obj)
-        return True
-    except TypeError:
-        return False
-
-
-@overload
-def to_list(obj: str) -> list[str]: ...
-
-
 @overload
 def to_list(obj: Iterable[T]) -> list[T]: ...
 
@@ -77,10 +60,14 @@ def to_list(obj: T) -> list[T]: ...
 
 
 def to_list(obj: Any) -> list:
-    """对象转为列表"""
-    if is_iterable(obj, include_str=False):
+    """可迭代对象转为列表，非可迭代对象和字符串用 list 包装。"""
+    if isinstance(obj, str):
+        return [obj]
+
+    try:
+        iter(obj)
         return list(obj)
-    else:
+    except TypeError:
         return [obj]
 
 
@@ -104,12 +91,7 @@ def join_with_cn_comma(strings: Iterable[str]) -> str:
     return " 或 ".join("、".join(strings).rsplit("、", 1))
 
 
-class HasFullName(Protocol):
-    __module__: str
-    __qualname__: str
-
-
-def _get_full_name(obj: HasFullName) -> str:
+def _get_full_name(obj: Any) -> str:
     """获取对象的 {__module__}.{__qualname__}"""
     module = getattr(obj, "__module__", None)
     qualname = getattr(obj, "__qualname__", None)
@@ -215,7 +197,6 @@ def deprecator(
 ) -> F: ...
 
 
-# https://python3-cookbook.readthedocs.io/zh-cn/latest/c09/p06_define_decorator_that_takes_optional_argument.html
 def deprecator(
     deprecated: F | None = None,
     *,
@@ -244,7 +225,13 @@ def deprecator(
         当 deprecated 为 None 时返回装饰器，不为 None 时返回 wrapper 函数。
     """
     if deprecated is None:
-        return partial(deprecator, alternative=alternative, raise_error=raise_error)
+
+        def decorator(deprecated: F) -> F:
+            return deprecator(
+                deprecated, alternative=alternative, raise_error=raise_error
+            )
+
+        return decorator
 
     msg = f"{_get_full_name(deprecated)} 已弃用"
     if alternative is not None:

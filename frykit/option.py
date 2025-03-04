@@ -44,11 +44,34 @@ class Option:
             validator(value)
         self._data[name].value = value
 
-    def register_option(
+    def update(self, options: dict[str, Any]) -> None:
+        """用键值对更新配置"""
+        for name, value in options.items():
+            self[name] = value
+
+    def to_dict(self) -> dict[str, Any]:
+        """导出所有配置为字典"""
+        return {name: item.value for name, item in self._data.items()}
+
+    def __repr__(self) -> str:
+        return f"Option({self.to_dict()})"
+
+    def register(
         self, name: str, default: Any, validator: Validator | None = None
     ) -> None:
-        """注册一条配置。可选校验配置值的校验函数。"""
+        """注册一条配置及其校验函数"""
         self._data[name] = OptionItem(default, validator)
+
+    def resolve(self, name: str, value: Any | None) -> Any:
+        """解析配置值。当配置值是 None 时使用默认配置，否则校验后返回原值。"""
+        if value is None:
+            return self[name]
+
+        validator = self.get_validator(name)
+        if validator is not None:
+            validator(value)
+
+        return value
 
 
 DataSource = Literal["amap", "tianditu"]
@@ -68,12 +91,16 @@ def _validate_bool(value: bool) -> None:
         raise ValueError(format_type_error("value", value, bool))
 
 
-# 全局配置
+def _init_option(option: Option) -> None:
+    """初始化配置"""
+    option.register("data_source", "amap", _validate_data_source)
+    option.register("fast_transform", True, _validate_bool)
+    option.register("skip_outside", True, _validate_bool)
+    option.register("strict_clip", False, _validate_bool)
+
+
 _option = Option()
-_option.register_option("data_source", "amap", _validate_data_source)
-_option.register_option("fast_transform", True, _validate_bool)
-_option.register_option("skip_outside", True, _validate_bool)
-_option.register_option("strict_clip", False, _validate_bool)
+_init_option(_option)
 
 
 def get_option(name: str) -> Any:
@@ -84,22 +111,15 @@ def get_option(name: str) -> Any:
 # TODO: 线程安全
 def set_option(options: dict[str, Any]) -> None:
     """用键值对更新配置"""
-    for name, value in options.items():
-        _option[name] = value
+    _option.update(options)
 
 
 def resolve_option(name: str, value: Any | None) -> Any:
     """解析配置值。当配置值是 None 时使用默认配置，否则校验后返回原值。"""
-    if value is None:
-        return _option[name]
-
-    validator = _option.get_validator(name)
-    if validator is not None:
-        validator(value)
-
-    return value
+    return _option.resolve(name, value)
 
 
+# TODO: 线程安全
 @contextmanager
 def option_context(options: dict[str, Any]) -> Generator[None]:
     """临时在上下文中用键值对更新配置"""

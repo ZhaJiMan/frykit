@@ -235,7 +235,7 @@ plt.show()
 
 ```Python
 jingjinji = ['北京市', '天津市', '河北省']
-fplt.clip_by_polygon(cf, jingjinji)
+fplt.clip_by_cn_province(cf, jingjinji)
 ```
 
 ### 制作掩膜

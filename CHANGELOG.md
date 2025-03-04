@@ -12,9 +12,7 @@
   - `interp_nearest_dd` 和 `interp_nearest_2d` 函数新增 `in_channels_last` 和 `out_channels_last` 参数，用来控制输入输出的通道维度是否放在最后。
   - 移除 `binned_average_2d` 函数，改用 pandas 实现的 `binning2d` 函数，功能更多。
   - 移除 `split_coords` 函数
-- `help` 模块改名为 `utils`：
-  - `is_sequence` 函数改名为 `is_iterable`
-  - `deprecator` 装饰器的 `alternative` 参数可以接受字符串类型。
+- `help` 模块改名为 `utils`
 - 新增 `option` 模块，提供修改全局配置的函数。
 
 ## `0.6.9`

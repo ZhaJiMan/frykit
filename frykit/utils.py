@@ -256,3 +256,7 @@ def deprecator(
             return deprecated(*args, **kwargs)
 
     return wrapper
+
+
+@deprecator(raise_error=True)
+def is_sequence(*args, **kwargs): ...

@@ -72,4 +72,6 @@ class GeoJSONDict(TypedDict):
     features: list[FeatureDict]
 
 
+PointType = shapely.Point | shapely.MultiPoint
+LineStringType = shapely.LineString | shapely.MultiLineString
 PolygonType = shapely.Polygon | shapely.MultiPolygon

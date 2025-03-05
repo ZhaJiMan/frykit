@@ -22,6 +22,7 @@ from frykit.shp.typing import (
     GeometryCollectionDict,
     GeometryDict,
     LineStringDict,
+    LineStringType,
     MultiLineStringCoordinates,
     MultiLineStringDict,
     MultiPointCoordinates,
@@ -34,7 +35,27 @@ from frykit.shp.typing import (
     PolygonType,
 )
 from frykit.typing import PathType
-from frykit.utils import format_type_error
+from frykit.utils import deprecator, format_type_error
+
+__all__ = [
+    "orient_polygon",
+    "geometry_to_shape",
+    "geometry_to_dict",
+    "get_geojson_properties",
+    "get_geojson_geometries",
+    "get_shapefile_properties",
+    "get_shapefile_geometries",
+    "get_representative_xy",
+    "make_feature",
+    "make_geojson",
+    "EMPTY_PATH",
+    "EMPTY_POLYGON",
+    "geom_to_path",
+    "path_to_polygon",
+    "box_path",
+    "GeometryTransformer",
+    "polygon_to_polys",
+]
 
 
 @overload
@@ -71,9 +92,7 @@ def geometry_to_shape(geometry: shapely.MultiPoint) -> MultiPointCoordinates: ..
 
 
 @overload
-def geometry_to_shape(
-    geometry: shapely.LineString | shapely.MultiLineString,
-) -> MultiLineStringCoordinates: ...
+def geometry_to_shape(geometry: LineStringType) -> MultiLineStringCoordinates: ...
 
 
 @overload
@@ -454,3 +473,8 @@ class GeometryTransformer:
             目标坐标系上的几何对象
         """
         return self._func(geom)
+
+
+@deprecator(alternative=geometry_to_shape)
+def polygon_to_polys(polygon: PolygonType) -> PolygonCoordinates:
+    return geometry_to_shape(polygon)

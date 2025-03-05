@@ -10,6 +10,8 @@ from frykit.calc import asarrays, is_monotonic_decreasing, is_monotonic_increasi
 from frykit.shp.typing import PolygonType
 from frykit.utils import deprecator, format_type_error
 
+__all__ = ["polygon_mask", "polygon_mask2", "polygon_to_mask"]
+
 
 def polygon_mask(
     polygon: PolygonType, x: ArrayLike, y: ArrayLike, include_boundary: bool = True

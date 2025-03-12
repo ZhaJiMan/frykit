@@ -129,12 +129,13 @@ def format_type_error(
     """
     names = []
     for typ in to_list(expected_type):
-        if isinstance(typ, str):
-            names.append(typ)
-        elif isinstance(typ, type):
-            names.append(_get_full_name(typ))
-        else:
-            raise TypeError(format_type_error("expected_type", typ, [str, type]))
+        match typ:
+            case str():
+                names.append(typ)
+            case type():
+                names.append(_get_full_name(typ))
+            case _:
+                raise TypeError(format_type_error("expected_type", typ, [str, type]))
 
     expected_type_str = join_with_cn_comma(names)
     actual_type_str = _get_full_name(type(param_value))

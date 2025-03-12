@@ -10,7 +10,7 @@ from frykit.utils import format_literal_error, format_type_error
 __all__ = [
     "get_option",
     "set_option",
-    "resolve_option",
+    "validate_option",
     "option_context",
 ]
 
@@ -37,15 +37,15 @@ class Option:
         self._assert_registered(name)
         return self._data[name].value
 
-    def get_validator(self, name: str) -> Validator | None:
-        return self._data[name].validator
+    def validate(self, name: str, value: Any) -> None:
+        validator = self._data[name].validator
+        if validator is not None:
+            validator(value)
 
     def __setitem__(self, name: str, value: Any) -> None:
         # 要求配置曾注册过，并且能通过校验。
         self._assert_registered(name)
-        validator = self.get_validator(name)
-        if validator is not None:
-            validator(value)
+        self.validate(name, value)
         self._data[name].value = value
 
     def update(self, options: dict[str, Any]) -> None:
@@ -62,16 +62,6 @@ class Option:
         self, name: str, default: Any, validator: Validator | None = None
     ) -> None:
         self._data[name] = OptionItem(default, validator)
-
-    def resolve(self, name: str, value: Any | None) -> Any:
-        if value is None:
-            return self[name]
-
-        validator = self.get_validator(name)
-        if validator is not None:
-            validator(value)
-
-        return value
 
 
 DataSource = Literal["amap", "tianditu"]
@@ -111,9 +101,9 @@ def set_option(options: dict[str, Any]) -> None:
     _option.update(options)
 
 
-def resolve_option(name: str, value: Any | None) -> Any:
-    """解析配置值。当配置值是 None 时使用默认配置，否则校验后返回原值。"""
-    return _option.resolve(name, value)
+def validate_option(name: str, value: Any) -> None:
+    """校验配置值"""
+    _option.validate(name, value)
 
 
 # TODO: 线程安全

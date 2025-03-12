@@ -5,3 +5,7 @@ dist
 /*.ipynb
 todo.md
 note.md
+test/*
+_frykit
+*.bin
+*.csv

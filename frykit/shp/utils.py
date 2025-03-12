@@ -59,16 +59,17 @@ def orient_polygon(
 def orient_polygon(polygon: PolygonType, ccw: bool = True) -> PolygonType:
     """调整多边形的绕行方向。例如 ccw=True 时外环逆时针，内环顺时针。"""
     sign = 1 if ccw else -1
-    if isinstance(polygon, shapely.Polygon):
-        return orient(polygon, sign)
-    elif isinstance(polygon, shapely.MultiPolygon):
-        return shapely.MultiPolygon([orient(part, sign) for part in polygon.geoms])
-    else:
-        raise TypeError(
-            format_type_error(
-                "polygon", polygon, [shapely.Polygon, shapely.MultiPolygon]
+    match polygon:
+        case shapely.Polygon():
+            return orient(polygon, sign)
+        case shapely.MultiPolygon():
+            return shapely.MultiPolygon([orient(part, sign) for part in polygon.geoms])
+        case _:
+            raise TypeError(
+                format_type_error(
+                    "polygon", polygon, [shapely.Polygon, shapely.MultiPolygon]
+                )
             )
-        )
 
 
 @overload

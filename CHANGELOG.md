@@ -1,12 +1,30 @@
 ## `0.7.0`
 
+- 依赖版本提高：
+  - `python>=3.10`
+  - `shapely>=2.0`
+- 自带数据改由上游的 frykit_data 包提供，并且修改了二进制格式。
+- `shp` 模块的 `get_cn_xxx` 系列函数和 `plot` 模块的 `add_cn_xxx` 系列函数增加标识数据源的 `data_source` 参数：
+  - `data_source='amap'`：使用高德地图数据
+  - `data_source='tianditu'`：使用天地图数据
+- 新增 `option` 模块，可以通过 `frykit.set_option` 和 `frykit.option_context` 设置全局配置，例如：
+  - `data_source`
+  - `fast_transform`
+  - `skip_outside`
+  - `strict_clip`
 - `shp` 模块：
   - 新增 `get_cn_xxx_properties` 系列函数，返回更多元数据。
-  - 移除 `get_nine_line` 函数，改用 `get_cn_line` 函数，能够选择更多修饰线段。
-  - 新增 GeoJSON 相关的函数：`geometry_to_dict`、`get_geojson_geometries`、`get_geojson_properties`、`make_feature`、`make_geojson`。
-  - 新增 Shapefile 相关的函数：`geometry_to_shape`、`get_shapefile_geometries`、`get_shapefile_properties`。
+  - 用 `get_cn_line` 函数替换 `get_nine_line` 函数，除了九段线，新增海上省界、特别行政区界和未定国界线。
   - 新增调整多边形绕行方向的函数 `orient_polygon`
+  - 新增 GeoJSON 相关的函数：`geometry_to_dict`、`get_geojson_geometries`、`get_geojson_properties`、`make_feature`、`make_geojson`
+  - 新增 Shapefile 相关的函数：`geometry_to_shape`、`get_shapefile_geometries`、`get_shapefile_properties`
   - `polygon_to_mask` 函数改名为 `polygon_mask`，修正点落在边界上的行为，新增 `include_boundary` 参数，优化效率。同时新增二维直线网格专用的 `polygon_mask2` 函数。
+  - `geom_to_path`、`path_to_polygon`、`GeometryTransformer` 等函数移动到 `plot` 模块下，同时修正通过 geopandas 读取 `PolygonZ` 类型时的报错。
+- `plot` 模块：
+  - `clip_by_polygon`：...
+  - `add_geoms` 函数改名为 `add_geometries` 函数，与 Cartopy 保持一致。
+  - `set_map_ticks` 的 `extents` 参数默认值还是由 `'global'` 改回了 `None`……
+  - `get_qualitative_palette` 函数改名为 `make_qualitative_palette`
 - `calc` 模块：
   - `lon_lat_to_xyz` 函数改名为 `lonlat_to_xyz`
   - `hms_to_degrees` 函数改名为 `dms_to_dd`；移除 `hms_to_degrees2` 函数。
@@ -15,7 +33,7 @@
   - 移除 `binned_average_2d` 函数，改用 pandas 实现的 `binning2d` 函数，功能更多。
   - 移除 `split_coords` 函数
 - `help` 模块改名为 `utils`
-- 新增 `option` 模块，提供修改全局配置的函数。
+  - 移除 `is_sequence` 函数
 
 ## `0.6.9`
 

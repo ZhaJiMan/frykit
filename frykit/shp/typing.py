@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal, TypedDict, Union
+from typing import Literal, TypedDict, TypeVar, Union
 
 import shapely
+from shapely.geometry.base import BaseGeometry
 
 PointCoordinates = Sequence[float]
 MultiPointCoordinates = Sequence[PointCoordinates]
@@ -75,3 +76,4 @@ class GeoJSONDict(TypedDict):
 PointType = shapely.Point | shapely.MultiPoint
 LineStringType = shapely.LineString | shapely.MultiLineString
 PolygonType = shapely.Polygon | shapely.MultiPolygon
+GeometryT = TypeVar("GeometryT", bound=BaseGeometry)

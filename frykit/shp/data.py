@@ -8,8 +8,8 @@ from typing import Any, Literal, TypedDict, cast, overload
 import numpy as np
 import pandas as pd
 import shapely
+from frykit_data import DATA_DIRPATH
 
-from frykit import DATA_DIRPATH
 from frykit.option import DataSource, resolve_option
 from frykit.shp.binary import BinaryReader
 from frykit.shp.typing import LineStringType, PolygonType
@@ -22,6 +22,9 @@ __all__ = [
     "get_cn_province_properties",
     "get_cn_city_properties",
     "get_cn_district_properties",
+    "get_cn_province_names",
+    "get_cn_city_names",
+    "get_cn_district_names",
     "get_cn_province",
     "get_cn_city",
     "get_cn_district",
@@ -31,9 +34,6 @@ __all__ = [
     "get_land",
     "get_ocean",
     "clear_data_cache",
-    "get_cn_province_names",
-    "get_cn_city_names",
-    "get_cn_district_names",
     "get_nine_line",
 ]
 
@@ -49,22 +49,18 @@ def _get_cn_table(level: Level, data_source: DataSource) -> pd.DataFrame:
     return pd.read_csv(filepath)
 
 
-def _resolve_data_source(data_source: DataSource | None) -> DataSource:
-    return resolve_option("data_source", data_source)
-
-
 def _get_cn_province_table(data_source: DataSource | None) -> pd.DataFrame:
-    data_source = _resolve_data_source(data_source)
+    data_source = resolve_option("data_source", data_source)
     return _get_cn_table("province", data_source)
 
 
 def _get_cn_city_table(data_source: DataSource | None) -> pd.DataFrame:
-    data_source = _resolve_data_source(data_source)
+    data_source = resolve_option("data_source", data_source)
     return _get_cn_table("city", data_source)
 
 
 def _get_cn_district_table(data_source: DataSource | None) -> pd.DataFrame:
-    data_source = _resolve_data_source(data_source)
+    data_source = resolve_option("data_source", data_source)
     return _get_cn_table("district", data_source)
 
 
@@ -104,7 +100,7 @@ def _get_cn_locs(
     for k in to_list(key):
         if isinstance(k, str):
             locs.extend(_get_index_locs(names, k))
-        elif isinstance(key, int):
+        elif isinstance(k, int):
             locs.extend(_get_index_locs(adcodes, k))
         else:
             raise TypeError(format_type_error("key", k, [str, int]))
@@ -241,10 +237,10 @@ def get_cn_province_properties(
 
     Parameters
     ----------
-    province : NameOrAdcode, sequence of NameOrAdcode or None, default None
+    province : NameOrAdcode, sequence of NameOrAdcode, default None
         省名或 adcode。可以是多个省。默认为 None，表示所有省。
 
-    data_source : {'amap', 'tianditu'} or None, default None
+    data_source : {'amap', 'tianditu'}, default None
         数据源。默认为 None，表示使用默认的全局配置（amap）。
 
     Returns
@@ -289,15 +285,15 @@ def get_cn_city_properties(
 
     Parameters
     ----------
-    city : NameOrAdcode, sequence of NameOrAdcode or None, default None
+    city : NameOrAdcode, sequence of NameOrAdcode, default None
         市名或 adcode。可以是多个市。默认为 None，表示所有市。
 
 
-    province : NameOrAdcode, sequence of NameOrAdcode or None, default None
+    province : NameOrAdcode, sequence of NameOrAdcode, default None
         省名或 adcode。表示指定某个省的所有市。可以是多个省。
         默认为 None，表示不指定省。
 
-    data_source : {'amap', 'tianditu'} or None, default None
+    data_source : {'amap', 'tianditu'}, default None
         数据源。默认为 None，表示使用默认的全局配置（amap）。
 
     Returns
@@ -345,19 +341,19 @@ def get_cn_district_properties(
 
     Parameters
     ----------
-    district : NameOrAdcode, sequence of NameOrAdcode or None, default None
+    district : NameOrAdcode, sequence of NameOrAdcode, default None
         县名或 adcode。可以是多个县。默认为 None，表示所有县。
 
-    city : NameOrAdcode, sequence of NameOrAdcode or None, default None
+    city : NameOrAdcode, sequence of NameOrAdcode, default None
         市名或 adcode。表示指定某个市的所有县。可以是多个市。
         默认为 None，表示不指定市。
 
 
-    province : NameOrAdcode, sequence of NameOrAdcode or None, default None
+    province : NameOrAdcode, sequence of NameOrAdcode, default None
         省名或 adcode。表示指定某个省的所有县。可以是多个省。
         默认为 None，表示不指定省。
 
-    data_source : {'amap', 'tianditu'} or None, default None
+    data_source : {'amap', 'tianditu'}, default None
         数据源。默认为 None，表示使用默认的全局配置（amap）。
 
     Returns
@@ -376,6 +372,33 @@ def get_cn_district_properties(
         return result
 
 
+def get_cn_province_names(
+    short_name: bool = False, data_source: DataSource | None = None
+) -> list[str]:
+    """获取中国所有省的名字"""
+    df = _get_cn_province_table(data_source)
+    key = "short_name" if short_name else "province_name"
+    return df[key].tolist()
+
+
+def get_cn_city_names(
+    short_name: bool = False, data_source: DataSource | None = None
+) -> list[str]:
+    """获取中国所有市的名字"""
+    df = _get_cn_city_table(data_source)
+    key = "short_name" if short_name else "city_name"
+    return df[key].tolist()
+
+
+def get_cn_district_names(
+    short_name: bool = False, data_source: DataSource | None = None
+) -> list[str]:
+    """获取中国所有县的名字"""
+    df = _get_cn_district_table(data_source)
+    key = "short_name" if short_name else "district_name"
+    return df[key].tolist()
+
+
 @cache  # TODO: 不要加载所有数据
 def _get_cn_polygons(level: Level, data_source: DataSource) -> list[PolygonType]:
     filepath = CHINA_DIRPATH / data_source / f"cn_{level}.bin"
@@ -385,17 +408,17 @@ def _get_cn_polygons(level: Level, data_source: DataSource) -> list[PolygonType]
 
 
 def _get_cn_province_polygons(data_source: DataSource | None) -> list[PolygonType]:
-    data_source = _resolve_data_source(data_source)
+    data_source = resolve_option("data_source", data_source)
     return _get_cn_polygons("province", data_source)
 
 
 def _get_cn_city_polygons(data_source: DataSource | None) -> list[PolygonType]:
-    data_source = _resolve_data_source(data_source)
+    data_source = resolve_option("data_source", data_source)
     return _get_cn_polygons("city", data_source)
 
 
 def _get_cn_district_polygons(data_source: DataSource | None) -> list[PolygonType]:
-    data_source = _resolve_data_source(data_source)
+    data_source = resolve_option("data_source", data_source)
     return _get_cn_polygons("district", data_source)
 
 
@@ -421,10 +444,10 @@ def get_cn_province(
 
     Parameters
     ----------
-    province : NameOrAdcode, sequence of NameOrAdcode or None, default None
+    province : NameOrAdcode, sequence of NameOrAdcode, default None
         省名或 adcode。可以是多个省。默认为 None，表示所有省。
 
-    data_source : {'amap', 'tianditu'} or None, default None
+    data_source : {'amap', 'tianditu'}, default None
         数据源。默认为 None，表示使用默认的全局配置（amap）。
 
     Returns
@@ -468,15 +491,15 @@ def get_cn_city(
 
     Parameters
     ----------
-    city : NameOrAdcode, sequence of NameOrAdcode or None, default None
+    city : NameOrAdcode, sequence of NameOrAdcode, default None
         市名或 adcode。可以是多个市。默认为 None，表示所有市。
 
 
-    province : NameOrAdcode, sequence of NameOrAdcode or None, default None
+    province : NameOrAdcode, sequence of NameOrAdcode, default None
         省名或 adcode。表示指定某个省的所有市。可以是多个省。
         默认为 None，表示不指定省。
 
-    data_source : {'amap', 'tianditu'} or None, default None
+    data_source : {'amap', 'tianditu'}, default None
         数据源。默认为 None，表示使用默认的全局配置（amap）。
 
     Returns
@@ -523,19 +546,18 @@ def get_cn_district(
 
     Parameters
     ----------
-    district : NameOrAdcode, sequence of NameOrAdcode or None, default None
+    district : NameOrAdcode, sequence of NameOrAdcode, default None
         县名或 adcode。可以是多个县。默认为 None，表示所有县。
 
-    city : NameOrAdcode, sequence of NameOrAdcode or None, default None
+    city : NameOrAdcode, sequence of NameOrAdcode, default None
         市名或 adcode。表示指定某个市的所有县。可以是多个市。
         默认为 None，表示不指定市。
 
-
-    province : NameOrAdcode, sequence of NameOrAdcode or None, default None
+    province : NameOrAdcode, sequence of NameOrAdcode, default None
         省名或 adcode。表示指定某个省的所有县。可以是多个省。
         默认为 None，表示不指定省。
 
-    data_source : {'amap', 'tianditu'} or None, default None
+    data_source : {'amap', 'tianditu'}, default None
         数据源。默认为 None，表示使用默认的全局配置（amap）。
 
     Returns
@@ -562,7 +584,7 @@ def _get_cn_border(data_source: DataSource) -> shapely.MultiPolygon:
 
 def get_cn_border(data_source: DataSource | None = None) -> shapely.MultiPolygon:
     """获取中国国界的多边形"""
-    data_source = _resolve_data_source(data_source)
+    data_source = resolve_option("data_source", data_source)
     return _get_cn_border(data_source)
 
 
@@ -584,7 +606,17 @@ class LineEnum(IntEnum):
     未定国界 = 3
 
 
-def get_cn_line(name: LineName = "九段线") -> LineStringType:
+@overload
+def get_cn_line(name: LineName = "九段线") -> LineStringType: ...
+
+
+@overload
+def get_cn_line(name: Sequence[LineName]) -> list[LineStringType]: ...
+
+
+def get_cn_line(
+    name: LineName | Sequence[LineName] = "九段线",
+) -> LineStringType | list[LineStringType]:
     """
     获取中国的修饰线段
 
@@ -598,7 +630,11 @@ def get_cn_line(name: LineName = "九段线") -> LineStringType:
     LineStringType
         线段对象
     """
-    return _get_cn_line_strings()[LineEnum[name]]
+    line_strings = _get_cn_line_strings()
+    if isinstance(name, str):
+        return line_strings[LineEnum[name]]
+    else:
+        return [line_strings[LineEnum[n]] for n in name]
 
 
 @cache
@@ -627,18 +663,6 @@ def get_ocean() -> shapely.MultiPolygon:
 
 @deprecator(raise_error=True)
 def clear_data_cache(*args, **kwargs): ...
-
-
-@deprecator(alternative=get_cn_province_properties, raise_error=True)
-def get_cn_province_names(*args, **kwargs): ...
-
-
-@deprecator(alternative=get_cn_city_properties, raise_error=True)
-def get_cn_city_names(*args, **kwargs): ...
-
-
-@deprecator(alternative=get_cn_district_properties, raise_error=True)
-def get_cn_district_names(*args, **kwargs): ...
 
 
 @deprecator(alternative=get_cn_line)

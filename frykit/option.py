@@ -7,6 +7,13 @@ from typing import Any, Literal
 
 from frykit.utils import format_literal_error, format_type_error
 
+__all__ = [
+    "get_option",
+    "set_option",
+    "resolve_option",
+    "option_context",
+]
+
 Validator = Callable[[Any], None]
 
 
@@ -34,6 +41,7 @@ class Option:
         return self._data[name].validator
 
     def __setitem__(self, name: str, value: Any) -> None:
+        # 要求配置曾注册过，并且能通过校验。
         self._assert_registered(name)
         validator = self.get_validator(name)
         if validator is not None:

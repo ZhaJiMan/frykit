@@ -1,8 +1,7 @@
 ## `0.7.0`
 
 - `shp` 模块：
-  - `get_cn_xxx` 系列函数增加 `data_source` 参数，能够指定使用高德地图或天地图数据。
-  - 移除 `get_cn_xxx_names` 系列函数，改用 `get_cn_xxx_properties` 系列函数，返回更多元数据，并且用法跟 `get_cn_xxx` 系列函数保持一致。
+  - 新增 `get_cn_xxx_properties` 系列函数，返回更多元数据。
   - 移除 `get_nine_line` 函数，改用 `get_cn_line` 函数，能够选择更多修饰线段。
   - 新增 GeoJSON 相关的函数：`geometry_to_dict`、`get_geojson_geometries`、`get_geojson_properties`、`make_feature`、`make_geojson`。
   - 新增 Shapefile 相关的函数：`geometry_to_shape`、`get_shapefile_geometries`、`get_shapefile_properties`。

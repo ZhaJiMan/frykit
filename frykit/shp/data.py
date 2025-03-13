@@ -245,7 +245,7 @@ def get_cn_province_properties(
 
     Parameters
     ----------
-    province : int or str or sequence of int and str, default None
+    province : NameOrAdcode or sequence of NameOrAdcode, default None
         省名或 adcode。可以是多个省。默认为 None，表示所有省。
 
     data_source : {'amap', 'tianditu'}, default None
@@ -293,10 +293,10 @@ def get_cn_city_properties(
 
     Parameters
     ----------
-    city : int or str or sequence of int and str, default None
+    city : NameOrAdcode or sequence of NameOrAdcode, default None
         市名或 adcode。可以是多个市。默认为 None，表示所有市。
 
-    province : int or str or sequence of int and str, default None
+    province : NameOrAdcode or sequence of NameOrAdcode, default None
         省名或 adcode。表示指定某个省的所有市。可以是多个省。
         默认为 None，表示不指定省。
 
@@ -348,14 +348,14 @@ def get_cn_district_properties(
 
     Parameters
     ----------
-    district : int or str or sequence of int and str, default None
+    district : NameOrAdcode or sequence of NameOrAdcode, default None
         县名或 adcode。可以是多个县。默认为 None，表示所有县。
 
-    city : int or str or sequence of int and str, default None
+    city : NameOrAdcode or sequence of NameOrAdcode, default None
         市名或 adcode。表示指定某个市的所有县。可以是多个市。
         默认为 None，表示不指定市。
 
-    province : int or str or sequence of int and str, default None
+    province : NameOrAdcode or sequence of NameOrAdcode, default None
         省名或 adcode。表示指定某个省的所有县。可以是多个省。
         默认为 None，表示不指定省。
 
@@ -450,7 +450,7 @@ def get_cn_province(
 
     Parameters
     ----------
-    province : int or str or sequence of int and str, default None
+    province : NameOrAdcode or sequence of NameOrAdcode, default None
         省名或 adcode。可以是多个省。默认为 None，表示所有省。
 
     data_source : {'amap', 'tianditu'}, default None
@@ -497,10 +497,10 @@ def get_cn_city(
 
     Parameters
     ----------
-    city : int or str or sequence of int and str, default None
+    city : NameOrAdcode or sequence of NameOrAdcode, default None
         市名或 adcode。可以是多个市。默认为 None，表示所有市。
 
-    province : int or str or sequence of int and str, default None
+    province : NameOrAdcode or sequence of NameOrAdcode, default None
         省名或 adcode。表示指定某个省的所有市。可以是多个省。
         默认为 None，表示不指定省。
 
@@ -551,14 +551,14 @@ def get_cn_district(
 
     Parameters
     ----------
-    district : int or str or sequence of int and str, default None
+    district : NameOrAdcode or sequence of NameOrAdcode, default None
         县名或 adcode。可以是多个县。默认为 None，表示所有县。
 
-    city : int or str or sequence of int and str, default None
+    city : NameOrAdcode or sequence of NameOrAdcode, default None
         市名或 adcode。表示指定某个市的所有县。可以是多个市。
         默认为 None，表示不指定市。
 
-    province : int or str or sequence of int and str, default None
+    province : NameOrAdcode or sequence of NameOrAdcode, default None
         省名或 adcode。表示指定某个省的所有县。可以是多个省。
         默认为 None，表示不指定省。
 

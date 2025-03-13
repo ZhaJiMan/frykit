@@ -198,7 +198,7 @@ def add_cn_province(
     ax : Axes
         目标 Axes
 
-    province : int or str or sequence of int and str, default None
+    province : NameOrAdcode or sequence of NameOrAdcode, default None
         省名或 adcode。可以是多个省。默认为 None，表示所有省。
 
     fast_transform : bool, default None
@@ -248,10 +248,10 @@ def add_cn_city(
     ax : Axes
         目标 Axes
 
-    city : int or str or sequence of int and str, default None
+    city : NameOrAdcode or sequence of NameOrAdcode, default None
         市名或 adcode。可以是多个市。默认为 None，表示所有市。
 
-    province : int or str or sequence of int and str, default None
+    province : NameOrAdcode or sequence of NameOrAdcode, default None
         省名或 adcode。表示指定某个省的所有市。可以是多个省。
         默认为 None，表示不指定省。
 
@@ -303,14 +303,14 @@ def add_cn_district(
     ax : Axes
         目标 Axes
 
-    district : int or str or sequence of int and str, default None
+    district : NameOrAdcode or sequence of NameOrAdcode, default None
         县名或 adcode。可以是多个县。默认为 None，表示所有县。
 
-    city : int or str or sequence of int and str, default None
+    city : NameOrAdcode or sequence of NameOrAdcode, default None
         市名或 adcode。表示指定某个市的所有县。可以是多个市。
         默认为 None，表示不指定市。
 
-    province : int or str or sequence of int and str, default None
+    province : NameOrAdcode or sequence of NameOrAdcode, default None
         省名或 adcode。表示指定某个省的所有县。可以是多个省。
         默认为 None，表示不指定省。
 
@@ -661,7 +661,7 @@ def label_cn_province(
     ax : Axes
         目标 Axes
 
-    province : int or str or sequence of int and str, default None
+    province : NameOrAdcode or sequence of NameOrAdcode, default None
         省名或 adcode。可以是多个省。默认为 None，表示所有省。
 
     short_name : bool, default True
@@ -713,10 +713,10 @@ def label_cn_city(
     ax : Axes
         目标 Axes
 
-    city : int or str or sequence of int and str, default None
+    city : NameOrAdcode or sequence of NameOrAdcode, default None
         市名或 adcode。可以是多个市。默认为 None，表示所有市。
 
-    province : int or str or sequence of int and str, default None
+    province : NameOrAdcode or sequence of NameOrAdcode, default None
         省名或 adcode。表示指定某个省的所有市。可以是多个省。
         默认为 None，表示不指定省。
 
@@ -770,14 +770,14 @@ def label_cn_district(
     ax : Axes
         目标 Axes
 
-    district : int or str or sequence of int and str, default None
+    district : NameOrAdcode or sequence of NameOrAdcode, default None
         县名或 adcode。可以是多个县。默认为 None，表示所有县。
 
-    city : int or str or sequence of int and str, default None
+    city : NameOrAdcode or sequence of NameOrAdcode, default None
         市名或 adcode。表示指定某个市的所有县。可以是多个市。
         默认为 None，表示不指定市。
 
-    province : int or str or sequence of int and str, default None
+    province : NameOrAdcode or sequence of NameOrAdcode, default None
         省名或 adcode。表示指定某个省的所有县。可以是多个省。
         默认为 None，表示不指定省。
 

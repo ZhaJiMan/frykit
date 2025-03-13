@@ -4,7 +4,7 @@ import math
 from collections.abc import Iterable, Sequence
 from functools import partial, wraps
 from threading import Lock
-from typing import Any, Callable, Literal, TypeVar, cast
+from typing import Any, Literal, cast
 from weakref import WeakKeyDictionary, WeakValueDictionary
 
 import numpy as np
@@ -29,10 +29,10 @@ from frykit.calc import t_to_az
 from frykit.option import get_option, validate_option
 from frykit.plot.projection import PLATE_CARREE
 from frykit.plot.utils import EMPTY_PATH, box_path, geometry_to_path, project_geometry
+from frykit.typing import F
 from frykit.utils import format_literal_error, format_type_error
 
 _lock = Lock()
-F = TypeVar("F", bound=Callable[..., Any])
 
 
 def _with_lock(func: F) -> F:

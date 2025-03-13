@@ -7,7 +7,7 @@ from functools import wraps
 from pathlib import Path
 from typing import Any, TypeVar, overload
 
-from frykit.typing import PathType
+from frykit.typing import F, PathType, T
 
 
 def new_dir(dirpath: PathType) -> Path:
@@ -35,9 +35,6 @@ def renew_dir(dirpath: PathType) -> Path:
     dirpath.mkdir(parents=True)
 
     return dirpath
-
-
-T = TypeVar("T")
 
 
 def split_list(lst: list[T], n: int) -> Iterator[list[T]]:
@@ -171,9 +168,6 @@ def format_literal_error(
     msg = f"{param_name} 只能是 {literal_value_str} 中的一项，但传入的是 {param_value_str}"
 
     return msg
-
-
-F = TypeVar("F", bound=Callable[..., Any])
 
 
 class DeprecationError(Exception):

@@ -1,4 +1,4 @@
-## `0.7.0`
+## `0.7.0b`
 
 - 依赖版本提高：
   - `python>=3.10`
@@ -19,11 +19,12 @@
   - 新增 GeoJSON 相关的函数：`geometry_to_dict`、`get_geojson_geometries`、`get_geojson_properties`、`make_feature`、`make_geojson`
   - 新增 Shapefile 相关的函数：`geometry_to_shape`、`get_shapefile_geometries`、`get_shapefile_properties`
   - `polygon_to_mask` 函数改名为 `polygon_mask`，修正点落在边界上的行为，新增 `include_boundary` 参数，优化效率。同时新增二维直线网格专用的 `polygon_mask2` 函数。
-  - `geom_to_path`、`path_to_polygon`、`GeometryTransformer` 等函数移动到 `plot` 模块下，同时修正通过 geopandas 读取 `PolygonZ` 类型时的报错。
+  - `geom_to_path`、`path_to_polygon`、`GeometryTransformer` 等函数移动到 `plot` 模块下，改名为 `geometry_to_path` 和 `project_geometry` 函数。
 - `plot` 模块：
-  - `clip_by_polygon`：...
+  - 修正通过 geopandas 读取 `PolygonZ` 多边形的报错
+  - `clip_by_polygon` 函数取消 `ax` 参数，要求被裁减的 `Artist` 含有 `axes`。
   - `add_geoms` 函数改名为 `add_geometries` 函数，与 Cartopy 保持一致。
-  - `set_map_ticks` 的 `extents` 参数默认值还是由 `'global'` 改回了 `None`……
+  - `get_cross_section_xticks` 函数的 `lon` 和 `lat` 参数改名为 `lons` 和 `lats`。
   - `get_qualitative_palette` 函数改名为 `make_qualitative_palette`
 - `calc` 模块：
   - `lon_lat_to_xyz` 函数改名为 `lonlat_to_xyz`

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Iterable, Sequence
+from collections.abc import Sequence
 from functools import partial, wraps
 from threading import Lock
 from typing import Any, Literal, cast
@@ -22,13 +22,20 @@ from matplotlib.path import Path
 from matplotlib.quiver import Quiver, QuiverKey
 from matplotlib.text import Text
 from matplotlib.transforms import Affine2D, Bbox, ScaledTranslation, offset_copy
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
 from shapely.geometry.base import BaseGeometry
 
-from frykit.calc import t_to_az
+from frykit.calc import get_values_between, t_to_az
 from frykit.option import get_option, validate_option
 from frykit.plot.projection import PLATE_CARREE
-from frykit.plot.utils import EMPTY_PATH, box_path, geometry_to_path, project_geometry
+from frykit.plot.utils import (
+    EMPTY_PATH,
+    box_path,
+    geometry_to_path,
+    get_axes_extents,
+    project_geometry,
+)
+from frykit.shp.typing import PolygonType
 from frykit.typing import F
 from frykit.utils import format_literal_error, format_type_error
 
@@ -124,30 +131,6 @@ def _resolve_skip_outside(skip_outside: bool | None) -> bool:
         return skip_outside
 
 
-def _get_geometries_extents(
-    geometries: Iterable[BaseGeometry],
-) -> tuple[float, float, float, float] | None:
-    # BaseGeometry.bounds 会自动忽略 nan
-    bounds = [geometry.bounds for geometry in geometries if not geometry.is_empty]
-    if len(bounds) == 0:
-        return None
-
-    bounds = np.array(bounds)
-    x0 = bounds[:, 0].min()
-    x1 = bounds[:, 2].max()
-    y0 = bounds[:, 1].min()
-    y1 = bounds[:, 3].max()
-
-    return x0, x1, y0, y1
-
-
-def _get_axes_extents(ax: Axes) -> tuple[float, float, float, float]:
-    """获取 Axes 在 data 坐标系的 extents"""
-    x0, x1 = sorted(ax.get_xlim())
-    y0, y1 = sorted(ax.get_ylim())
-    return x0, x1, y0, y1
-
-
 # TODO: 类持有对几何对象的引用，会存在问题吗？
 class GeometryPathCollection(PathCollection):
     """投影并绘制几何对象的 PathCollection 类"""
@@ -182,31 +165,34 @@ class GeometryPathCollection(PathCollection):
             case _:
                 raise TypeError(format_type_error("ax", ax, Axes))
 
-        # 用 bbox 作为初始化的 path
         paths = []
-        if ax.get_autoscale_on():
-            extents = _get_geometries_extents(self.geometries)
-            if extents is not None:
-                x0, x1, y0, y1 = extents
+        # 用投影后的 bbox 做初始化的 path
+        if ax.get_autoscale_on() and len(geometries) > 0:
+            bounds = shapely.bounds(geometries)
+            bounds = np.ma.masked_invalid(bounds)
+            x0, y0 = bounds[:, :2].min(axis=0)
+            x1, y1 = bounds[:, 2:].max(axis=0)
+            if all(x for x in [x0, y0, x1, y1] if x is not np.ma.masked):
                 path = box_path(x0, x1, y0, y1).interpolated(100)
                 polygon = shapely.Polygon(path.vertices)  # type: ignore
-                paths = [self._geometry_to_path(polygon)]
+                paths.append(self._geometry_to_path(polygon))
 
         super().__init__(paths, **kwargs)
         ax.add_collection(self)
         ax._request_autoscale_view()  # type: ignore
 
     def _init(self) -> None:
-        # 只绘制与边框相交的几何对象
         if not self.skip_outside:
             paths = list(map(self._geometry_to_path, self.geometries))
             self.set_paths(paths)
+            return None
 
+        # 只投影和绘制可见的几何对象
         ax = cast(Axes, self.axes)
         if isinstance(ax, GeoAxes):
             x0, x1, y0, y1 = ax.get_extent(self.crs)
         else:
-            x0, x1, y0, y1 = _get_axes_extents(ax)
+            x0, x1, y0, y1 = get_axes_extents(ax)
         extent_box = shapely.box(x0, y0, x1, y1)
         mask = extent_box.intersects(self.geometries)
         paths = np.full(len(self.geometries), EMPTY_PATH)
@@ -257,19 +243,24 @@ class TextCollection(Artist):
         for text in self.texts:
             text.set_figure(fig)
 
-    def _init(self) -> None:
-        if not self.skip_outside:
-            return None
+    def _clip_by_polygon(self, polygon: PolygonType) -> None:
+        # 要求 polygon 基于 data 坐标系
+        if self.axes is None:
+            raise ValueError("必须设置 TextCollection.axes")
 
-        # 只绘制边框内的文本
-        ax = cast(Axes, self.axes)
-        trans = self.get_transform() - ax.transData
+        # 只绘制可见的文本对象
+        shapely.prepare(polygon)
+        trans = self.get_transform() - self.axes.transData
         coords = trans.transform(self.coords)
-        x0, x1, y0, y1 = _get_axes_extents(ax)
-        extent_box = shapely.box(x0, y0, x1, y1)
-        mask = shapely.contains_xy(extent_box, coords[:, 0], coords[:, 1])
+        mask = shapely.contains_xy(polygon, coords[:, 0], coords[:, 1])
         for i in np.nonzero(~mask)[0]:
             self.texts[i].set_visible(False)
+
+    def _init(self) -> None:
+        if self.axes is not None and self.skip_outside:
+            x0, x1, y0, y1 = get_axes_extents(self.axes)
+            extent_box = shapely.box(x0, y0, x1, y1)
+            self._clip_by_polygon(extent_box)
 
     @allow_rasterization
     def draw(self, renderer: RendererBase) -> None:
@@ -324,6 +315,7 @@ class QuiverLegend(QuiverKey):
                 )
 
         qk_kwargs = normalize_kwargs(qk_kwargs)  # type: ignore
+
         super().__init__(
             Q=Q,
             X=X,
@@ -339,16 +331,6 @@ class QuiverLegend(QuiverKey):
         zorder = qk_kwargs.get("zorder", 5)
         self.set_zorder(zorder)
 
-        ax = cast(Axes, Q.axes)
-        fig = cast(Figure, ax.figure)
-        self._labelsep_inches: float
-
-        # 将 qk 调整至 patch 的中心
-        fontsize = cast(float, self.text.get_fontsize()) / 72
-        dy = (self._labelsep_inches + fontsize) / 2
-        trans = offset_copy(ax.transAxes, fig, 0, dy)
-        self.set_transform(trans)
-
         patch_kwargs = normalize_kwargs(patch_kwargs, Rectangle)  # type: ignore
         patch_kwargs.setdefault("linewidth", 0.8)
         patch_kwargs.setdefault("edgecolor", "k")
@@ -358,9 +340,27 @@ class QuiverLegend(QuiverKey):
             xy=(X - width / 2, Y - height / 2),
             width=width,
             height=height,
-            transform=ax.transAxes,
+            transform=None,
             **patch_kwargs,
         )
+
+        if Q.axes is None:
+            raise ValueError("必须设置 Q.axes")
+        if Q.axes.figure is None:
+            raise ValueError("必须设置 Q.axes.figure")
+        ax = Q.axes
+        fig = Q.axes.figure
+
+        # 将 qk 调整至 patch 的中心
+        self._labelsep_inches: float
+        fontsize = self.text.get_fontsize() / 72  # type: ignore
+        dy = (self._labelsep_inches + fontsize) / 2
+        trans = offset_copy(ax.transAxes, fig, 0, dy)  # type: ignore
+        self.set_transform(trans)
+
+        self.patch.axes = ax
+        self.patch.set_transform(ax.transAxes)
+        ax.add_artist(self)
 
     def _set_transform(self) -> None:
         pass  # 无效化 QuiveKey 的同名方法
@@ -460,9 +460,17 @@ class Compass(PathCollection):
         return path1, path2
 
     def _init(self) -> None:
-        # 计算指北针的方向
-        ax = cast(Axes, self.axes)
-        if self.angle is None:
+        if self.axes is None:
+            raise ValueError("必须设置 Compass.axes")
+        if self.axes.figure is None:
+            raise ValueError("必须设置 Compass.axes.figure")
+        ax = self.axes
+        fig = self.axes.figure
+
+        if self.angle is not None:
+            azimuth = self.angle
+        else:
+            # 计算指北针的方向
             if isinstance(ax, GeoAxes):
                 axes_to_data = ax.transAxes - ax.transData
                 x0, y0 = axes_to_data.transform((self.x, self.y))
@@ -470,13 +478,10 @@ class Compass(PathCollection):
                 lon1, lat1 = lon0, min(lat0 + 0.01, 90)
                 x1, y1 = ax.projection.transform_point(lon1, lat1, PLATE_CARREE)
                 theta = math.degrees(math.atan2(y1 - y0, x1 - x0))
-                azimuth = float(t_to_az(theta, degrees=True))
+                azimuth = cast(float, t_to_az(theta, degrees=True))
             else:
                 azimuth = 0
-        else:
-            azimuth = self.angle
 
-        fig = cast(Figure, ax.figure)
         rotation = Affine2D().rotate_deg(-azimuth)
         translation = ScaledTranslation(self.x, self.y, ax.transAxes)  # type: ignore
         trans = fig.dpi_scale_trans + rotation + translation
@@ -523,8 +528,9 @@ class ScaleBar(Axes):
             case _:
                 raise ValueError(format_literal_error("units", units, ["m", "km"]))
 
-        fig = cast(Figure, ax.figure)
-        super().__init__(fig, (0, 0, 1, 1), zorder=5)
+        if ax.figure is None:
+            raise ValueError("必须设置 ax.figure")
+        super().__init__(ax.figure, (0, 0, 1, 1), zorder=5)  # type: ignore
         ax.add_child_axes(self)
 
         # 只显示上边框的刻度
@@ -542,24 +548,24 @@ class ScaleBar(Axes):
         )
 
     def _init(self) -> None:
-        # 在 data 坐标系取一条直线，计算单位长度对应的地理长度。
         ax = cast(Axes, self.axes)
+        fig = cast(Figure, ax.figure)
+
         if isinstance(ax, GeoAxes):
-            # GeoAxes 取地图中心一段横线
+            # 在 GeoAxes 中心取一段横线，计算单位长度对应的地理长度。
             geod = PLATE_CARREE.get_geod()
-            xmin, xmax = ax.get_xlim()
-            ymin, ymax = ax.get_ylim()
-            xmid = (xmin + xmax) / 2
-            ymid = (ymin + ymax) / 2
-            dx = (xmax - xmin) / 10
-            x0 = xmid - dx / 2
-            x1 = xmid + dx / 2
-            lon0, lat0 = PLATE_CARREE.transform_point(x0, ymid, ax.projection)
-            lon1, lat1 = PLATE_CARREE.transform_point(x1, ymid, ax.projection)
+            x0, x1, y0, y1 = get_axes_extents(ax)
+            xm = (x0 + x1) / 2
+            ym = (y0 + y1) / 2
+            dx = (x1 - x0) / 10
+            x0_ = xm - dx / 2
+            x1_ = xm + dx / 2
+            lon0, lat0 = PLATE_CARREE.transform_point(x0_, ym, ax.projection)
+            lon1, lat1 = PLATE_CARREE.transform_point(x1_, ym, ax.projection)
             dr = geod.inv(lon0, lat0, lon1, lat1)[2] / self._units
             dxdr = dx / dr
         else:
-            # Axes 认为是 PlateCarree 投影，取中心纬度。
+            # 普通 Axes 认为是 PlateCarree 投影，取中心纬度。
             Re = 6371e3
             L = 2 * np.pi * Re / 360
             lat0, lat1 = ax.get_ylim()
@@ -568,7 +574,6 @@ class ScaleBar(Axes):
             dxdr = self._units / drdx
 
         # 重新设置比例尺的大小和位置
-        fig = cast(Figure, ax.figure)
         axes_to_data = ax.transAxes - ax.transData
         data_to_figure = ax.transData - fig.transSubfigure
         x, y = axes_to_data.transform((self.x, self.y))
@@ -582,10 +587,6 @@ class ScaleBar(Axes):
         if self.get_visible():
             self._init()
             super().draw(renderer)
-
-
-def _get_ticks_between(ticks: NDArray, vmin: float, vmax: float) -> NDArray:
-    return ticks[(ticks >= vmin) & (ticks <= vmax)].copy()
 
 
 # TODO: 非矩形边框
@@ -603,21 +604,25 @@ class Frame(Artist):
         kwargs.setdefault("edgecolor", "k")
         kwargs.setdefault("facecolor", ["k", "w"])
 
-        # 用空 PathCollection 占位
         self.pc_dict = {
             loc: PathCollection([], transform=None, **kwargs)
             for loc in ["left", "right", "top", "bottom", "corner"]
         }
 
     def _init(self) -> None:
-        ax = cast(Axes, self.axes)
+        if self.axes is None:
+            raise ValueError("必须设置 Frame.axes")
+        if self.axes.figure is None:
+            raise ValueError("必须设置 Frame.axes.figure")
+        ax = self.axes
+        fig = self.axes.figure
+
         if isinstance(ax, GeoAxes) and not isinstance(
             ax.projection, (PlateCarree, Mercator)
         ):
             raise ValueError("只支持 PlateCarree 和 Mercator 投影")
 
         # 将 inches 坐标系的 width 转为 axes 坐标系里的 dx 和 dy
-        fig = cast(Figure, ax.figure)
         inches_to_axes = fig.dpi_scale_trans - ax.transAxes
         mtx = inches_to_axes.get_matrix()
         dx = self._width * mtx[0, 0]
@@ -636,11 +641,11 @@ class Frame(Artist):
         minor_xticks = ax.xaxis.get_minorticklocs()
         major_yticks = ax.yaxis.get_majorticklocs()
         minor_yticks = ax.yaxis.get_minorticklocs()
-        x0, x1, y0, y1 = _get_axes_extents(ax)
+        x0, x1, y0, y1 = get_axes_extents(ax)
         xticks = np.array([x0, x1, *major_xticks, *minor_xticks])
         yticks = np.array([y0, y1, *major_yticks, *minor_yticks])
-        xticks = _get_ticks_between(xticks, x0, x1)
-        yticks = _get_ticks_between(yticks, y0, y1)
+        xticks = get_values_between(xticks, x0, x1)
+        yticks = get_values_between(yticks, y0, y1)
         # 通过 round 抵消 central_longitude 导致的浮点误差
         xticks = np.unique(xticks.round(9))
         yticks = np.unique(yticks.round(9))

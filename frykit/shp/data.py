@@ -253,7 +253,7 @@ def get_cn_province_properties(
 
     Returns
     -------
-    dict or list of dict
+    ProvinceProperties or list of ProvinceProperties
         元数据字典
     """
     df = _get_cn_province_table(data_source)
@@ -305,7 +305,7 @@ def get_cn_city_properties(
 
     Returns
     -------
-    dict or list of dict
+    CityProperties or list of CityProperties
         元数据字典
     """
     df = _get_cn_city_table(data_source)
@@ -364,7 +364,7 @@ def get_cn_district_properties(
 
     Returns
     -------
-    dict or list of dict
+    DistrictProperties or list of DistrictProperties
         元数据字典
     """
     df = _get_cn_district_table(data_source)

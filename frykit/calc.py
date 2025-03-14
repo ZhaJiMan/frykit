@@ -728,6 +728,12 @@ def is_finite(a: ArrayLike) -> bool:
     return bool(np.isfinite(a).all())
 
 
+def get_values_between(values: ArrayLike, vmin: float, vmax: float) -> NDArray:
+    """获取 vmin <= values <= vmax 的元素"""
+    values = np.asarray(values)
+    return values[(values >= vmin) & (values <= vmax)].copy()
+
+
 @deprecator(raise_error=True)
 def split_coords(*args, **kwargs): ...
 

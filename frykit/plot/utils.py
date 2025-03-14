@@ -5,6 +5,7 @@ from typing import Callable
 
 import numpy as np
 import shapely
+from matplotlib.axes._base import _AxesBase
 from matplotlib.path import Path
 from numpy.typing import NDArray
 from pyproj import CRS, Transformer
@@ -187,3 +188,10 @@ def project_geometry(geometry: GeometryT, crs_from: CRS, crs_to: CRS) -> Geometr
         return np.column_stack(transformer.transform(coords[:, 0], coords[:, 1]))
 
     return _transform_geometry(geometry, transform_coords)
+
+
+def get_axes_extents(ax: _AxesBase) -> tuple[float, float, float, float]:
+    """获取 Axes 在 data 坐标系的 extents"""
+    x0, x1 = sorted(ax.get_xlim())
+    y0, y1 = sorted(ax.get_ylim())
+    return x0, x1, y0, y1

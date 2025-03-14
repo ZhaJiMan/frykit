@@ -22,6 +22,7 @@ from matplotlib.cm import ScalarMappable
 from matplotlib.collections import PathCollection
 from matplotlib.colorbar import Colorbar
 from matplotlib.colors import BoundaryNorm, Colormap, ListedColormap, Normalize
+from matplotlib.contour import ContourSet
 from matplotlib.figure import Figure
 from matplotlib.patches import PathPatch
 from matplotlib.quiver import Quiver
@@ -32,7 +33,7 @@ from numpy.lib.npyio import NpzFile
 from numpy.typing import ArrayLike, NDArray
 from shapely.geometry.base import BaseGeometry
 
-from frykit.calc import asarrays, lon_to_180
+from frykit.calc import asarrays, get_values_between, lon_to_180
 from frykit.option import DataSource, get_option, validate_option
 from frykit.plot.artist import (
     Compass,
@@ -41,12 +42,18 @@ from frykit.plot.artist import (
     QuiverLegend,
     ScaleBar,
     TextCollection,
-    _get_axes_extents,
-    _get_ticks_between,
+    _geometry_to_path,
+    _project_geometry_to_path,
     _resolve_fast_transform,
 )
 from frykit.plot.projection import PLATE_CARREE
-from frykit.plot.utils import box_path
+from frykit.plot.utils import (
+    EMPTY_POLYGON,
+    box_path,
+    geometry_to_path,
+    get_axes_extents,
+    path_to_polygon,
+)
 from frykit.shp.data import (
     LineName,
     NameOrAdcode,
@@ -123,8 +130,6 @@ def add_geometries(
     """
     将几何对象添加到 Axes 上
 
-    BUG: Point 和 MultiPoint 画不出来
-
     Parameters
     ----------
     ax : Axes
@@ -156,9 +161,14 @@ def add_geometries(
     GeometryPathCollection
         表示几何对象的集合对象
 
+    Notes
+    -----
+    Point 和 MultiPoint 画不出来
+
     See Also
     --------
-    cartopy.mpl.geoaxes.GeoAxes.add_geometries
+    - cartopy.mpl.geoaxes.GeoAxes.add_geometries
+    - geopandas.GeoDataFrame.plot
     """
     geometries = cast(list[BaseGeometry], to_list(geometries))
     return GeometryPathCollection(
@@ -821,39 +831,366 @@ def _resolve_strict_clip(strict_clip: bool | None) -> bool:
         return strict_clip
 
 
+def _get_geoaxes_boundary(ax: GeoAxes) -> shapely.Polygon:
+    """获取 data 坐标系里的 GeoAxes.patch 对应的多边形"""
+    patch = ax.patch
+    patch._adjust_location()  # type: ignore
+    trans = patch.get_transform() - ax.transData
+    path = patch.get_path().transformed(trans)
+    boundary = shapely.Polygon(path.vertices)  # type: ignore
+
+    return boundary
+
+
 def clip_by_polygon(
     artist: Artist | Iterable[Artist],
     polygon: PolygonType | Iterable[PolygonType],
     crs: CRS | None = None,
-    ax: Axes | None = None,
     fast_transform: bool | None = None,
     strict_clip: bool | None = None,
 ) -> None:
+    """
+    用多边形裁剪 Artist，只显示多边形内的内容。
+
+    Parameters
+    ----------
+    artist: Artist or iterable of Artist
+        被裁剪的 Artist 对象。可以是多个 Artist。要求提前设置过 axes 属性。
+
+    polygon : PolygonType or iterable of PolygonType
+        用于裁剪的多边形。多个多边形会自动合并成一个。
+
+    crs : CRS, optional
+        当 ax 是 Axes 时 crs 只能为 None，表示不做变换。
+        当 ax 是 GeoAxes 时会将 polygon 从 crs 坐标系变换到 ax.projection 坐标系上。
+        此时默认值 None 表示 PlateCarree 投影。
+
+    fast_transform : bool, default None
+        是否直接用 pyproj 做坐标变换，速度更快但也更容易出错。
+        默认为 None，表示使用默认的全局配置（True）。
+
+    strict_clip : bool, default None
+        是否使用更严格的裁剪方法。当 GeoAxes 的边界不是矩形时也能避免裁剪出界，但是耗时更长。
+        默认为 None，表示使用默认的全局配置（False）。
+
+    Notes
+    -----
+    后续调整 Axes 显示范围可能导致裁剪错位的场景：
+    - strict_clip=True
+    - 非 data 或投影坐标系的 Text 和 TextCollection
+    """
     fast_transform = _resolve_fast_transform(fast_transform)
     strict_clip = _resolve_strict_clip(strict_clip)
 
+    artists: list[Artist] = []
+    for a in to_list(artist):
+        match a:
+            case ContourSet() if mpl.__version__ < "3.8.0":
+                artists.extend(a.collections)
+            case Artist():
+                artists.append(a)
+            case _:
+                raise TypeError(format_type_error("artist", a, Artist))
 
-def clip_by_cn_province(): ...
+    if len(artists) == 0:
+        return None
+
+    for a in artists:
+        if a.axes is None:  # TODO: 允许 axes 为 None
+            raise ValueError("artist.axes 不能为 None")
+    ax = cast(Axes, artists[0].axes)
+
+    for a in artists:
+        if a.axes is not ax:
+            raise ValueError("多个 artist 的 axes 必须相同")
+
+    polygons = to_list(polygon)
+    for p in polygons:
+        if not isinstance(p, (shapely.Polygon, shapely.MultiPolygon)):
+            raise TypeError(
+                format_type_error("polygon", p, [shapely.Polygon, shapely.MultiPolygon])
+            )
+
+    match len(polygons):
+        case 0:
+            polygon = EMPTY_POLYGON
+        case 1:
+            polygon = polygons[0]
+        case _:
+            # 合并的多边形无法利用缓存
+            polygon = shapely.unary_union(polygons)  # type: ignore
+
+    polygon = cast(PolygonType, polygon)
+
+    if isinstance(ax, GeoAxes):
+        if crs is None:
+            crs = PLATE_CARREE
+        path = _project_geometry_to_path(
+            geometry=polygon,
+            crs_from=crs,
+            crs_to=ax.projection,
+            fast_transform=fast_transform,
+        )
+        polygon = path_to_polygon(path)
+        if strict_clip:
+            polygon &= _get_geoaxes_boundary(ax)  # type: ignore
+            path = geometry_to_path(polygon)  # type: ignore
+    else:
+        if crs is not None:
+            raise ValueError("ax 不是 GeoAxes 时 crs 只能为 None")
+        path = _geometry_to_path(polygon)
+
+    # TODO
+    # - 严格防文字出界的方案：fig.canvas.draw + t.get_window_extent
+    # - sreamplot 返回值的里的箭头无法裁剪
+
+    polygon = cast(PolygonType, polygon)
+    shapely.prepare(polygon)
+
+    for a in artists:
+        a.set_clip_on(True)
+        a.set_clip_box(ax.bbox)
+        if isinstance(a, Text):
+            trans = ax.get_transform() - ax.transData
+            x, y = trans.transform(a.get_position())
+            point = shapely.Point(x, y)
+            if not polygon.contains(point):
+                a.set_visible(False)
+        elif isinstance(a, TextCollection):
+            a._clip_by_polygon(polygon)
+        else:
+            a.set_clip_path(path, ax.transData)
 
 
-def clip_by_cn_city(): ...
+def clip_by_cn_province(
+    artist: Artist | Iterable[Artist],
+    province: NameOrAdcode | Iterable[NameOrAdcode],
+    fast_transform: bool | None = None,
+    strict_clip: bool | None = None,
+) -> None:
+    """
+    用中国省界裁剪 Artist
+
+    Parameters
+    ----------
+    artist: Artist or iterable of Artist
+        被裁剪的 Artist 对象。可以是多个 Artist。要求提前设置过 axes 属性。
+
+    province : NameOrAdcode or iterable of NameOrAdcode
+        省名或 adcode。可以是多个省。
+
+    fast_transform : bool, default None
+        是否直接用 pyproj 做坐标变换，速度更快但也更容易出错。
+        默认为 None，表示使用默认的全局配置（True）。
+
+    strict_clip : bool, default None
+        是否使用更严格的裁剪方法。当 GeoAxes 的边界不是矩形时也能避免裁剪出界，但是耗时更长。
+        默认为 None，表示使用默认的全局配置（False）。
+
+    Notes
+    -----
+    后续调整 Axes 显示范围可能导致裁剪错位的场景：
+    - strict_clip=True
+    - 非 data 或投影坐标系的 Text 和 TextCollection
+    """
+    clip_by_polygon(
+        artist=artist,
+        polygon=get_cn_province(province),  # type: ignore
+        fast_transform=fast_transform,
+        strict_clip=strict_clip,
+    )
 
 
-def clip_by_cn_district(): ...
+def clip_by_cn_city(
+    artist: Artist | Iterable[Artist],
+    city: NameOrAdcode | Iterable[NameOrAdcode],
+    fast_transform: bool | None = None,
+    strict_clip: bool | None = None,
+) -> None:
+    """
+    用中国市界裁剪 Artist
+
+    Parameters
+    ----------
+    artist: Artist or iterable of Artist
+        被裁剪的 Artist 对象。可以是多个 Artist。要求提前设置过 axes 属性。
+
+    city : NameOrAdcode or iterable of NameOrAdcode
+        市名或 adcode。可以是多个市。
+
+    fast_transform : bool, default None
+        是否直接用 pyproj 做坐标变换，速度更快但也更容易出错。
+        默认为 None，表示使用默认的全局配置（True）。
+
+    strict_clip : bool, default None
+        是否使用更严格的裁剪方法。当 GeoAxes 的边界不是矩形时也能避免裁剪出界，但是耗时更长。
+        默认为 None，表示使用默认的全局配置（False）。
+
+    Notes
+    -----
+    后续调整 Axes 显示范围可能导致裁剪错位的场景：
+    - strict_clip=True
+    - 非 data 或投影坐标系的 Text 和 TextCollection
+    """
+    return clip_by_polygon(
+        artist=artist,
+        polygon=get_cn_city(city),  # type: ignore
+        fast_transform=fast_transform,
+        strict_clip=strict_clip,
+    )
 
 
-def clip_by_cn_border(): ...
+def clip_by_cn_district(
+    artist: Artist | Iterable[Artist],
+    district: NameOrAdcode | Iterable[NameOrAdcode],
+    fast_transform: bool | None = None,
+    strict_clip: bool | None = None,
+) -> None:
+    """
+    用中国县界裁剪 Artist
+
+    Parameters
+    ----------
+    artist: Artist or iterable of Artist
+        被裁剪的 Artist 对象。可以是多个 Artist。要求提前设置过 axes 属性。
+
+    district : NameOrAdcode or iterable of NameOrAdcode
+        县名或 adcode。可以是多个县。
+
+    fast_transform : bool, default None
+        是否直接用 pyproj 做坐标变换，速度更快但也更容易出错。
+        默认为 None，表示使用默认的全局配置（True）。
+
+    strict_clip : bool, default None
+        是否使用更严格的裁剪方法。当 GeoAxes 的边界不是矩形时也能避免裁剪出界，但是耗时更长。
+        默认为 None，表示使用默认的全局配置（False）。
+
+    Notes
+    -----
+    后续调整 Axes 显示范围可能导致裁剪错位的场景：
+    - strict_clip=True
+    - 非 data 或投影坐标系的 Text 和 TextCollection
+    """
+    return clip_by_polygon(
+        artist=artist,
+        polygon=get_cn_district(district),  # type: ignore
+        fast_transform=fast_transform,
+        strict_clip=strict_clip,
+    )
 
 
-def clip_by_land(): ...
+def clip_by_cn_border(
+    artist: Artist | Iterable[Artist],
+    fast_transform: bool | None = None,
+    strict_clip: bool | None = None,
+) -> None:
+    """
+    用中国国界裁剪 Artist
+
+    Parameters
+    ----------
+    artist: Artist or iterable of Artist
+        被裁剪的 Artist 对象。可以是多个 Artist。要求提前设置过 axes 属性。
+
+    fast_transform : bool, default None
+        是否直接用 pyproj 做坐标变换，速度更快但也更容易出错。
+        默认为 None，表示使用默认的全局配置（True）。
+
+    strict_clip : bool, default None
+        是否使用更严格的裁剪方法。当 GeoAxes 的边界不是矩形时也能避免裁剪出界，但是耗时更长。
+        默认为 None，表示使用默认的全局配置（False）。
+
+    Notes
+    -----
+    后续调整 Axes 显示范围可能导致裁剪错位的场景：
+    - strict_clip=True
+    - 非 data 或投影坐标系的 Text 和 TextCollection
+    """
+    return clip_by_polygon(
+        artist=artist,
+        polygon=get_cn_border(),
+        fast_transform=fast_transform,
+        strict_clip=strict_clip,
+    )
 
 
-def clip_by_ocean(): ...
+def clip_by_land(
+    artist: Artist | Iterable[Artist],
+    fast_transform: bool | None = None,
+    strict_clip: bool | None = None,
+) -> None:
+    """
+    用陆地边界裁剪 Artist
+
+    注意全球数据可能在地图边界出现错误的结果
+
+    Parameters
+    ----------
+    artist: Artist or iterable of Artist
+        被裁剪的 Artist 对象。可以是多个 Artist。要求提前设置过 axes 属性。
+
+    fast_transform : bool, default None
+        是否直接用 pyproj 做坐标变换，速度更快但也更容易出错。
+        默认为 None，表示使用默认的全局配置（True）。
+
+    strict_clip : bool, default None
+        是否使用更严格的裁剪方法。当 GeoAxes 的边界不是矩形时也能避免裁剪出界，但是耗时更长。
+        默认为 None，表示使用默认的全局配置（False）。
+
+    Notes
+    -----
+    后续调整 Axes 显示范围可能导致裁剪错位的场景：
+    - strict_clip=True
+    - 非 data 或投影坐标系的 Text 和 TextCollection
+    """
+    return clip_by_polygon(
+        artist=artist,
+        polygon=get_land(),
+        fast_transform=fast_transform,
+        strict_clip=strict_clip,
+    )
+
+
+def clip_by_ocean(
+    artist: Artist | Iterable[Artist],
+    fast_transform: bool | None = None,
+    strict_clip: bool | None = None,
+) -> None:
+    """
+    用海洋边界裁剪 Artist
+
+    注意全球数据可能在地图边界出现错误的结果
+
+    Parameters
+    ----------
+    artist: Artist or iterable of Artist
+        被裁剪的 Artist 对象。可以是多个 Artist。要求提前设置过 axes 属性。
+
+    fast_transform : bool, default None
+        是否直接用 pyproj 做坐标变换，速度更快但也更容易出错。
+        默认为 None，表示使用默认的全局配置（True）。
+
+    strict_clip : bool, default None
+        是否使用更严格的裁剪方法。当 GeoAxes 的边界不是矩形时也能避免裁剪出界，但是耗时更长。
+        默认为 None，表示使用默认的全局配置（False）。
+
+    Notes
+    -----
+    后续调整 Axes 显示范围可能导致裁剪错位的场景：
+    - strict_clip=True
+    - 非 data 或投影坐标系的 Text 和 TextCollection
+    """
+    return clip_by_polygon(
+        artist=artist,
+        polygon=get_ocean(),
+        fast_transform=fast_transform,
+        strict_clip=strict_clip,
+    )
 
 
 def _set_axes_ticks(
     ax: Axes,
-    extents: tuple[float, float, float, float] | None,
+    extents: tuple[float, float, float, float] | Literal["global"],
     major_xticks: NDArray,
     major_yticks: NDArray,
     minor_xticks: NDArray,
@@ -862,17 +1199,17 @@ def _set_axes_ticks(
     yformatter: Formatter,
 ) -> None:
     """设置 PlateCarree 投影的普通 Axes 的刻度"""
-    if extents is None:
+    if extents == "global":
         extents = (-180, 180, -90, 90)
     lon0, lon1, lat0, lat1 = extents
     ax.set_xlim(lon0, lon1)
     ax.set_ylim(lat0, lat1)
 
     # 避免不可见的刻度影响速度
-    major_xticks = _get_ticks_between(major_xticks, lon0, lon1)
-    major_yticks = _get_ticks_between(major_yticks, lat0, lat1)
-    minor_xticks = _get_ticks_between(minor_xticks, lon0, lon1)
-    minor_yticks = _get_ticks_between(minor_yticks, lat0, lat1)
+    major_xticks = get_values_between(major_xticks, lon0, lon1)
+    major_yticks = get_values_between(major_yticks, lat0, lat1)
+    minor_xticks = get_values_between(minor_xticks, lon0, lon1)
+    minor_yticks = get_values_between(minor_yticks, lat0, lat1)
 
     ax.set_xticks(major_xticks, minor=False)
     ax.set_yticks(major_yticks, minor=False)
@@ -884,7 +1221,7 @@ def _set_axes_ticks(
 
 def _set_simple_geoaxes_ticks(
     ax: GeoAxes,
-    extents: tuple[float, float, float, float] | None,
+    extents: tuple[float, float, float, float] | Literal["global"],
     major_xticks: NDArray,
     major_yticks: NDArray,
     minor_xticks: NDArray,
@@ -893,9 +1230,7 @@ def _set_simple_geoaxes_ticks(
     yformatter: Formatter,
 ) -> None:
     """设置 PlateCarree 和 Mercator 投影的 GeoAxes 的刻度"""
-    if extents is not None:
-        ax.set_extent(extents, crs=PLATE_CARREE)
-    else:
+    if extents == "global":
         ax.set_global()
         lat0, lat1 = -90, 90
         if isinstance(ax.projection, Mercator):
@@ -905,12 +1240,14 @@ def _set_simple_geoaxes_ticks(
                 np.array(ax.projection.y_limits),
             )[:, 1]
         extents = (-180, 180, lat0, lat1)
+    else:
+        ax.set_extent(extents, crs=PLATE_CARREE)
 
     lon0, lon1, lat0, lat1 = extents
-    major_xticks = _get_ticks_between(major_xticks, lon0, lon1)
-    major_yticks = _get_ticks_between(major_yticks, lat0, lat1)
-    minor_xticks = _get_ticks_between(minor_xticks, lon0, lon1)
-    minor_yticks = _get_ticks_between(minor_yticks, lat0, lat1)
+    major_xticks = get_values_between(major_xticks, lon0, lon1)
+    major_yticks = get_values_between(major_yticks, lat0, lat1)
+    minor_xticks = get_values_between(minor_xticks, lon0, lon1)
+    minor_yticks = get_values_between(minor_yticks, lat0, lat1)
 
     ax.set_xticks(major_xticks, minor=False, crs=PLATE_CARREE)
     ax.set_yticks(major_yticks, minor=False, crs=PLATE_CARREE)
@@ -923,7 +1260,7 @@ def _set_simple_geoaxes_ticks(
 # TODO: 非矩形边框
 def _set_complex_geoaxes_ticks(
     ax: GeoAxes,
-    extents: tuple[float, float, float, float] | None,
+    extents: tuple[float, float, float, float] | Literal["global"],
     major_xticks: NDArray,
     major_yticks: NDArray,
     minor_xticks: NDArray,
@@ -933,13 +1270,13 @@ def _set_complex_geoaxes_ticks(
 ) -> None:
     """设置非 PlateCarree 和 Mercator 投影的 GeoAxes 的刻度"""
     # 将地图边框设置为矩形
-    if extents is None:
+    if extents == "global":
         projection_str = str(type(ax.projection)).split("'")[1].split(".")[-1]
         raise ValueError(f"使用 {projection_str} 投影时必须设置 extents 范围")
     ax.set_extent(extents, crs=PLATE_CARREE)
 
-    eps = 1  # 需要稍微扩大一点
-    x0, x1, y0, y1 = _get_axes_extents(ax)
+    eps = 1  # 用来扩大经纬度框
+    x0, x1, y0, y1 = get_axes_extents(ax)
     lon0, lon1, lat0, lat1 = ax.get_extent(PLATE_CARREE)
     lon0 = max(-180, lon0 - eps)
     lon1 = min(180, lon1 + eps)
@@ -962,7 +1299,7 @@ def _set_complex_geoaxes_ticks(
         xticklabelsT = []
         lats = np.linspace(lat0, lat1, npts)
         xticks = lon_to_180(xticks)
-        xticks = _get_ticks_between(xticks, lon0, lon1)
+        xticks = get_values_between(xticks, lon0, lon1)
         for xtick in xticks:
             lons = np.full_like(lats, xtick)
             lon_line = shapely.LineString(np.c_[lons, lats])
@@ -987,7 +1324,7 @@ def _set_complex_geoaxes_ticks(
         yticklabelsL = []
         yticklabelsR = []
         lons = np.linspace(lon0, lon1, npts)
-        yticks = _get_ticks_between(yticks, lat0, lat1)
+        yticks = get_values_between(yticks, lat0, lat1)
         for ytick in yticks:
             lats = np.full_like(lons, ytick)
             lat_line = shapely.LineString(np.c_[lons, lats])
@@ -1063,7 +1400,7 @@ def _interp_minor_ticks(major_ticks: NDArray, m: int) -> NDArray:
 
 def set_map_ticks(
     ax: Axes,
-    extents: Sequence[float] | None = None,
+    extents: Sequence[float] | Literal["global"] = "global",
     xticks: ArrayLike | None = None,
     yticks: ArrayLike | None = None,
     *,
@@ -1086,9 +1423,9 @@ def set_map_ticks(
     ax : Axes
         目标 Axes
 
-    extents : (4,) tuple of float, default None
-        经纬度范围 (lon0, lon1, lat0, lat1)。默认为 None，表示显示全球。
-        当 GeoAxes 的投影不是 PlateCarree 或 Mercator 时 extents 不能为 None。
+    extents : (4,) tuple of float or 'global', default 'global'
+        经纬度范围 (lon0, lon1, lat0, lat1)。默认为 'global'，表示显示全球。
+        当 GeoAxes 的投影不是 PlateCarree 或 Mercator 时 extents 不能为 'global'。
 
     xticks : array_like, default None
         x 轴主刻度的坐标，单位为经度。
@@ -1118,7 +1455,7 @@ def set_map_ticks(
     yformatter : Formatter, default None
         y 轴刻度标签的 Formatter。默认为 None，表示 LatitudeFormatter。
     """
-    if extents is not None:
+    if extents != "global":
         lon0, lon1, lat0, lat1 = extents
         if lon0 >= lon1 or lat0 >= lat1:
             raise ValueError("要求 lon0 < lon1 且 lat0 < lat1")
@@ -1262,7 +1599,7 @@ def add_quiver_legend(
     quiver_legend : QuiverLegend
         图例对象
     """
-    quiver_legend = QuiverLegend(
+    return QuiverLegend(
         Q=Q,
         U=U,
         units=units,
@@ -1272,10 +1609,6 @@ def add_quiver_legend(
         qk_kwargs=qk_kwargs,
         patch_kwargs=patch_kwargs,
     )
-    ax = cast(Axes, Q.axes)
-    ax.add_artist(quiver_legend)
-
-    return quiver_legend
 
 
 def add_compass(
@@ -1336,6 +1669,7 @@ def add_compass(
         text_kwargs=text_kwargs,
     )
     ax.add_artist(compass)
+    compass.text.axes = ax
 
     return compass
 
@@ -1405,6 +1739,8 @@ def add_frame(ax: Axes, width: float = 5, **kwargs: Any) -> Frame:
 
     frame = Frame(width, **kwargs)
     ax.add_artist(frame)
+    for pc in frame.pc_dict.values():
+        pc.axes = ax
 
     return frame
 
@@ -1548,8 +1884,8 @@ def add_mini_axes(
 
 
 def get_cross_section_xticks(
-    lon: ArrayLike,
-    lat: ArrayLike,
+    lons: ArrayLike,
+    lats: ArrayLike,
     nticks: int = 6,
     lon_formatter: Formatter | None = None,
     lat_formatter: Formatter | None = None,
@@ -1562,7 +1898,7 @@ def get_cross_section_xticks(
 
     Parameters
     ----------
-    lon, lat: (npts,) array_like
+    lons, lats: (npts,) array_like
         横截面对应的经纬度数组
 
     nticks : int, default 6
@@ -1588,20 +1924,20 @@ def get_cross_section_xticks(
         用经纬度表示的刻度标签
     """
     # 线性插值计算刻度的经纬度值
-    lon, lat = asarrays(lon, lat)
-    if lon.ndim != 1:
-        raise ValueError("lon 必须是一维数组")
-    if len(lon) <= 1:
-        raise ValueError("lon 至少有 2 个元素")
-    if lon.shape != lat.shape:
-        raise ValueError("lon 和 lat 的长度必须相同")
+    lons, lats = asarrays(lons, lats)
+    if lons.ndim != 1:
+        raise ValueError("lons 必须是一维数组")
+    if len(lons) <= 1:
+        raise ValueError("lons 至少有 2 个元素")
+    if lons.shape != lats.shape:
+        raise ValueError("lons 和 lats 的长度必须相同")
 
-    dlon = lon - lon[0]
-    dlat = lat - lat[0]
+    dlon = lons - lons[0]
+    dlat = lats - lats[0]
     x = np.hypot(dlon, dlat)
     xticks = np.linspace(x[0], x[-1], nticks)
-    tlon = np.interp(xticks, x, lon)
-    tlat = np.interp(xticks, x, lat)
+    tlon = np.interp(xticks, x, lons)
+    tlat = np.interp(xticks, x, lats)
 
     # 获取字符串形式的刻度标签
     xticklabels = []

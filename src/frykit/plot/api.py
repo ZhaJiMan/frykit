@@ -842,6 +842,10 @@ def _get_geoaxes_boundary(ax: GeoAxes) -> shapely.Polygon:
     return boundary
 
 
+# 直接比较字符串时 3.10.0 会出错
+_MPL38 = tuple(map(int, mpl.__version__.split("."))) < (3, 8, 0)
+
+
 def clip_by_polygon(
     artist: Artist | Iterable[Artist],
     polygon: PolygonType | Iterable[PolygonType],
@@ -890,7 +894,7 @@ def clip_by_polygon(
     artists: list[Artist] = []
     for a in to_list(artist):
         match a:
-            case ContourSet() if mpl.__version__ < "3.8.0":
+            case ContourSet() if _MPL38:
                 artists.extend(a.collections)
             case Artist():
                 artists.append(a)

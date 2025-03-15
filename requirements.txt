@@ -1,3 +1,0 @@
-pandas>=1.2.0
-shapely>=2.0.0
-cartopy>=0.22.0

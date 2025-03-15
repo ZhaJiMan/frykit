@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "frykit"
+version = "0.7.0"
+authors = [{name = "ZhaJiMan", email = "915023793@qq.com"}]
+description = "A simple toolbox for Matplotib and Cartopy"
+readme = "README.md"
+license = {file = "LICENSE"}
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "License :: OSI Approved :: MIT License",
+]
+dependencies = [
+    "pandas>=1.2.0",
+    "shapely>=2.0.0",
+    "cartopy>=0.22.0",
+    "frykit_data>=0.0.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/ZhaJiMan/frykit"
+Issues = "https://github.com/ZhaJiMan/frykit/issues"
+Changelog = "https://github.com/ZhaJiMan/frykit/blob/main/CHANGELOG.md"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+ignore = ["F403"]

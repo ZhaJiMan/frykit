@@ -27,7 +27,7 @@ rhumb_line = data_crs.transform_points(map_crs, xs, ys)[:, :2]
 
 # 大圆航线
 geod = Geod(ellps="WGS84")
-r = geod.inv_intermediate(lon1, lat1, lon2, lat2, npts)
+r = geod.inv_intermediate(lon1, lat1, lon2, lat2, npts, return_back_azimuth=True)
 great_circle_line = np.c_[r.lons, r.lats]
 
 fig = plt.figure(figsize=(8, 8))

@@ -1,8 +1,8 @@
 import cartopy.crs as ccrs
-import matplotlib.colors as mcolors
-import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.colors import BoundaryNorm, ListedColormap
+from matplotlib.patches import Patch
 from matplotlib.patheffects import Normal, Stroke
 
 import frykit.plot as fplt
@@ -35,8 +35,8 @@ nbin = len(bins) - 1
 labels = [f"{bins[i]} - {bins[i + 1]}" for i in range(nbin)]
 
 # 准备 cmap 和 norm
-norm = mcolors.BoundaryNorm(bins, nbin)
-cmap = mcolors.ListedColormap(colors)
+norm = BoundaryNorm(bins, nbin)
+cmap = ListedColormap(colors)
 
 # 字体描边
 path_effects = [Stroke(linewidth=1.5, foreground="w"), Normal()]
@@ -52,7 +52,7 @@ for ax in [main_ax, mini_ax]:
 # 添加图例
 patches = []
 for color, label in zip(colors, labels):
-    patch = mpatches.Patch(fc=color, ec="k", lw=0.5, label=label)
+    patch = Patch(fc=color, ec="k", lw=0.5, label=label)
     patches.append(patch)
 
 main_ax.legend(

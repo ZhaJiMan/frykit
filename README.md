@@ -161,7 +161,7 @@ fplt.label_cn_district(ax, province='北京市')
 plt.show()
 ```
 
-![add_cn_province](image/beijing.png)
+![beijing](image/beijing.png)
 
 ### 绘制任意多边形
 
@@ -182,12 +182,10 @@ circle = shapely.Point(0, 0).buffer(10)
 fplt.add_geometries(ax, circle)
 ```
 
-画自己的 shapefile，用 Cartopy 的 `Reader`、PyShp 或 Fiona 读取：
+画自己的 shapefile（也可以用 Cartopy 的 `Reader`、PyShp 或 GeoPandas 读取）：
 
 ```Python
-from cartopy.io.shapereader import Reader
-
-reader = Reader('2023年_CTAmap_1.12版/2023年县级/2023年县级.shp')
+geometries = fshp.get_shapefile_geometries('2023年_CTAmap_1.12版/2023年县级/2023年县级.shp')
 fplt.add_geometries(ax, reader.geometries(), fc='none', ec='k', lw=0.25)
 ```
 
@@ -313,7 +311,7 @@ fplt.add_compass(ax, 0.95, 0.8, size=15)
 ### 添加比例尺
 
 ```Python
-scale_bar = fplt.add_scale_bar(ax1, 0.36, 0.8, length=1000)
+scale_bar = fplt.add_scale_bar(ax, 0.36, 0.8, length=1000)
 scale_bar.set_xticks([0, 500, 1000])
 ```
 

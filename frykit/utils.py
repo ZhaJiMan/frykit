@@ -203,10 +203,10 @@ def deprecator(
 
     Parameters
     ----------
-    deprecated : callable, default None
+    deprecated : callable or None, default None
         被弃用的函数。默认为 None，表示返回一个带关键字参数的装饰器。
 
-    alternative : str, callable or iterable object of str and callable, default None
+    alternative : str, callable or iterable object of str and callable or None, default None
         建议换用的函数。可以是字符串、函数对象，或一组字符串和函数对象。
         字符串用来表示不方便表示的函数的名称。
         默认为 None，表示被弃用的函数无需替代。

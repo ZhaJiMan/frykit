@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from collections.abc import Iterable, Sequence
 from functools import wraps
-from typing import Any, Literal, cast
+from typing import Any, Literal, TypedDict, cast
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -29,7 +29,6 @@ from matplotlib.quiver import Quiver
 from matplotlib.text import Text
 from matplotlib.ticker import Formatter
 from matplotlib.transforms import Bbox
-from numpy.lib.npyio import NpzFile
 from numpy.typing import ArrayLike, NDArray
 from shapely.geometry.base import BaseGeometry
 
@@ -114,6 +113,7 @@ __all__ = [
     "savefig",
     "get_font_names",
     "add_geoms",
+    "add_nine_line",
     "get_qualitative_palette",
 ]
 
@@ -138,16 +138,16 @@ def add_geometries(
     geometries : BaseGeometry or sequence of BaseGeometry
         一个或一组几何对象
 
-    crs : CRS, optional
+    crs : CRS or None, default None
         当 ax 是 Axes 时 crs 只能为 None，表示不做变换。
         当 ax 是 GeoAxes 时会将 geometries 从 crs 坐标系变换到 ax.projection 坐标系上。
         此时默认值 None 表示 PlateCarree 投影。
 
-    fast_transform : bool, default None
+    fast_transform : bool or None, default None
         是否直接用 pyproj 做坐标变换，速度更快但也更容易出错。
         默认为 None，表示使用默认的全局配置（True）。
 
-    skip_outside : bool, default None
+    skip_outside : bool or None, default None
         是否跳过 ax 边框外的几何对象，提高局部绘制速度。
         默认为 None，表示使用默认的全局配置（True）。
 
@@ -208,18 +208,18 @@ def add_cn_province(
     ax : Axes
         目标 Axes
 
-    province : NameOrAdcode or sequence of NameOrAdcode, default None
+    province : NameOrAdcode or sequence of NameOrAdcode or None, default None
         省名或 adcode。可以是多个省。默认为 None，表示所有省。
 
-    fast_transform : bool, default None
+    fast_transform : bool or None, default None
         是否直接用 pyproj 做坐标变换，速度更快但也更容易出错。
         默认为 None，表示使用默认的全局配置（True）。
 
-    skip_outside : bool, default None
+    skip_outside : bool or None, default None
         是否跳过 ax 边框外的几何对象，提高局部绘制速度。
         默认为 None，表示使用默认的全局配置（True）。
 
-    data_source : {'amap', 'tianditu'}, default None
+    data_source : {'amap', 'tianditu'} or None, default None
         数据源。默认为 None，表示使用默认的全局配置（amap）。
 
     **kwargs
@@ -258,22 +258,22 @@ def add_cn_city(
     ax : Axes
         目标 Axes
 
-    city : NameOrAdcode or sequence of NameOrAdcode, default None
+    city : NameOrAdcode or sequence of NameOrAdcode or None, default None
         市名或 adcode。可以是多个市。默认为 None，表示所有市。
 
-    province : NameOrAdcode or sequence of NameOrAdcode, default None
+    province : NameOrAdcode or sequence of NameOrAdcode or None, default None
         省名或 adcode。表示指定某个省的所有市。可以是多个省。
         默认为 None，表示不指定省。
 
-    fast_transform : bool, default None
+    fast_transform : bool or None, default None
         是否直接用 pyproj 做坐标变换，速度更快但也更容易出错。
         默认为 None，表示使用默认的全局配置（True）。
 
-    skip_outside : bool, default None
+    skip_outside : bool or None, default None
         是否跳过 ax 边框外的几何对象，提高局部绘制速度。
         默认为 None，表示使用默认的全局配置（True）。
 
-    data_source : {'amap', 'tianditu'}, default None
+    data_source : {'amap', 'tianditu'} or None, default None
         数据源。默认为 None，表示使用默认的全局配置（amap）。
 
     **kwargs
@@ -313,26 +313,26 @@ def add_cn_district(
     ax : Axes
         目标 Axes
 
-    district : NameOrAdcode or sequence of NameOrAdcode, default None
+    district : NameOrAdcode or sequence of NameOrAdcode or None, default None
         县名或 adcode。可以是多个县。默认为 None，表示所有县。
 
-    city : NameOrAdcode or sequence of NameOrAdcode, default None
+    city : NameOrAdcode or sequence of NameOrAdcode or None, default None
         市名或 adcode。表示指定某个市的所有县。可以是多个市。
         默认为 None，表示不指定市。
 
-    province : NameOrAdcode or sequence of NameOrAdcode, default None
+    province : NameOrAdcode or sequence of NameOrAdcode or None, default None
         省名或 adcode。表示指定某个省的所有县。可以是多个省。
         默认为 None，表示不指定省。
 
-    fast_transform : bool, default None
+    fast_transform : bool or None, default None
         是否直接用 pyproj 做坐标变换，速度更快但也更容易出错。
         默认为 None，表示使用默认的全局配置（True）。
 
-    skip_outside : bool, default None
+    skip_outside : bool or None, default None
         是否跳过 ax 边框外的几何对象，提高局部绘制速度。
         默认为 None，表示使用默认的全局配置（True）。
 
-    data_source : {'amap', 'tianditu'}, default None
+    data_source : {'amap', 'tianditu'} or None, default None
         数据源。默认为 None，表示使用默认的全局配置（amap）。
 
     **kwargs
@@ -369,15 +369,15 @@ def add_cn_border(
     ax : Axes
         目标 Axes
 
-    fast_transform : bool, default None
+    fast_transform : bool or None, default None
         是否直接用 pyproj 做坐标变换，速度更快但也更容易出错。
         默认为 None，表示使用默认的全局配置（True）。
 
-    skip_outside : bool, default None
+    skip_outside : bool or None, default None
         是否跳过 ax 边框外的几何对象，提高局部绘制速度。
         默认为 None，表示使用默认的全局配置（True）。
 
-    data_source : {'amap', 'tianditu'}, default None
+    data_source : {'amap', 'tianditu'} or None, default None
         数据源。默认为 None，表示使用默认的全局配置（amap）。
 
     **kwargs
@@ -417,11 +417,11 @@ def add_cn_line(
     name : {'省界', '特别行政区界', '九段线', '未定国界'} or sequence of str, default '九段线'
         线段名称。可以是多种线段。默认为 '九段线'。
 
-    fast_transform : bool, default None
+    fast_transform : bool or None, default None
         是否直接用 pyproj 做坐标变换，速度更快但也更容易出错。
         默认为 None，表示使用默认的全局配置（True）。
 
-    skip_outside : bool, default None
+    skip_outside : bool or None, default None
         是否跳过 ax 边框外的几何对象，提高局部绘制速度。
         默认为 None，表示使用默认的全局配置（True）。
 
@@ -458,11 +458,11 @@ def add_countries(
     ax : Axes
         目标 Axes
 
-    fast_transform : bool, default None
+    fast_transform : bool or None, default None
         是否直接用 pyproj 做坐标变换，速度更快但也更容易出错。
         默认为 None，表示使用默认的全局配置（True）。
 
-    skip_outside : bool, default None
+    skip_outside : bool or None, default None
         是否跳过 ax 边框外的几何对象，提高局部绘制速度。
         默认为 None，表示使用默认的全局配置（True）。
 
@@ -501,11 +501,11 @@ def add_land(
     ax : Axes
         目标 Axes
 
-    fast_transform : bool, default None
+    fast_transform : bool or None, default None
         是否直接用 pyproj 做坐标变换，速度更快但也更容易出错。
         默认为 None，表示使用默认的全局配置（True）。
 
-    skip_outside : bool, default None
+    skip_outside : bool or None, default None
         是否跳过 ax 边框外的几何对象，提高局部绘制速度。
         默认为 None，表示使用默认的全局配置（True）。
 
@@ -544,11 +544,11 @@ def add_ocean(
     ax : Axes
         目标 Axes
 
-    fast_transform : bool, default None
+    fast_transform : bool or None, default None
         是否直接用 pyproj 做坐标变换，速度更快但也更容易出错。
         默认为 None，表示使用默认的全局配置（True）。
 
-    skip_outside : bool, default None
+    skip_outside : bool or None, default None
         是否跳过 ax 边框外的几何对象，提高局部绘制速度。
         默认为 None，表示使用默认的全局配置（True）。
 
@@ -593,7 +593,7 @@ def add_texts(
     s : (n,) array_like of str
         文本字符串
 
-    skip_outside : bool, default None
+    skip_outside : bool or None, default None
         是否跳过 ax 边框外的几何对象，提高局部绘制速度。
         默认为 None，表示使用默认的全局配置（True）。
 
@@ -671,13 +671,13 @@ def label_cn_province(
     ax : Axes
         目标 Axes
 
-    province : NameOrAdcode or sequence of NameOrAdcode, default None
+    province : NameOrAdcode or sequence of NameOrAdcode or None, default None
         省名或 adcode。可以是多个省。默认为 None，表示所有省。
 
     short_name : bool, default True
         是否使用缩短的名称。默认为 True。
 
-    skip_outside : bool, default None
+    skip_outside : bool or None, default None
         是否跳过 ax 边框外的文本，提高局部绘制速度。
         默认为 None，表示使用默认的全局配置（True）。
 
@@ -723,17 +723,17 @@ def label_cn_city(
     ax : Axes
         目标 Axes
 
-    city : NameOrAdcode or sequence of NameOrAdcode, default None
+    city : NameOrAdcode or sequence of NameOrAdcode or None, default None
         市名或 adcode。可以是多个市。默认为 None，表示所有市。
 
-    province : NameOrAdcode or sequence of NameOrAdcode, default None
+    province : NameOrAdcode or sequence of NameOrAdcode or None, default None
         省名或 adcode。表示指定某个省的所有市。可以是多个省。
         默认为 None，表示不指定省。
 
     short_name : bool, default True
         是否使用缩短的名称。默认为 True。
 
-    skip_outside : bool, default None
+    skip_outside : bool or None, default None
         是否跳过 ax 边框外的文本，提高局部绘制速度。
         默认为 None，表示使用默认的全局配置（True）。
 
@@ -780,21 +780,21 @@ def label_cn_district(
     ax : Axes
         目标 Axes
 
-    district : NameOrAdcode or sequence of NameOrAdcode, default None
+    district : NameOrAdcode or sequence of NameOrAdcode or None, default None
         县名或 adcode。可以是多个县。默认为 None，表示所有县。
 
-    city : NameOrAdcode or sequence of NameOrAdcode, default None
+    city : NameOrAdcode or sequence of NameOrAdcode or None, default None
         市名或 adcode。表示指定某个市的所有县。可以是多个市。
         默认为 None，表示不指定市。
 
-    province : NameOrAdcode or sequence of NameOrAdcode, default None
+    province : NameOrAdcode or sequence of NameOrAdcode or None, default None
         省名或 adcode。表示指定某个省的所有县。可以是多个省。
         默认为 None，表示不指定省。
 
     short_name : bool, default True
         是否使用缩短的名称。默认为 True。
 
-    skip_outside : bool, default None
+    skip_outside : bool or None, default None
         是否跳过 ax 边框外的文本，提高局部绘制速度。
         默认为 None，表示使用默认的全局配置（True）。
 
@@ -846,6 +846,7 @@ def clip_by_polygon(
     artist: Artist | Iterable[Artist],
     polygon: PolygonType | Iterable[PolygonType],
     crs: CRS | None = None,
+    ax: Axes | None = None,
     fast_transform: bool | None = None,
     strict_clip: bool | None = None,
 ) -> None:
@@ -855,21 +856,25 @@ def clip_by_polygon(
     Parameters
     ----------
     artist: Artist or iterable of Artist
-        被裁剪的 Artist 对象。可以是多个 Artist。要求提前设置过 axes 属性。
+        被裁剪的 Artist 对象。可以是多个 Artist。
 
     polygon : PolygonType or iterable of PolygonType
         用于裁剪的多边形。多个多边形会自动合并成一个。
 
-    crs : CRS, optional
+    crs : CRS or None, default None
         当 ax 是 Axes 时 crs 只能为 None，表示不做变换。
         当 ax 是 GeoAxes 时会将 polygon 从 crs 坐标系变换到 ax.projection 坐标系上。
         此时默认值 None 表示 PlateCarree 投影。
 
-    fast_transform : bool, default None
+    ax : Axes or None, default None
+        手动指定 artist 所在的 Axes，保证 artist 没有设置 axes 属性时也能裁剪。
+        默认为 None，表示采用 artist.axes。
+
+    fast_transform : bool or None, default None
         是否直接用 pyproj 做坐标变换，速度更快但也更容易出错。
         默认为 None，表示使用默认的全局配置（True）。
 
-    strict_clip : bool, default None
+    strict_clip : bool or None, default None
         是否使用更严格的裁剪方法。当 GeoAxes 的边界不是矩形时也能避免裁剪出界，但是耗时更长。
         默认为 None，表示使用默认的全局配置（False）。
 
@@ -895,13 +900,16 @@ def clip_by_polygon(
     if len(artists) == 0:
         return None
 
-    for a in artists:
-        if a.axes is None:  # TODO: 允许 axes 为 None
-            raise ValueError("artist.axes 不能为 None")
-    ax = cast(Axes, artists[0].axes)
+    if ax is None:
+        for a in artists:
+            if a.axes is not None:
+                ax = cast(Axes, a.axes)
+                break
+        else:
+            raise ValueError("artist 需要设置 axes")
 
     for a in artists:
-        if a.axes is not ax:
+        if not (a.axes is None or a.axes is ax):
             raise ValueError("多个 artist 的 axes 必须相同")
 
     polygons = to_list(polygon)
@@ -951,7 +959,7 @@ def clip_by_polygon(
         a.set_clip_on(True)
         a.set_clip_box(ax.bbox)
         if isinstance(a, Text):
-            trans = ax.get_transform() - ax.transData
+            trans = a.get_transform() - ax.transData
             x, y = trans.transform(a.get_position())
             point = shapely.Point(x, y)
             if not polygon.contains(point):
@@ -965,8 +973,10 @@ def clip_by_polygon(
 def clip_by_cn_province(
     artist: Artist | Iterable[Artist],
     province: NameOrAdcode | Iterable[NameOrAdcode],
+    ax: Axes | None = None,
     fast_transform: bool | None = None,
     strict_clip: bool | None = None,
+    data_source: DataSource | None = None,
 ) -> None:
     """
     用中国省界裁剪 Artist
@@ -974,18 +984,24 @@ def clip_by_cn_province(
     Parameters
     ----------
     artist: Artist or iterable of Artist
-        被裁剪的 Artist 对象。可以是多个 Artist。要求提前设置过 axes 属性。
-
+        被裁剪的 Artist 对象。可以是多个 Artist。
     province : NameOrAdcode or iterable of NameOrAdcode
         省名或 adcode。可以是多个省。
 
-    fast_transform : bool, default None
+    ax : Axes or None, default None
+        手动指定 artist 所在的 Axes，保证 artist 没有设置 axes 属性时也能裁剪。
+        默认为 None，表示采用 artist.axes。
+
+    fast_transform : bool or None, default None
         是否直接用 pyproj 做坐标变换，速度更快但也更容易出错。
         默认为 None，表示使用默认的全局配置（True）。
 
-    strict_clip : bool, default None
+    strict_clip : bool or None, default None
         是否使用更严格的裁剪方法。当 GeoAxes 的边界不是矩形时也能避免裁剪出界，但是耗时更长。
         默认为 None，表示使用默认的全局配置（False）。
+
+    data_source : {'amap', 'tianditu'} or None, default None
+        数据源。默认为 None，表示使用默认的全局配置（amap）。
 
     Notes
     -----
@@ -995,7 +1011,8 @@ def clip_by_cn_province(
     """
     clip_by_polygon(
         artist=artist,
-        polygon=get_cn_province(province),  # type: ignore
+        polygon=get_cn_province(province, data_source=data_source),  # type: ignore
+        ax=ax,
         fast_transform=fast_transform,
         strict_clip=strict_clip,
     )
@@ -1004,8 +1021,10 @@ def clip_by_cn_province(
 def clip_by_cn_city(
     artist: Artist | Iterable[Artist],
     city: NameOrAdcode | Iterable[NameOrAdcode],
+    ax: Axes | None = None,
     fast_transform: bool | None = None,
     strict_clip: bool | None = None,
+    data_source: DataSource | None = None,
 ) -> None:
     """
     用中国市界裁剪 Artist
@@ -1013,18 +1032,25 @@ def clip_by_cn_city(
     Parameters
     ----------
     artist: Artist or iterable of Artist
-        被裁剪的 Artist 对象。可以是多个 Artist。要求提前设置过 axes 属性。
+        被裁剪的 Artist 对象。可以是多个 Artist。
 
     city : NameOrAdcode or iterable of NameOrAdcode
         市名或 adcode。可以是多个市。
 
-    fast_transform : bool, default None
+    ax : Axes or None, default None
+        手动指定 artist 所在的 Axes，保证 artist 没有设置 axes 属性时也能裁剪。
+        默认为 None，表示采用 artist.axes。
+
+    fast_transform : bool or None, default None
         是否直接用 pyproj 做坐标变换，速度更快但也更容易出错。
         默认为 None，表示使用默认的全局配置（True）。
 
-    strict_clip : bool, default None
+    strict_clip : bool or None, default None
         是否使用更严格的裁剪方法。当 GeoAxes 的边界不是矩形时也能避免裁剪出界，但是耗时更长。
         默认为 None，表示使用默认的全局配置（False）。
+
+    data_source : {'amap', 'tianditu'} or None, default None
+        数据源。默认为 None，表示使用默认的全局配置（amap）。
 
     Notes
     -----
@@ -1034,7 +1060,8 @@ def clip_by_cn_city(
     """
     return clip_by_polygon(
         artist=artist,
-        polygon=get_cn_city(city),  # type: ignore
+        polygon=get_cn_city(city, data_source=data_source),  # type: ignore
+        ax=ax,
         fast_transform=fast_transform,
         strict_clip=strict_clip,
     )
@@ -1043,8 +1070,10 @@ def clip_by_cn_city(
 def clip_by_cn_district(
     artist: Artist | Iterable[Artist],
     district: NameOrAdcode | Iterable[NameOrAdcode],
+    ax: Axes | None = None,
     fast_transform: bool | None = None,
     strict_clip: bool | None = None,
+    data_source: DataSource | None = None,
 ) -> None:
     """
     用中国县界裁剪 Artist
@@ -1052,18 +1081,25 @@ def clip_by_cn_district(
     Parameters
     ----------
     artist: Artist or iterable of Artist
-        被裁剪的 Artist 对象。可以是多个 Artist。要求提前设置过 axes 属性。
+        被裁剪的 Artist 对象。可以是多个 Artist。
 
     district : NameOrAdcode or iterable of NameOrAdcode
         县名或 adcode。可以是多个县。
 
-    fast_transform : bool, default None
+    ax : Axes or None, default None
+        手动指定 artist 所在的 Axes，保证 artist 没有设置 axes 属性时也能裁剪。
+        默认为 None，表示采用 artist.axes。
+
+    fast_transform : bool or None, default None
         是否直接用 pyproj 做坐标变换，速度更快但也更容易出错。
         默认为 None，表示使用默认的全局配置（True）。
 
-    strict_clip : bool, default None
+    strict_clip : bool or None, default None
         是否使用更严格的裁剪方法。当 GeoAxes 的边界不是矩形时也能避免裁剪出界，但是耗时更长。
         默认为 None，表示使用默认的全局配置（False）。
+
+    data_source : {'amap', 'tianditu'} or None, default None
+        数据源。默认为 None，表示使用默认的全局配置（amap）。
 
     Notes
     -----
@@ -1073,7 +1109,8 @@ def clip_by_cn_district(
     """
     return clip_by_polygon(
         artist=artist,
-        polygon=get_cn_district(district),  # type: ignore
+        polygon=get_cn_district(district, data_source=data_source),  # type: ignore
+        ax=ax,
         fast_transform=fast_transform,
         strict_clip=strict_clip,
     )
@@ -1081,8 +1118,10 @@ def clip_by_cn_district(
 
 def clip_by_cn_border(
     artist: Artist | Iterable[Artist],
+    ax: Axes | None = None,
     fast_transform: bool | None = None,
     strict_clip: bool | None = None,
+    data_source: DataSource | None = None,
 ) -> None:
     """
     用中国国界裁剪 Artist
@@ -1090,15 +1129,22 @@ def clip_by_cn_border(
     Parameters
     ----------
     artist: Artist or iterable of Artist
-        被裁剪的 Artist 对象。可以是多个 Artist。要求提前设置过 axes 属性。
+        被裁剪的 Artist 对象。可以是多个 Artist。
 
-    fast_transform : bool, default None
+    ax : Axes or None, default None
+        手动指定 artist 所在的 Axes，保证 artist 没有设置 axes 属性时也能裁剪。
+        默认为 None，表示采用 artist.axes。
+
+    fast_transform : bool or None, default None
         是否直接用 pyproj 做坐标变换，速度更快但也更容易出错。
         默认为 None，表示使用默认的全局配置（True）。
 
-    strict_clip : bool, default None
+    strict_clip : bool or None, default None
         是否使用更严格的裁剪方法。当 GeoAxes 的边界不是矩形时也能避免裁剪出界，但是耗时更长。
         默认为 None，表示使用默认的全局配置（False）。
+
+    data_source : {'amap', 'tianditu'} or None, default None
+        数据源。默认为 None，表示使用默认的全局配置（amap）。
 
     Notes
     -----
@@ -1108,7 +1154,8 @@ def clip_by_cn_border(
     """
     return clip_by_polygon(
         artist=artist,
-        polygon=get_cn_border(),
+        polygon=get_cn_border(data_source),
+        ax=ax,
         fast_transform=fast_transform,
         strict_clip=strict_clip,
     )
@@ -1116,6 +1163,7 @@ def clip_by_cn_border(
 
 def clip_by_land(
     artist: Artist | Iterable[Artist],
+    ax: Axes | None = None,
     fast_transform: bool | None = None,
     strict_clip: bool | None = None,
 ) -> None:
@@ -1127,13 +1175,17 @@ def clip_by_land(
     Parameters
     ----------
     artist: Artist or iterable of Artist
-        被裁剪的 Artist 对象。可以是多个 Artist。要求提前设置过 axes 属性。
+        被裁剪的 Artist 对象。可以是多个 Artist。
 
-    fast_transform : bool, default None
+    ax : Axes or None, default None
+        手动指定 artist 所在的 Axes，保证 artist 没有设置 axes 属性时也能裁剪。
+        默认为 None，表示采用 artist.axes。
+
+    fast_transform : bool or None, default None
         是否直接用 pyproj 做坐标变换，速度更快但也更容易出错。
         默认为 None，表示使用默认的全局配置（True）。
 
-    strict_clip : bool, default None
+    strict_clip : bool or None, default None
         是否使用更严格的裁剪方法。当 GeoAxes 的边界不是矩形时也能避免裁剪出界，但是耗时更长。
         默认为 None，表示使用默认的全局配置（False）。
 
@@ -1146,6 +1198,7 @@ def clip_by_land(
     return clip_by_polygon(
         artist=artist,
         polygon=get_land(),
+        ax=ax,
         fast_transform=fast_transform,
         strict_clip=strict_clip,
     )
@@ -1153,6 +1206,7 @@ def clip_by_land(
 
 def clip_by_ocean(
     artist: Artist | Iterable[Artist],
+    ax: Axes | None = None,
     fast_transform: bool | None = None,
     strict_clip: bool | None = None,
 ) -> None:
@@ -1164,13 +1218,17 @@ def clip_by_ocean(
     Parameters
     ----------
     artist: Artist or iterable of Artist
-        被裁剪的 Artist 对象。可以是多个 Artist。要求提前设置过 axes 属性。
+        被裁剪的 Artist 对象。可以是多个 Artist。
 
-    fast_transform : bool, default None
+    ax : Axes or None, default None
+        手动指定 artist 所在的 Axes，保证 artist 没有设置 axes 属性时也能裁剪。
+        默认为 None，表示采用 artist.axes。
+
+    fast_transform : bool or None, default None
         是否直接用 pyproj 做坐标变换，速度更快但也更容易出错。
         默认为 None，表示使用默认的全局配置（True）。
 
-    strict_clip : bool, default None
+    strict_clip : bool or None, default None
         是否使用更严格的裁剪方法。当 GeoAxes 的边界不是矩形时也能避免裁剪出界，但是耗时更长。
         默认为 None，表示使用默认的全局配置（False）。
 
@@ -1183,6 +1241,7 @@ def clip_by_ocean(
     return clip_by_polygon(
         artist=artist,
         polygon=get_ocean(),
+        ax=ax,
         fast_transform=fast_transform,
         strict_clip=strict_clip,
     )
@@ -1427,11 +1486,11 @@ def set_map_ticks(
         经纬度范围 (lon0, lon1, lat0, lat1)。默认为 'global'，表示显示全球。
         当 GeoAxes 的投影不是 PlateCarree 或 Mercator 时 extents 不能为 'global'。
 
-    xticks : array_like, default None
+    xticks : array_like or None, default None
         x 轴主刻度的坐标，单位为经度。
         默认为 None，表示不直接给出，而是由 dx 自动决定。
 
-    yticks : array_like, default None
+    yticks : array_like or None, default None
         y 轴主刻度的坐标，单位为纬度。
         默认为 None，表示不直接给出，而是由 dy 自动决定。
 
@@ -1449,10 +1508,10 @@ def set_map_ticks(
     my : int, default 0
         纬度主刻度之间次刻度的个数。默认为 0。
 
-    xformatter : Formatter, default None
+    xformatter : Formatter or None, default None
         x 轴刻度标签的 Formatter。默认为 None，表示 LongitudeFormatter。
 
-    yformatter : Formatter, default None
+    yformatter : Formatter or None, default None
         y 轴刻度标签的 Formatter。默认为 None，表示 LatitudeFormatter。
     """
     if extents != "global":
@@ -1525,7 +1584,7 @@ def quick_cn_map(
     use_geoaxes : bool, default True
         是否使用 GeoAxes。默认为 True。
 
-    figsize : (2,) tuple of int, default None
+    figsize : (2,) tuple of int or None, default None
         Figure 的宽高。默认为 None，表示 (6.4, 4.8)。
 
     Returns
@@ -1584,12 +1643,12 @@ def add_quiver_legend(
     loc : {'lower left', 'lower right', 'upper left', 'upper right'}, default 'lower right'
         图例位置。默认为 'lower right'。
 
-    qk_kwargs : dict, default None
+    qk_kwargs : dict or None, default None
         QuiverKey 类的关键字参数。默认为 None。
         例如 labelsep、labelcolor、fontproperties 等。
         https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.quiverkey.html
 
-    patch_kwargs : dict, default None
+    patch_kwargs : dict or None, default None
         表示背景方框的 Rectangle 类的关键字参数。默认为 None。
         例如 linewidth、edgecolor、facecolor 等。
         https://matplotlib.org/stable/api/_as_gen/matplotlib.patches.Rectangle.html
@@ -1632,7 +1691,7 @@ def add_compass(
     x, y : float
         指北针的横纵坐标。基于 Axes 坐标系。
 
-    angle : float, default None
+    angle : float or None, default None
         指北针的方位角。单位为度。
         默认为 None。表示 GeoAxes 会自动计算角度，而 Axes 默认 0 度（正北）。
 
@@ -1642,12 +1701,12 @@ def add_compass(
     style : {'arrow', 'circle', 'star'}, default 'arrow'
         指北针造型。默认为 'arrow'。
 
-    pc_kwargs : dict, default None
+    pc_kwargs : dict or None, default None
         表示指北针的 PathCollection 类的关键字参数。默认为 None。
         例如 linewidth、edgecolor、facecolor 等。
         https://matplotlib.org/stable/api/collections_api.html
 
-    text_kwargs : dict, default None
+    text_kwargs : dict or None, default None
         表示指北针 N 字的 Text 类的关键字参数。默认为 None。
         https://matplotlib.org/stable/api/text_api.html
 
@@ -1904,11 +1963,11 @@ def get_cross_section_xticks(
     nticks : int, default 6
         刻度的数量。默认为 6。
 
-    lon_formatter : Formatter, default None
+    lon_formatter : Formatter or None, default None
         刻度标签里经度的 Formatter，用来控制字符串的格式。
         默认为 None，表示 LongitudeFormatter。
 
-    lat_formatter : Formatter, default None
+    lat_formatter : Formatter or None, default None
         刻度标签里纬度的 Formatter。用来控制字符串的格式。
         默认为 None，表示 LatitudeFormatter。
 
@@ -2026,7 +2085,7 @@ class CenteredBoundaryNorm(BoundaryNorm):
 
 
 def plot_colormap(
-    cmap: Colormap,
+    cmap: str | Colormap,
     norm: Normalize | None = None,
     extend: Literal["neither", "both", "min", "max"] | None = None,
     ax: Axes | None = None,
@@ -2082,10 +2141,25 @@ def letter_axes(
     return texts
 
 
-def load_test_data() -> NpzFile:
+class TestData(TypedDict):
+    longitude: NDArray
+    latitude: NDArray
+    t2m: NDArray
+    u10: NDArray
+    v10: NDArray
+
+
+def load_test_data() -> TestData:
     """读取测试用的数据。包含地表 2m 气温（K）和水平 10m 风速。"""
     filepath = DATA_DIRPATH / "test.npz"
-    return np.load(str(filepath))
+    with np.load(filepath) as f:
+        return {
+            "longitude": f["longitude"],
+            "latitude": f["latitude"],
+            "t2m": f["t2m"],
+            "u10": f["u10"],
+            "v10": f["v10"],
+        }
 
 
 def savefig(fname: Any, fig: Figure | None = None, **kwargs: Any) -> None:
@@ -2121,6 +2195,15 @@ def add_geoms(
         fast_transform=fast_transform,
         skip_outside=skip_outside,
         **kwargs,
+    )
+
+
+@deprecator(alternative=add_cn_line)
+def add_nine_line(
+    ax: Axes, fast_transform: bool = True, skip_outside: bool = True, **kwargs: Any
+) -> GeometryPathCollection:
+    return add_cn_line(
+        ax=ax, fast_transform=fast_transform, skip_outside=skip_outside, **kwargs
     )
 
 

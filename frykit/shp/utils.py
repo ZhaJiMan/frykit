@@ -43,6 +43,10 @@ __all__ = [
     "make_feature",
     "make_geojson",
     "polygon_to_polys",
+    "geom_to_path",
+    "path_to_polygon",
+    "box_path",
+    "GeometryTransformer",
 ]
 
 
@@ -225,3 +229,29 @@ def make_geojson(features: list[FeatureDict]) -> GeoJSONDict:
 @deprecator(alternative=geometry_to_shape)
 def polygon_to_polys(polygon: PolygonType) -> PolygonCoordinates:
     return geometry_to_shape(polygon)
+
+
+@deprecator(alternative="frykit.plot.geometry_to_path")
+def geom_to_path(geom: BaseGeometry):
+    from frykit.plot.utils import geometry_to_path
+
+    return geometry_to_path(geom)
+
+
+@deprecator(alternative="frykit.plot.path_to_polygon")
+def path_to_polygon(path) -> PolygonType:
+    from frykit.plot.utils import path_to_polygon
+
+    return path_to_polygon(path)
+
+
+@deprecator(alternative="frykit.plot.box_path")
+def box_path(x0: float, x1: float, y0: float, y1: float):
+    from frykit.plot.utils import box_path
+
+    return box_path(x0, x1, y0, y1)
+
+
+class GeometryTransformer:
+    @deprecator(alternative="frykit.plot.project_geometry", raise_error=True)
+    def __init__(self, *args, **kwargs): ...

@@ -193,8 +193,9 @@ class GeometryPathCollection(PathCollection):
             x0, x1, y0, y1 = ax.get_extent(self.crs)
         else:
             x0, x1, y0, y1 = get_axes_extents(ax)
-        extent_box = shapely.box(x0, y0, x1, y1)
-        mask = extent_box.intersects(self.geometries)
+        box = shapely.box(x0, y0, x1, y1)
+        shapely.prepare(box)
+        mask = box.intersects(self.geometries)
         paths = np.full(len(self.geometries), EMPTY_PATH)
         paths[mask] = list(map(self._geometry_to_path, self.geometries[mask]))
         self.set_paths(paths.tolist())
@@ -259,8 +260,8 @@ class TextCollection(Artist):
     def _init(self) -> None:
         if self.axes is not None and self.skip_outside:
             x0, x1, y0, y1 = get_axes_extents(self.axes)
-            extent_box = shapely.box(x0, y0, x1, y1)
-            self._clip_by_polygon(extent_box)
+            box = shapely.box(x0, y0, x1, y1)
+            self._clip_by_polygon(box)
 
     @allow_rasterization
     def draw(self, renderer: RendererBase) -> None:

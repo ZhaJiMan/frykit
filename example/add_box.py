@@ -25,12 +25,12 @@ ax1 = fig.add_subplot(121, projection=map_crs1)
 ax2 = fig.add_subplot(122, projection=map_crs2)
 ax1.set_extent(extents1, crs=data_crs)
 ax2.set_extent(extents2, crs=data_crs)
-fplt.add_cn_province(ax1, lw=0.3, fc='floralwhite')
-fplt.add_cn_province(ax2, lw=0.3, fc='floralwhite')
-fplt.add_nine_line(ax1, lw=0.5)
-fplt.add_nine_line(ax2, lw=0.5)
-ax1.set_title('PlateCarree')
-ax2.set_title('AzimuthalEquidistant')
+fplt.add_cn_province(ax1, lw=0.3, fc="floralwhite")
+fplt.add_cn_province(ax2, lw=0.3, fc="floralwhite")
+fplt.add_cn_line(ax1, lw=0.5)
+fplt.add_cn_line(ax2, lw=0.5)
+ax1.set_title("PlateCarree")
+ax2.set_title("AzimuthalEquidistant")
 
 # 交错画出方块格子
 for i in range(len(xlocs - 1)):
@@ -44,13 +44,13 @@ for i in range(len(xlocs - 1)):
                 fplt.add_box(
                     ax=ax,
                     extents=[x0, x1, y0, y1],
-                    fc='royalblue',
-                    ec='k',
+                    fc="royalblue",
+                    ec="k",
                     zorder=2,
                     alpha=0.25,
                     transform=data_crs,
                 )
 
 # 保存图片
-fplt.savefig('../image/add_box.png')
+fplt.savefig("../image/add_box.png")
 plt.close(fig)

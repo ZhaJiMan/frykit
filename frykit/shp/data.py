@@ -205,7 +205,7 @@ class CityProperties(TypedDict):
     province_name: str
     province_adcode: int
     city_name: str
-    city_adocde: int
+    city_adcode: int
     short_name: str
     lon: float
     lat: float
@@ -215,7 +215,7 @@ class DistrictProperties(TypedDict):
     province_name: str
     province_adcode: int
     city_name: str
-    city_adocde: int
+    city_adcode: int
     district_name: str
     district_adcode: int
     short_name: str
@@ -245,10 +245,10 @@ def get_cn_province_properties(
 
     Parameters
     ----------
-    province : NameOrAdcode or sequence of NameOrAdcode, default None
+    province : NameOrAdcode or sequence of NameOrAdcode or None, default None
         省名或 adcode。可以是多个省。默认为 None，表示所有省。
 
-    data_source : {'amap', 'tianditu'}, default None
+    data_source : {'amap', 'tianditu'} or None, default None
         数据源。默认为 None，表示使用默认的全局配置（amap）。
 
     Returns
@@ -293,14 +293,14 @@ def get_cn_city_properties(
 
     Parameters
     ----------
-    city : NameOrAdcode or sequence of NameOrAdcode, default None
+    city : NameOrAdcode or sequence of NameOrAdcode or None, default None
         市名或 adcode。可以是多个市。默认为 None，表示所有市。
 
-    province : NameOrAdcode or sequence of NameOrAdcode, default None
+    province : NameOrAdcode or sequence of NameOrAdcode or None, default None
         省名或 adcode。表示指定某个省的所有市。可以是多个省。
         默认为 None，表示不指定省。
 
-    data_source : {'amap', 'tianditu'}, default None
+    data_source : {'amap', 'tianditu'} or None, default None
         数据源。默认为 None，表示使用默认的全局配置（amap）。
 
     Returns
@@ -348,18 +348,18 @@ def get_cn_district_properties(
 
     Parameters
     ----------
-    district : NameOrAdcode or sequence of NameOrAdcode, default None
+    district : NameOrAdcode or sequence of NameOrAdcode or None, default None
         县名或 adcode。可以是多个县。默认为 None，表示所有县。
 
-    city : NameOrAdcode or sequence of NameOrAdcode, default None
+    city : NameOrAdcode or sequence of NameOrAdcode or None, default None
         市名或 adcode。表示指定某个市的所有县。可以是多个市。
         默认为 None，表示不指定市。
 
-    province : NameOrAdcode or sequence of NameOrAdcode, default None
+    province : NameOrAdcode or sequence of NameOrAdcode or None, default None
         省名或 adcode。表示指定某个省的所有县。可以是多个省。
         默认为 None，表示不指定省。
 
-    data_source : {'amap', 'tianditu'}, default None
+    data_source : {'amap', 'tianditu'} or None, default None
         数据源。默认为 None，表示使用默认的全局配置（amap）。
 
     Returns
@@ -450,10 +450,10 @@ def get_cn_province(
 
     Parameters
     ----------
-    province : NameOrAdcode or sequence of NameOrAdcode, default None
+    province : NameOrAdcode or sequence of NameOrAdcode or None, default None
         省名或 adcode。可以是多个省。默认为 None，表示所有省。
 
-    data_source : {'amap', 'tianditu'}, default None
+    data_source : {'amap', 'tianditu'} or None, default None
         数据源。默认为 None，表示使用默认的全局配置（amap）。
 
     Returns
@@ -497,14 +497,14 @@ def get_cn_city(
 
     Parameters
     ----------
-    city : NameOrAdcode or sequence of NameOrAdcode, default None
+    city : NameOrAdcode or sequence of NameOrAdcode or None, default None
         市名或 adcode。可以是多个市。默认为 None，表示所有市。
 
-    province : NameOrAdcode or sequence of NameOrAdcode, default None
+    province : NameOrAdcode or sequence of NameOrAdcode or None, default None
         省名或 adcode。表示指定某个省的所有市。可以是多个省。
         默认为 None，表示不指定省。
 
-    data_source : {'amap', 'tianditu'}, default None
+    data_source : {'amap', 'tianditu'} or None, default None
         数据源。默认为 None，表示使用默认的全局配置（amap）。
 
     Returns
@@ -551,18 +551,18 @@ def get_cn_district(
 
     Parameters
     ----------
-    district : NameOrAdcode or sequence of NameOrAdcode, default None
+    district : NameOrAdcode or sequence of NameOrAdcode or None, default None
         县名或 adcode。可以是多个县。默认为 None，表示所有县。
 
-    city : NameOrAdcode or sequence of NameOrAdcode, default None
+    city : NameOrAdcode or sequence of NameOrAdcode or None, default None
         市名或 adcode。表示指定某个市的所有县。可以是多个市。
         默认为 None，表示不指定市。
 
-    province : NameOrAdcode or sequence of NameOrAdcode, default None
+    province : NameOrAdcode or sequence of NameOrAdcode or None, default None
         省名或 adcode。表示指定某个省的所有县。可以是多个省。
         默认为 None，表示不指定省。
 
-    data_source : {'amap', 'tianditu'}, default None
+    data_source : {'amap', 'tianditu'} or None, default None
         数据源。默认为 None，表示使用默认的全局配置（amap）。
 
     Returns

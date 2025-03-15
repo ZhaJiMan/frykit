@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -13,15 +13,18 @@ ImageInput = PathType | Image.Image
 
 
 def _read_image(image: ImageInput) -> Image.Image:
-    """读取图片为 Image 对象"""
     if isinstance(image, Image.Image):
         return image
-    return Image.open(str(image))
+
+    with Image.open(image) as im:
+        im.load()
+        return im
 
 
+# TODO: alpha
 def make_gif(images: Sequence[ImageInput], filepath: PathType, **kwargs: Any) -> None:
     """
-    制作 GIF 图。结果的 mode 和尺寸由第一张图决定。
+    制作 gif 图。结果的 mode 和尺寸由第一张图决定。
 
     Parameters
     ----------
@@ -29,50 +32,46 @@ def make_gif(images: Sequence[ImageInput], filepath: PathType, **kwargs: Any) ->
         输入的一组图片
 
     filepath : PathType
-        输出 GIF 图片的路径
+        输出 gif 图片的路径
 
     **kwargs
-        用 pillow 保存 GIF 时的参数。
+        用 pillow 保存 gif 时的参数。
         例如 duration、loop、disposal、transparency 等。
         https://pillow.readthedocs.io/en/stable/handbook/image-file-formats.html
     """
-    if not images:
+    if len(images) == 0:
         raise ValueError("至少需要一张图片")
 
-    kwargs.setdefault("duration", 500)
     kwargs.setdefault("loop", 0)
+    kwargs.setdefault("duration", 500)
 
-    images = [_read_image(image) for image in images]
+    images = list(map(_read_image, images))
+    images = cast(list[Image.Image], images)
+
     images[0].save(
-        str(filepath), format="gif", save_all=True, append_images=images[1:], **kwargs
+        filepath, format="gif", save_all=True, append_images=images[1:], **kwargs
     )
 
 
 def merge_images(
-    images: Sequence[ImageInput],
-    shape: tuple[int, int] | None = None,
+    images: Any,  # TODO: type hint
     mode: str | None = None,
-    bgcolor: Any = "white",
+    bgcolor: float | tuple[float, ...] | str | None = "white",
 ) -> Image.Image:
     """
     合并一组图片
 
-    合并结果可以分为 shape[0] 行和 shape[1] 列个格子。将图片从左到右，从上到下
-    依次填入格子中，格子大小由这组图片的最大宽高决定。当图片比格子小时居中摆放。
-    shape 可以含有 -1，表示行或列数自动根据图片数计算得到。
-
     Parameters
     ----------
-    images : sequence of ImageInput
-        输入的一组图片
+    images : array_like of ImageInput
+        输入的一组图片。用 object 类型的数组表示，其二维排布决定了合并结果的行列。
+        合并行列的各自大小由 images 里的最大宽高决定，当图片比格子小时居中摆放。
+        数组可以含有 None，表示占位的空白图片。
 
-    shape : (2,) tuple of int, optional
-        合并的行列形状。默认为 None，表示纵向拼接。
-
-    mode : str, optional
+    mode : str or None, default None
         合并后图片的 mode。默认为 None，表示采用第一张图片的 mode。
 
-    bgcolor : optional
+    bgcolor : float, tuple of float, str or None, default 'white'
         合并后图片的背景颜色。默认为白色。
 
     Returns
@@ -80,39 +79,40 @@ def merge_images(
     merged : Image
         合并后的图片
     """
-    if not images:
-        raise ValueError("至少需要一张图片")
+    images = np.array(images, dtype=object)
+    images = np.atleast_2d(images)
+    if images.ndim > 2:
+        raise ValueError("images 的维度不能超过 2")
 
-    # 获取最大宽高
-    images = [_read_image(image) for image in images]
-    width = max(image.width for image in images)
-    height = max(image.height for image in images)
+    max_width = 0
+    max_height = 0
+    first_image = None
+    for index in np.ndindex(images.shape):
+        if images[index] is None:
+            continue
+        image = _read_image(images[index])
+        images[index] = image
+        if first_image is None:
+            first_image = image
+        max_width = max(max_width, image.width)
+        max_height = max(max_height, image.height)
 
-    # 决定行列
-    num = len(images)
-    if shape is None:
-        shape = (num, 1)
-    row, col = shape
-    if row == 0 or row < -1 or col == 0 or col < -1:
-        raise ValueError("shape 的元素只能为正整数或 -1")
-    if row == -1 and col == -1:
-        raise ValueError("shape 的元素不能同时为 -1")
-    if row == -1:
-        row = (num - 1) // col + 1
-    if col == -1:
-        col = (num - 1) // row + 1
+    if first_image is None:
+        raise ValueError("没有可用的图片")
 
-    # 粘贴到画布上
+    nrows, ncols = images.shape
     merged = Image.new(
-        mode=images[0].mode if mode is None else mode,
-        size=(col * width, row * height),
+        mode=first_image.mode if mode is None else mode,
+        size=(ncols * max_width, nrows * max_height),
         color=bgcolor,
     )
-    for k, image in enumerate(images):
-        i, j = divmod(k, col)
-        left = j * width + (width - image.width) // 2
-        top = i * height + (height - image.height) // 2
-        merged.paste(image, (left, top))
+
+    # 居中粘贴
+    for (i, j), image in np.ndenumerate(images):
+        if image is not None:
+            left = j * max_width + (max_width - image.width) // 2
+            top = i * max_height + (max_height - image.height) // 2
+            merged.paste(image, (left, top))
 
     return merged
 
@@ -127,7 +127,7 @@ def split_image(image: ImageInput, shape: int | tuple[int, int]) -> NDArray:
         输入图片
 
     shape : int or (2,) tuple of int
-        分割的行列形状。规则类似 NumPy。
+        分割的行列形状。规则同 numpy。
 
     Returns
     -------
@@ -135,18 +135,18 @@ def split_image(image: ImageInput, shape: int | tuple[int, int]) -> NDArray:
         形如 shape 的图片数组
     """
     is_1d = isinstance(shape, int)
-    row, col = (1, shape) if is_1d else shape
-    if row <= 0 or col <= 0:
+    nrows, ncols = (1, shape) if is_1d else shape
+    if nrows <= 0 or ncols <= 0:
         raise ValueError("shape 只能含正整数维度")
 
     # 可能无法整除
     image = _read_image(image)
-    width = image.width // col
-    height = image.height // row
+    width = image.width // ncols
+    height = image.height // nrows
 
-    split = np.empty((row, col), object)
-    for i in range(row):
-        for j in range(col):
+    split = np.empty((nrows, ncols), object)
+    for i in range(nrows):
+        for j in range(ncols):
             left = j * width
             right = left + width
             top = i * height

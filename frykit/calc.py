@@ -216,7 +216,7 @@ def make_ellipse(
     a : float, default 1
         半长轴长度。默认为 1。
 
-    b : float, default None
+    b : float or None, default None
         半短轴长度。默认为 None，表示和 a 相等。
 
     angle : float, default 0
@@ -291,7 +291,7 @@ def region_mask(
     x: ArrayLike,
     y: ArrayLike,
     extents: Sequence[float],
-    apply_and: Literal[False],
+    apply_and: Literal[False] = False,
 ) -> tuple[NDArray, NDArray]: ...
 
 

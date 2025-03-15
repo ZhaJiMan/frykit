@@ -15,6 +15,17 @@ from frykit.calc import is_finite
 from frykit.shp.typing import GeometryT, PolygonType
 from frykit.utils import format_type_error
 
+__all__ = [
+    "box_path",
+    "EMPTY_PATH",
+    "EMPTY_POLYGON",
+    "geometry_to_path",
+    "path_to_polygon",
+    "make_transformer",
+    "project_geometry",
+    "get_axes_extents",
+]
+
 
 def box_path(x0: float, x1: float, y0: float, y1: float, ccw: bool = True) -> Path:
     """构造方框 Path"""
@@ -105,8 +116,8 @@ def path_to_polygon(path: Path) -> PolygonType:
     if len(path.vertices) == 0:  # type: ignore
         return EMPTY_POLYGON
 
-    collection = []
     invalid_flag = False
+    collection: list[tuple[shapely.LinearRing, list[shapely.LinearRing]]] = []
     indices = np.nonzero(path.codes == Path.MOVETO)[0][1:]
     for vertices in np.vsplit(path.vertices, indices):
         if not is_finite(vertices):
@@ -115,6 +126,7 @@ def path_to_polygon(path: Path) -> PolygonType:
         linear_ring = shapely.LinearRing(vertices)
         if linear_ring.is_ccw:
             if not invalid_flag:
+                assert len(collection) > 0
                 collection[-1][1].append(linear_ring)
         else:
             collection.append((linear_ring, []))
@@ -174,7 +186,7 @@ def _transform_geometry(
 
 @lru_cache
 def make_transformer(crs_from: CRS, crs_to: CRS) -> Transformer:
-    """创建 pyproj 的 Tranformer 对象"""
+    """创建 pyproj 的 Transformer 对象"""
     return Transformer.from_crs(crs_from, crs_to, always_xy=True)
 
 
@@ -182,9 +194,9 @@ def project_geometry(geometry: GeometryT, crs_from: CRS, crs_to: CRS) -> Geometr
     """对几何对象做投影"""
     if crs_from == crs_to:
         return type(geometry)(geometry)  # type: ignore
+    transformer = make_transformer(crs_from, crs_to)
 
     def transform_coords(coords: NDArray) -> NDArray:
-        transformer = make_transformer(crs_from, crs_to)
         return np.column_stack(transformer.transform(coords[:, 0], coords[:, 1]))
 
     return _transform_geometry(geometry, transform_coords)

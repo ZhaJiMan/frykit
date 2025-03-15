@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from cartopy.crs import AzimuthalEquidistant, Mercator, PlateCarree
 
 __all__ = ["PLATE_CARREE", "WEB_MERCATOR", "CN_AZIMUTHAL_EQUIDISTANT"]

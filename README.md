@@ -6,7 +6,6 @@
 
 - 读取中国行政区划数据
 - 创建多边形掩膜（mask）
-- 对几何对象做投影变换
 
 `plot` 模块的功能包括：
 
@@ -20,7 +19,7 @@
 
 特色是：
 
-- 自带高德地图行政区划数据
+- 自带高德地图和天地图的行政区划数据
 - 可同时用于 `Axes` 或 `GeoAxes`
 - 对画图速度有优化
 - 对裁剪出界问题有优化
@@ -41,10 +40,10 @@ pip install -U frykit  # 更新
 依赖为：
 
 ```
-python>=3.9.0
-numpy>=1.20.0
-cartopy>=0.20.0
+python>=3.10.0
 pandas>=1.2.0
+shapely>=2.0.0
+cartopy>=0.22.0
 ```
 
 Python 版本不满足要求时可能装上 `frykit==0.2.5`，不建议使用。
@@ -59,22 +58,22 @@ Python 版本不满足要求时可能装上 `frykit==0.2.5`，不建议使用。
 
 `get_cn_xxx` 系列函数能读取中国行政区划，返回 [Shapely](https://shapely.readthedocs.io/en/stable/manual.html) 多边形对象。具体来说：
 
-- `get_cn_border`：读取国界。
-- `get_nine_line`：读取九段线。
+- `get_cn_border`：读取国界
+- `get_cn_line`：读取九段线
 - `get_cn_province`：读取省界。默认返回所有省，也可以通过省名指定单个省或多个省。
 - `get_cn_city`：读取市界。默认返回所有市。
-  - 通过市名指定单个市或多个市。
-  - 通过省名指定单个省或多个省包含的所有市。
+  - 通过市名指定单个市或多个市
+  - 通过省名指定单个省或多个省包含的所有市
 - `get_cn_district`：读取县界。默认返回所有县。
-  - 通过县名指定单个县或多个县。
-  - 通过市名指定单个市或多个市包含的所有县。
-  - 通过省名指定单个省或多个省包含的所有县。
+  - 通过县名指定单个县或多个县
+  - 通过市名指定单个市或多个市包含的所有县
+  - 通过省名指定单个省或多个省包含的所有县
 
 ```Python
 import frykit.shp as fshp
 
 国界 = fshp.get_cn_border()
-九段线 = fshp.get_nine_line()
+九段线 = fshp.get_cn_line()
 
 所有省 = fshp.get_cn_province()
 安徽省 = fshp.get_cn_province('安徽省')
@@ -95,29 +94,41 @@ import frykit.shp as fshp
 安徽省的所有区县 = fshp.get_cn_district(province='安徽省')
 ```
 
-除了用字符串名称，也可以用行政区划代码（adcode）查询。不确定名称时可以用以下函数
+除了用字符串名称，也可以用行政区划代码（adcode）查询。
 
-- `get_cn_province_names`
-- `get_cn_city_names`
-- `get_cn_district_names`
+默认使用高德地图的行政区划数据，也可以切换为天地图公开的可视化数据。前者更精细，后者用来计算和画图更快。通过 `data_source` 参数指定：
 
-查询各级行政区划的名称。
+```Python
+amap_provinces = fshp.get_cn_province(data_source='amap')
+tianditu_provinces = fshp.get_cn_province(data_source='tianditu')
 
-行政区划数据来自 [高德地图行政区域查询接口](https://lbs.amap.com/api/webservice/guide/api/district)，已从 GCJ-02 坐标系处理到了 WGS84 坐标系上。文件都在 `frykit.DATA_DIRPATH` 指向的目录里。制作方法见 [amap-shp](https://github.com/ZhaJiMan/amap-shp)。
+# 设置全局数据源
+import frykit
+frykit.set_option({'data_source': 'tianditu'})
+
+# 临时设置数据源
+with frykit.option_context({'data_source': 'tianditu'}):
+    provinces = fshp.get_cn_province()
+    some_function(provinces)
+```
+
+具体的数据说明见 [frykit_data](https://github.com/ZhaJiMan/frykit_data) 仓库。
 
 ### 绘制中国行政区划
 
-- `add_cn_border`：绘制国界。
-- `add_nine_line`：绘制九段线。
-- `add_cn_province`：绘制省界。
-- `add_cn_city`：绘制市界。
-- `add_cn_district`：绘制县界。
+- `add_cn_border`：绘制国界
+- `add_cn_line`：绘制九段线
+- `add_cn_province`：绘制省界
+- `add_cn_city`：绘制市界
+- `add_cn_district`：绘制县界
 
 另外还提供标注名字的函数：
 
-- `label_cn_province`：标注省名。
-- `label_cn_city`：标注市名。
-- `label_cn_district`：标注县名。
+- `label_cn_province`：标注省名
+- `label_cn_city`：标注市名
+- `label_cn_district`：标注县名
+
+同样可以通过 `data_source` 参数指定数据源。
 
 画出所有省份，同时用颜色区分京津冀地区：
 
@@ -129,7 +140,7 @@ plt.figure(figsize=(8, 8))
 ax = plt.axes(projection=fplt.PLATE_CARREE)
 fplt.add_cn_province(ax)
 fplt.add_cn_province(ax, ['北京市', '天津市', '河北省'], fc='dodgerblue')
-fplt.add_nine_line(ax)
+fplt.add_cn_line(ax)
 fplt.label_cn_province(ax)
 
 plt.show()
@@ -157,18 +168,18 @@ plt.show()
 `add_cn_border` 函数相当于
 
 ```Python
-add_geoms(ax, get_cn_border())
+add_geometries(ax, get_cn_border())
 ```
 
-底层的 `add_geoms` 类似 `GeoAxes.add_geometries`，可以绘制除 `Point` 外的任意 Shapely 几何对象。
+底层的 `add_geometries` 类似 Cartopy 的 `GeoAxes.add_geometries`，可以绘制 Shapely 的 `LineString` 和 `Polygon` 对象。
 
 画一个半径为 10 的圆：
 
 ```Python
-import shapely.geometry as sgeom
+import shapely
 
-circle = sgeom.Point(0, 0).buffer(10)
-fplt.add_geoms(ax, circle)
+circle = shapely.Point(0, 0).buffer(10)
+fplt.add_geometries(ax, circle)
 ```
 
 画自己的 shapefile，用 Cartopy 的 `Reader`、PyShp 或 Fiona 读取：
@@ -177,24 +188,24 @@ fplt.add_geoms(ax, circle)
 from cartopy.io.shapereader import Reader
 
 reader = Reader('2023年_CTAmap_1.12版/2023年县级/2023年县级.shp')
-fplt.add_geoms(ax, reader.geometries(), fc='none', ec='k', lw=0.25)
+fplt.add_geometries(ax, reader.geometries(), fc='none', ec='k', lw=0.25)
 ```
 
-画自己的 GeoJSON，用 Shapley 做转换：
+画自己的 GeoJSON：
 
 ```Python
 import json
-import shapely.geometry as sgeom
 
 with open('天地图_行政区划可视化/中国_省.geojson') as f:
-    geoj = json.load(f)
-geoms = [sgeom.shape(feature['geometry']) for feature in geoj['features']]
-fplt.add_geoms(ax, geoms, fc='none', ec='k', lw=0.25)
+    geojson_dict = json.load(f)
+geometries = fshp.get_geojson_geometries(geojson_dict)
+
+fplt.add_geometries(ax, geometries, fc='none', ec='k', lw=0.25)
 ```
 
 通过 `array`、 `cmap` 和 `norm` 参数还能实现类似分省填色的效果（详见 [fill.py](example/fill.py)）。
 
-`add_geoms` 默认直接用 pyproj 做地图投影变换，速度更快但也更容易出现错误的效果。可以指定参数 `fast_transform=False`，切换成更正确但速度更慢的模式。或者直接换用 `GeoAxes.add_geometries`。
+`add_geometries` 默认直接用 pyproj 做地图投影变换，速度更快但也更容易出现错误的效果。可以指定参数 `fast_transform=False`，切换成更正确但速度更慢的模式。或者直接换用 `GeoAxes.add_geometries`。
 
 ### 裁剪 Artist
 
@@ -215,7 +226,7 @@ import frykit.plot as fplt
 crs = fplt.PLATE_CARREE
 ax = plt.axes(projection=crs)
 fplt.add_cn_province(ax)
-fplt.add_nine_line(ax)
+fplt.add_cn_line(ax)
 
 data = fplt.load_test_data()
 cf = ax.contourf(
@@ -237,7 +248,7 @@ plt.show()
 
 ```Python
 jingjinji = ['北京市', '天津市', '河北省']
-fplt.clip_by_polygon(cf, jingjinji)
+fplt.clip_by_cn_province(cf, jingjinji)
 ```
 
 ### 制作掩膜
@@ -246,7 +257,7 @@ fplt.clip_by_polygon(cf, jingjinji)
 
 ```Python
 border = fshp.get_cn_border()
-mask = fshp.polygon_to_mask(border, lon, lat)
+mask = fshp.polygon_mask(border, lon, lat)
 data[~mask] = np.nan
 ax.contourf(lon, lat, data)
 ```
@@ -314,7 +325,7 @@ scale_bar.set_xticks([0, 500, 1000])
 mini_ax = fplt.add_mini_axes(ax)
 mini_ax.set_extent((105, 120, 2, 25), crs=crs)
 fplt.add_cn_province(mini_ax)
-fplt.add_nine_line(mini_ax)
+fplt.add_cn_line(mini_ax)
 ```
 
 小地图默认使用大地图的投影，会自动定位到大地图的角落，无需像 `add_axes` 那样需要反复调整位置。
@@ -340,7 +351,7 @@ colors = [
     'royalblue',
     'darkviolet'
 ]
-cmap, norm, ticks = fplt.get_qualitative_palette(colors)
+cmap, norm, ticks = fplt.make_qualitative_palette(colors)
 cbar = fplt.plot_colormap(cmap, norm)
 cbar.set_ticks(ticks)
 cbar.set_ticklabels(colors)
@@ -359,10 +370,6 @@ cbar.set_ticks(boundaries)
 
 ![colorbar](image/colorbar.png)
 
-## 模块结构
-
-![structure](image/structure.jpg)
-
 ## 性能测试
 
 ![perf](image/perf.png)
@@ -370,10 +377,8 @@ cbar.set_ticks(boundaries)
 测试内容：在等距方位投影的 `GeoAxes` 上绘制 frykit 自带的行政区划数据，分国、省、市、县四种，同时按 `GeoAxes` 的范围分全国和东南小区域两种。绘制四次运行的耗时，结果如上图所示。
 
 - frykit 模仿 Cartopy 实现了缓存机制，所以都是第一次画图耗时最长，后续三次会快很多。
-- Cartopy 首次画省图要 10 秒，市图要 40 秒，县图要 70 秒；而 frykit 都在 3 秒以内。
+- Cartopy 首次画省图要 10 秒，市图要 40 秒，县图要 70 秒，基本不可接受；而 frykit 都在 3 秒以内。
 - Cartopy 0.23 在小区域画图时仍然会画出区域外的所有内容，所以耗时相比 0.22 反而大幅倒退。frykit 对此也有优化。
-
-顺带一提 frykit 的 `add_texts` 也有优化，比用循环调用 `ax.text` 更快。
 
 ## 详细介绍
 
@@ -388,15 +393,11 @@ cbar.set_ticks(boundaries)
 
 ## 示例效果
 
-包的 `example` 目录里有更复杂的示例脚本：
+仓库的 `example` 目录里有更复杂的示例脚本：
 
 - [在普通 `Axes` 上画地图](example/axes.py)
 
 ![axes](image/axes.png)
-
-- [重庆区县](example/chongqing.py)
-
-![chongqing](image/chongqing.png)
 
 - [分省填色](example/fill.py)
 

@@ -1,3 +1,49 @@
+## `0.7.0`
+
+- 依赖版本提高：
+  - `python>=3.10.0`
+  - `shapely>=2.0.0`
+  - `cartopy>=0.22.0`
+- 自带数据改由上游的 frykit_data 包提供，并且修改了二进制格式。
+- `shp` 模块的 `get_cn_xxx` 系列函数和 `plot` 模块的 `add_cn_xxx` 系列函数增加标识数据源的 `data_source` 参数：
+  - `data_source='amap'`：使用高德地图数据
+  - `data_source='tianditu'`：使用天地图数据
+- 两种数据源的区别：
+  - 高德数据更精细，天地图数据更精简，后者的绘图速度明显快于前者。
+  - 高德的直辖市在市级的名称为“xx城区”，而天地图仍然是“xx市”。
+  - 二者的市级区划和县级区划有差异，例如天地图有台湾的区县、二者关于香港的 adocde 有差异、高德的黑龙江有飞地等。
+- 新增 `option` 模块，可以通过 `frykit.set_option` 和 `frykit.option_context` 设置全局配置，例如：
+  - `data_source`
+  - `fast_transform`
+  - `skip_outside`
+  - `strict_clip`
+- `shp` 模块：
+  - 用 `get_cn_line` 函数替换 `get_nine_line` 函数，能提供：
+    - 九段线
+    - 海上省界
+    - 特别行政区界
+    - 未定国界
+  - 新增 `get_cn_xxx_properties` 系列函数，返回更多元数据。
+  - `polygon_to_mask` 函数改名为 `polygon_mask`，修正点落在边界上的行为，新增 `include_boundary` 参数，优化效率。同时新增二维直线网格专用的 `polygon_mask2` 函数。
+  - `geom_to_path`、`path_to_polygon`、`GeometryTransformer` 等函数移动到 `plot` 模块下，改名为 `geometry_to_path` 和 `project_geometry` 函数。
+  - 移除 `is_geometry` 系列函数，直接用 `isinstance` 判断。
+- `plot` 模块：
+  - 用 `add_cn_line` 函数替换 `add_nine_line` 函数
+  - `label_cn_xxx` 系列的 `short` 参数改名为 `short_name`
+  - `add_geoms` 函数改名为 `add_geometries` 函数，与 Cartopy 保持一致。
+  - 修正通过 geopandas 读取 `PolygonZ` 多边形的报错
+  - `clip_by_polygon` 函数取消 `ax` 参数，要求被裁减的 `Artist` 含有 `axes`。
+  - `get_cross_section_xticks` 函数的 `lon` 和 `lat` 参数改名为 `lons` 和 `lats`。
+  - `get_qualitative_palette` 函数改名为 `make_qualitative_palette`
+  - `load_test_data` 函数现在直接返回字典，而不是 `NpzFile` 对象。
+- `calc` 模块：
+  - `hms_to_degrees` 函数改名为 `dms_to_dd`；移除 `hms_to_degrees2` 函数。
+  - `region_mask` 函数的 `apply_AND` 参数改名为 `apply_and`
+  - `interp_nearest_dd` 和 `interp_nearest_2d` 函数新增 `in_channels_last` 和 `out_channels_last` 参数，用来控制输入输出的通道维度是否放在最后。
+  - 用 `binning2d` 函数替代 `binned_average_2d`，功能更多。
+- `help` 模块改名为 `utils`，移除 `is_sequence` 函数。
+- `image` 模块修改 `merge_images` 函数的用法，现在需要用户通过二维数组预先决定合并排列。
+
 ## `0.6.9`
 
 - 修正 `path_to_polygon` 函数里的拼写错误，之前会导致部分行政区划裁剪失败。
@@ -64,7 +110,7 @@
   - `get_cn_district`
   - `get_cn_district_table`
   - `get_cn_district_names`
-  - `add_cn_distict`
+  - `add_cn_district`
   - `label_cn_district`
   - `clip_by_cn_district`
 - `get_cn_xxx` 系列函数重新添加 `as_dict` 参数（没有还是不太方便）。

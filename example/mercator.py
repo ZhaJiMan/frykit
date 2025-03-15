@@ -26,8 +26,8 @@ plate_carree_line = np.c_[lons, lats]
 rhumb_line = data_crs.transform_points(map_crs, xs, ys)[:, :2]
 
 # 大圆航线
-geod = Geod(ellps='WGS84')
-r = geod.inv_intermediate(lon1, lat1, lon2, lat2, npts)
+geod = Geod(ellps="WGS84")
+r = geod.inv_intermediate(lon1, lat1, lon2, lat2, npts, return_back_azimuth=True)
 great_circle_line = np.c_[r.lons, r.lats]
 
 fig = plt.figure(figsize=(8, 8))
@@ -39,29 +39,29 @@ ax.stock_img()
 ax.plot(
     rhumb_line[:, 0],
     rhumb_line[:, 1],
-    'k',
+    "k",
     transform=data_crs,
-    label='Rhumb Line',
+    label="Rhumb Line",
 )
 ax.plot(
     plate_carree_line[:, 0],
     plate_carree_line[:, 1],
-    'r--',
+    "r--",
     transform=data_crs,
-    label='PlateCarre Line',
+    label="PlateCarre Line",
 )
 ax.plot(
     great_circle_line[:, 0],
     great_circle_line[:, 1],
-    'b--',
+    "b--",
     transform=data_crs,
-    label='Great Circle Line',
+    label="Great Circle Line",
 )
-ax.plot([lon1, lon2], [lat1, lat2], 'ko', transform=data_crs)
+ax.plot([lon1, lon2], [lat1, lat2], "ko", transform=data_crs)
 
-ax.legend(framealpha=1, fontsize='large')
-ax.set_title('Different Lines in Web Mercator Map', fontsize='x-large')
+ax.legend(framealpha=1, fontsize="large")
+ax.set_title("Different Lines in Web Mercator Map", fontsize="x-large")
 
 # 保存图片
-fplt.savefig('../image/mercator.png')
+fplt.savefig("../image/mercator.png")
 plt.close(fig)

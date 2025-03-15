@@ -1,5 +1,0 @@
-include example/*
-include script/*
-include *.md
-include *.txt
-recursive-include frykit/data *

@@ -6,10 +6,10 @@ import frykit.plot as fplt
 
 # 读取数据
 data = fplt.load_test_data()
-X, Y = np.meshgrid(data['longitude'], data['latitude'])
-t2m = gaussian_filter(data['t2m'] - 273.15, sigma=1)
-u10 = gaussian_filter(data['u10'], sigma=1)
-v10 = gaussian_filter(data['v10'], sigma=1)
+X, Y = np.meshgrid(data["longitude"], data["latitude"])
+t2m = gaussian_filter(data["t2m"] - 273.15, sigma=1)
+u10 = gaussian_filter(data["u10"], sigma=1)
+v10 = gaussian_filter(data["v10"], sigma=1)
 
 # 设置投影
 map_crs = fplt.CN_AZIMUTHAL_EQUIDISTANT
@@ -28,11 +28,11 @@ cf = ax.contourf(
     t2m,
     levels=np.linspace(-10, 35, 10),
     cmap=plt.cm.plasma,
-    extend='both',
+    extend="both",
     transform=data_crs,
     transform_first=True,
 )
-fig.colorbar(cf, ax=ax, label='Temperature (℃)')
+fig.colorbar(cf, ax=ax, label="Temperature (℃)")
 
 # 绘制风场
 Q = ax.quiver(
@@ -41,7 +41,7 @@ Q = ax.quiver(
     u10,
     v10,
     scale=0.15,
-    scale_units='dots',
+    scale_units="dots",
     regrid_shape=35,
     transform=data_crs,
 )
@@ -52,5 +52,5 @@ fplt.clip_by_cn_border(cf)
 fplt.clip_by_cn_border(Q)
 
 # 保存图片
-fplt.savefig('../image/quiver.png')
+fplt.savefig("../image/quiver.png")
 plt.close(fig)

@@ -1,3 +1,0 @@
-numpy>=1.20.0
-pandas>=1.2.0
-cartopy>=0.20.0

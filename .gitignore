@@ -1,7 +1,6 @@
 __pycache__/
 .mypy_cache
+.ruff_cache
 *.egg-info
-dist
-/*.ipynb
-todo.md
-note.md
+build/
+dist/

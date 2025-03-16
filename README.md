@@ -28,27 +28,22 @@
 
 这个包只是作者自用的小工具集，函数编写粗糙，可能存在不少 bug，还请多多交流指正。类似的更完备的包还请移步 [cnmaps](https://github.com/cnmetlab/cnmaps)、[gma](https://gma.luosgeo.com/) 或 [EOmaps](https://github.com/raphaelquast/EOmaps)。
 
-> 答疑交流可加 QQ 群：1017694471
+> 答疑交流 QQ 群：1017694471
 
 ## 安装
 
-安装基础包（例如只需要 `clip_by_polygon`、`add_mini_axes` 等工具函数）：
-
 ```
+# 只需要 frykit 的工具函数
 pip install frykit
-```
 
-如果要用到 frykit 的地图数据：
-
-```
+# 需要地图数据
 pip install frykit[data]
-```
 
-更新：
-
-```
+# 更新
 pip install -U frykit
 ```
+
+0.7.0 开始地图数据和 frykit 本体分离，完整安装和更新需要指定 `frykit[data]`，而之前的版本简单 pip 安装即可。
 
 具体依赖为：
 
@@ -82,7 +77,7 @@ Python 版本不满足要求时可能装上 `frykit==0.2.5`，不建议使用。
   - 通过市名指定单个市或多个市包含的所有县
   - 通过省名指定单个省或多个省包含的所有县
 
-```Python
+```python
 import frykit.shp as fshp
 
 国界 = fshp.get_cn_border()
@@ -109,9 +104,10 @@ import frykit.shp as fshp
 
 除了用字符串名称，也可以用行政区划代码（adcode）查询。
 
-默认使用高德地图的行政区划数据，也可以切换为天地图公开的可视化数据。前者更精细，后者用来计算和画图更快。通过 `data_source` 参数指定：
+默认使用高德地图行政区划 API 的数据，0.7.0 版本开始可以切换天地图公开的可视化数据。前者更精细，后者简略但画图更快。通过 `data_source` 参数指定：
 
-```Python
+```python
+# 通过参数指定
 amap_provinces = fshp.get_cn_province(data_source='amap')
 tianditu_provinces = fshp.get_cn_province(data_source='tianditu')
 
@@ -145,7 +141,7 @@ with frykit.option_context({'data_source': 'tianditu'}):
 
 画出所有省份，同时用颜色区分京津冀地区：
 
-```Python
+```python
 import matplotlib.pyplot as plt
 import frykit.plot as fplt
 
@@ -159,11 +155,13 @@ fplt.label_cn_province(ax)
 plt.show()
 ```
 
+其中 `fplt.PLATE_CARREE` 只是一个 `ccrs.PlateCarree()` 实例，这样就无需在脚本开头导入 `cartopy.crs`。
+
 ![add_cn_province](image/add_cn_province.png)
 
 画出北京所有区：
 
-```Python
+```python
 import matplotlib.pyplot as plt
 import frykit.plot as fplt
 
@@ -176,19 +174,32 @@ plt.show()
 
 ![beijing](image/beijing.png)
 
+### 绘制世界底图
+
+```python
+# 画所有国家
+fplt.add_countries(ax)
+
+# 画海陆
+fplt.add_land(ax, fc='floralwhite')
+fplt.add_ocean(ax, fc='dodgerblue')
+```
+
+外国和海陆数据并不精细，仅供试用。
+
 ### 绘制任意多边形
 
 `add_cn_border` 函数相当于
 
-```Python
-add_geometries(ax, get_cn_border())
+```python
+fplt.add_geometries(ax, fshp.get_cn_border())
 ```
 
-底层的 `add_geometries` 类似 Cartopy 的 `GeoAxes.add_geometries`，可以绘制 Shapely 的 `LineString` 和 `Polygon` 对象。
+底层的 `add_geometries` 函数类似 Cartopy 的 `GeoAxes.add_geometries`，可以绘制 Shapely 的 `LineString` 和 `Polygon` 对象。区别是能用于普通的 `Axes`，并且对投影和填色有优化。
 
 画一个半径为 10 的圆：
 
-```Python
+```python
 import shapely
 
 circle = shapely.Point(0, 0).buffer(10)
@@ -197,14 +208,14 @@ fplt.add_geometries(ax, circle)
 
 画自己的 shapefile（也可以用 Cartopy 的 `Reader`、PyShp 或 GeoPandas 读取）：
 
-```Python
+```python
 geometries = fshp.get_shapefile_geometries('2023年_CTAmap_1.12版/2023年县级/2023年县级.shp')
 fplt.add_geometries(ax, reader.geometries(), fc='none', ec='k', lw=0.25)
 ```
 
 画自己的 GeoJSON：
 
-```Python
+```python
 import json
 
 with open('天地图_行政区划可视化/中国_省.geojson') as f:
@@ -230,12 +241,11 @@ fplt.add_geometries(ax, geometries, fc='none', ec='k', lw=0.25)
 
 用国界裁剪 `contourf` 的例子：
 
-```Python
+```python
 import matplotlib.pyplot as plt
 import frykit.plot as fplt
 
-crs = fplt.PLATE_CARREE
-ax = plt.axes(projection=crs)
+ax = plt.axes(projection=fplt.PLATE_CARREE)
 fplt.add_cn_province(ax)
 fplt.add_cn_line(ax)
 
@@ -246,7 +256,7 @@ cf = ax.contourf(
     data['t2m'],
     levels=20,
     cmap='rainbow',
-    transform=crs
+    transform=fplt.PLATE_CARREE,
 )
 fplt.clip_by_cn_border(cf)
 
@@ -257,7 +267,7 @@ plt.show()
 
 多省裁剪直接传入列表即可：
 
-```Python
+```python
 jingjinji = ['北京市', '天津市', '河北省']
 fplt.clip_by_cn_province(cf, jingjinji)
 ```
@@ -266,11 +276,18 @@ fplt.clip_by_cn_province(cf, jingjinji)
 
 裁剪是在画图阶段从视觉效果上屏蔽多边形外的数据，而掩膜则是在数据处理阶段对多边形外的数据进行处理，例如设为缺测。
 
-```Python
+```python
 border = fshp.get_cn_border()
-mask = fshp.polygon_mask(border, lon, lat)
+mask = fshp.polygon_mask(border, lon2d, lat2d)
 data[~mask] = np.nan
-ax.contourf(lon, lat, data)
+ax.contourf(lon2d, lat2d, data)
+```
+
+如果数据坐标能用二维直线网格描述，那么还提供更优化的 `polygon_mask2` 函数：
+
+```python
+mask = fshp.polygon_mask2(border, lon1d, lat1d)
+data[~mask] = np.nan
 ```
 
 ### 设置地图范围和刻度
@@ -278,11 +295,12 @@ ax.contourf(lon, lat, data)
 
 `GeoAxes` 设置地图范围和刻度需要以下步骤：
 
-```Python
+```python
 import numpy as np
+import cartopy.crs as ccrs
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 
-crs = fplt.PLATE_CARREE
+crs = ccrs.PlateCarree()
 ax.set_extent((70, 140, 0, 60), crs=crs)
 ax.set_xticks(np.arange(70, 141, 10), crs=crs)
 ax.set_yticks(np.arange(0, 61, 10), crs=crs)
@@ -292,7 +310,7 @@ ax.yaxis.set_major_formatter(LatitudeFormatter())
 
 `set_map_ticks` 函数可以将这段简化成一行：
 
-```Python
+```python
 fplt.set_map_ticks(ax, (70, 140, 0, 60), dx=10, dy=10)
 ```
 
@@ -308,14 +326,14 @@ fplt.set_map_ticks(ax, (70, 140, 0, 60), dx=10, dy=10)
 
 在右下角添加一个白色矩形背景的风矢量图例：
 
-```Python
-Q = ax.quiver(x, y, u, v, transform=crs)
+```python
+Q = ax.quiver(x, y, u, v, transform=fplt.PLATE_CARREE)
 fplt.add_quiver_legend(Q, U=10, width=0.15, height=0.12)
 ```
 
 ### 添加指北针
 
-```Python
+```python
 fplt.add_compass(ax, 0.95, 0.8, size=15)
 ```
 
@@ -323,7 +341,7 @@ fplt.add_compass(ax, 0.95, 0.8, size=15)
 
 ### 添加比例尺
 
-```Python
+```python
 scale_bar = fplt.add_scale_bar(ax, 0.36, 0.8, length=1000)
 scale_bar.set_xticks([0, 500, 1000])
 ```
@@ -332,9 +350,9 @@ scale_bar.set_xticks([0, 500, 1000])
 
 ### 添加小地图
 
-```Python
+```python
 mini_ax = fplt.add_mini_axes(ax)
-mini_ax.set_extent((105, 120, 2, 25), crs=crs)
+mini_ax.set_extent((105, 120, 2, 25), crs=fplt.PLATE_CARREE)
 fplt.add_cn_province(mini_ax)
 fplt.add_cn_line(mini_ax)
 ```
@@ -343,7 +361,7 @@ fplt.add_cn_line(mini_ax)
 
 ### GMT 风格边框
 
-```Python
+```python
 fplt.add_frame(ax)
 ```
 
@@ -353,7 +371,7 @@ fplt.add_frame(ax)
 
 构造一个颜色对应一个刻度的 colorbar：
 
-```Python
+```python
 colors = [
     'orangered',
     'orange',
@@ -370,7 +388,7 @@ cbar.set_ticklabels(colors)
 
 构造零值所在区间对应白色的 colorbar：
 
-```Python
+```python
 import cmaps
 
 boundaries = [-10, -5, -2, -1, 1, 2, 5, 10, 20, 50, 100]

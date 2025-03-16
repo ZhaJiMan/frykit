@@ -9,6 +9,7 @@ from frykit.utils import format_literal_error, format_type_error
 
 __all__ = [
     "get_option",
+    "get_options",
     "set_option",
     "validate_option",
     "option_context",
@@ -93,6 +94,11 @@ _init_option(_option)
 def get_option(name: str) -> Any:
     """获取一条配置"""
     return _option[name]
+
+
+def get_options() -> dict[str, Any]:
+    """获取所有配置"""
+    return _option.to_dict()
 
 
 # TODO: 线程安全

@@ -98,7 +98,7 @@ def merge_images(
         max_height = max(max_height, image.height)
 
     if first_image is None:
-        raise ValueError("没有可用的图片")
+        raise ValueError("images 为空或者全为 None")
 
     nrows, ncols = images.shape
     merged = Image.new(

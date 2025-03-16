@@ -32,12 +32,25 @@
 
 ## 安装
 
+安装基础包（例如只需要 `clip_by_polygon`、`add_mini_axes` 等工具函数）：
+
 ```
-pip install frykit  # 安装
-pip install -U frykit  # 更新
+pip install frykit
 ```
 
-依赖为：
+如果要用到 frykit 的地图数据：
+
+```
+pip install frykit[data]
+```
+
+更新：
+
+```
+pip install -U frykit
+```
+
+具体依赖为：
 
 ```
 python>=3.10.0

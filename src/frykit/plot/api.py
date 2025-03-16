@@ -12,7 +12,6 @@ import shapely
 from cartopy.crs import CRS, Mercator, PlateCarree
 from cartopy.mpl.geoaxes import GeoAxes
 from cartopy.mpl.ticker import LatitudeFormatter, LongitudeFormatter
-from frykit_data import DATA_DIRPATH
 from matplotlib import font_manager
 from matplotlib.artist import Artist
 from matplotlib.axes import Axes
@@ -33,6 +32,7 @@ from numpy.typing import ArrayLike, NDArray
 from shapely.geometry.base import BaseGeometry
 
 from frykit.calc import asarrays, get_values_between, lon_to_180
+from frykit.data import get_data_dirpath
 from frykit.option import DataSource, get_option, validate_option
 from frykit.plot.artist import (
     Compass,
@@ -642,7 +642,7 @@ def _add_cn_texts(
         and mpl.rcParams["font.family"][0] == "sans-serif"
         and mpl.rcParams["font.sans-serif"][0] == "DejaVu Sans"
     ):
-        filepath = DATA_DIRPATH / "zh_font.otf"
+        filepath = get_data_dirpath() / "zh_font.otf"
         kwargs.setdefault("fontproperties", filepath)
 
     return add_texts(
@@ -2048,7 +2048,7 @@ def make_qualitative_palette(
 
 def get_aod_cmap() -> ListedColormap:
     """返回适用于 AOD 的 cmap"""
-    filepath = DATA_DIRPATH / "NEO_modis_aer_od.csv"
+    filepath = get_data_dirpath() / "NEO_modis_aer_od.csv"
     rgb = np.loadtxt(str(filepath), delimiter=",") / 256
     cmap = ListedColormap(rgb)
 
@@ -2155,7 +2155,7 @@ class TestData(TypedDict):
 
 def load_test_data() -> TestData:
     """读取测试用的数据。包含地表 2m 气温（K）和水平 10m 风速。"""
-    filepath = DATA_DIRPATH / "test.npz"
+    filepath = get_data_dirpath() / "test.npz"
     with np.load(filepath) as f:
         return {
             "longitude": f["longitude"],

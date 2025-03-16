@@ -3,13 +3,14 @@ from __future__ import annotations
 from collections.abc import Sequence
 from enum import IntEnum
 from functools import cache
+from pathlib import Path
 from typing import Any, Literal, TypedDict, cast, overload
 
 import numpy as np
 import pandas as pd
 import shapely
-from frykit_data import DATA_DIRPATH
 
+from frykit.data import get_data_dirpath
 from frykit.option import DataSource, get_option, validate_option
 from frykit.shp.binary import BinaryReader
 from frykit.shp.typing import LineStringType, PolygonType
@@ -37,11 +38,6 @@ __all__ = [
     "get_nine_line",
 ]
 
-CHINA_DIRPATH = DATA_DIRPATH / "china"
-WORLD_DIRPATH = DATA_DIRPATH / "world"
-
-Level = Literal["province", "city", "district"]
-
 
 def _resolve_data_source(data_source: DataSource | None) -> DataSource:
     if data_source is None:
@@ -51,9 +47,20 @@ def _resolve_data_source(data_source: DataSource | None) -> DataSource:
         return data_source
 
 
+def _get_china_dirpath() -> Path:
+    return get_data_dirpath() / "china"
+
+
+def _get_world_dirpath() -> Path:
+    return get_data_dirpath() / "world"
+
+
+Level = Literal["province", "city", "district"]
+
+
 @cache
 def _get_cn_table(level: Level, data_source: DataSource) -> pd.DataFrame:
-    filepath = CHINA_DIRPATH / data_source / f"cn_{level}.csv"
+    filepath = _get_china_dirpath() / data_source / f"cn_{level}.csv"
     return pd.read_csv(filepath)
 
 
@@ -407,7 +414,7 @@ def get_cn_district_names(
 
 @cache  # TODO: 不要加载所有数据
 def _get_cn_polygons(level: Level, data_source: DataSource) -> list[PolygonType]:
-    filepath = CHINA_DIRPATH / data_source / f"cn_{level}.bin"
+    filepath = _get_china_dirpath() / data_source / f"cn_{level}.bin"
     with BinaryReader(filepath) as reader:
         polygons = reader.geometries()
         return cast(list[PolygonType], polygons)
@@ -582,7 +589,7 @@ def get_cn_district(
 
 @cache
 def _get_cn_border(data_source: DataSource) -> shapely.MultiPolygon:
-    filepath = CHINA_DIRPATH / data_source / "cn_border.bin"
+    filepath = _get_china_dirpath() / data_source / "cn_border.bin"
     with BinaryReader(filepath) as reader:
         return cast(shapely.MultiPolygon, reader.geometry(0))
 
@@ -595,7 +602,7 @@ def get_cn_border(data_source: DataSource | None = None) -> shapely.MultiPolygon
 
 @cache
 def _get_cn_line_strings() -> list[LineStringType]:
-    filepath = CHINA_DIRPATH / "cn_line.bin"
+    filepath = _get_china_dirpath() / "cn_line.bin"
     with BinaryReader(filepath) as reader:
         line_strings = reader.geometries()
         return cast(list[LineStringType], line_strings)
@@ -645,7 +652,7 @@ def get_cn_line(
 @cache
 def get_countries() -> list[PolygonType]:
     """获取所有国界的多边形"""
-    filepath = WORLD_DIRPATH / "country.bin"
+    filepath = _get_world_dirpath() / "country.bin"
     with BinaryReader(filepath) as reader:
         return cast(list[PolygonType], reader.geometries())
 
@@ -653,7 +660,7 @@ def get_countries() -> list[PolygonType]:
 @cache
 def get_land() -> shapely.MultiPolygon:
     """获取陆地多边形"""
-    filepath = WORLD_DIRPATH / "land.bin"
+    filepath = _get_world_dirpath() / "land.bin"
     with BinaryReader(filepath) as reader:
         return cast(shapely.MultiPolygon, reader.geometry(0))
 
@@ -661,7 +668,7 @@ def get_land() -> shapely.MultiPolygon:
 @cache
 def get_ocean() -> shapely.MultiPolygon:
     """获取海洋多边形"""
-    filepath = WORLD_DIRPATH / "ocean.bin"
+    filepath = _get_world_dirpath() / "ocean.bin"
     with BinaryReader(filepath) as reader:
         return cast(shapely.MultiPolygon, reader.geometry(0))
 

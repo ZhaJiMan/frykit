@@ -1,3 +1,9 @@
+## `0.7.1`
+
+- `pip install frykit` 只会安装基础包，`[data]` 则会额外安装 frykit_data。
+- 修正 `GeometryPathCollection` 做 `autoscale` 可能会失败的问题。
+- `format_type_error`、`format_literal_error` 和 `deprecator` 函数传入空列表时会报错。
+
 ## `0.7.0`
 
 - 依赖版本提高：

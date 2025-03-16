@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "frykit"
-version = "0.7.0"
+version = "0.7.1"
 authors = [{name = "ZhaJiMan", email = "915023793@qq.com"}]
 description = "A simple toolbox for Matplotib and Cartopy"
 readme = "README.md"
@@ -19,8 +19,10 @@ dependencies = [
     "pandas>=1.2.0",
     "shapely>=2.0.0",
     "cartopy>=0.22.0",
-    "frykit_data>=0.0.1",
 ]
+
+[project.optional-dependencies]
+data = ["frykit_data>=0.0.1"]
 
 [project.urls]
 Homepage = "https://github.com/ZhaJiMan/frykit"

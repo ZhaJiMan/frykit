@@ -51,6 +51,7 @@ def _with_lock(func: F) -> F:
     return cast(F, wrapper)
 
 
+# https://github.com/SciTools/cartopy/blob/main/lib/cartopy/mpl/feature_artist.py
 class GeometryKey:
     """用几何对象的 id 作为 key"""
 
@@ -172,7 +173,7 @@ class GeometryPathCollection(PathCollection):
             bounds = np.ma.masked_invalid(bounds)
             x0, y0 = bounds[:, :2].min(axis=0)
             x1, y1 = bounds[:, 2:].max(axis=0)
-            if all(x for x in [x0, y0, x1, y1] if x is not np.ma.masked):
+            if all(x is not np.ma.masked for x in [x0, y0, x1, y1]):
                 path = box_path(x0, x1, y0, y1).interpolated(100)
                 polygon = shapely.Polygon(path.vertices)  # type: ignore
                 paths.append(self._geometry_to_path(polygon))

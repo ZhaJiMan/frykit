@@ -134,6 +134,9 @@ def format_type_error(
             case _:
                 raise TypeError(format_type_error("expected_type", typ, [str, type]))
 
+    if len(names) == 0:
+        raise ValueError("expected_type 不能为空")
+
     expected_type_str = join_with_cn_comma(names)
     actual_type_str = _get_full_name(type(param_value))
     msg = f"{param_name} 必须是 {expected_type_str} 类型，但传入的是 {actual_type_str} 类型"
@@ -163,8 +166,12 @@ def format_literal_error(
     msg : str
         消息字符串
     """
+    literal_values = to_list(literal_value)
+    if len(literal_values) == 0:
+        raise ValueError("literal_value 不能为空")
+
     param_value_str = repr(param_value)
-    literal_value_str = "{" + ", ".join(map(repr, to_list(literal_value))) + "}"
+    literal_value_str = "{" + ", ".join(map(repr, literal_values)) + "}"
     msg = f"{param_name} 只能是 {literal_value_str} 中的一项，但传入的是 {param_value_str}"
 
     return msg
@@ -240,6 +247,9 @@ def deprecator(
                 raise TypeError(
                     format_type_error("alternative", func, [str, "callable"])
                 )
+
+        if len(names) == 0:
+            raise ValueError("alternative 不能为空")
         msg += f"，建议换用 {join_with_cn_comma(names)}"
 
     @wraps(deprecated)

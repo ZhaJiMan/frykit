@@ -103,6 +103,7 @@ __all__ = [
     "add_frame",
     "add_box",
     "add_mini_axes",
+    "add_side_axes",
     "get_cross_section_xticks",
     "make_qualitative_palette",
     "get_aod_cmap",
@@ -1867,10 +1868,10 @@ def add_mini_axes(
     Parameters
     ----------
     ax : Axes
-        目标 Axes
+        原有的 Axes
 
     shrink : float, default 0.4
-        缩小倍数。默认为 0.4。shrink=1 时新 Axes 与目标 Axes 等高或等宽。
+        缩小倍数。默认为 0.4。shrink=1 时新 Axes 与 ax 等高或等宽。
 
     aspect : float, default 1
         单位坐标的高宽比。默认为 1，与 GeoAxes 相同。
@@ -1942,6 +1943,72 @@ def add_mini_axes(
         draw(renderer)
 
     new_ax.draw = wrapper
+
+    return new_ax
+
+
+# TODO: mpl_toolkits.axes_grid1 实现
+def add_side_axes(
+    ax: Axes | ArrayLike,
+    pad: float,
+    width: float,
+    loc: Literal["left", "right", "bottom", "top"] = "right",
+) -> Axes:
+    """
+    在 Axes 旁边新添一个等高或等宽的 Axes 并返回该对象
+
+    Parameters
+    ----------
+    ax : Axes or array_like of Axes
+        原有的 Axes。可以是一组 Axes 构成的数组。
+
+    pad : float
+        新旧 Axes 的间距。基于 Figure 坐标系。
+
+    width : float
+        新 Axes 的宽度（高度）。基于 Figure 坐标系。
+
+    loc : {'left', 'right', 'bottom', 'top'}, default 'right'
+        新 Axes 相对于 ax 的位置。
+
+    Returns
+    -------
+    Axes
+        新的 Axes。注意 projection=None。
+    """
+    # 获取一组 Axes 的位置
+    axs = np.atleast_1d(ax).ravel()  # type: ignore
+    bbox = Bbox.union([ax.get_position() for ax in axs])
+
+    # 可选四个方向
+    match loc:
+        case "left":
+            x0 = bbox.x0 - pad - width
+            x1 = x0 + width
+            y0 = bbox.y0
+            y1 = bbox.y1
+        case "right":
+            x0 = bbox.x1 + pad
+            x1 = x0 + width
+            y0 = bbox.y0
+            y1 = bbox.y1
+        case "bottom":
+            x0 = bbox.x0
+            x1 = bbox.x1
+            y0 = bbox.y0 - pad - width
+            y1 = y0 + width
+        case "top":
+            x0 = bbox.x0
+            x1 = bbox.x1
+            y0 = bbox.y1 + pad
+            y1 = y0 + width
+        case _:
+            raise ValueError(
+                format_literal_error("loc", loc, {"left", "right", "bottom", "top"})
+            )
+
+    new_bbox = Bbox.from_extents(x0, y0, x1, y1)
+    new_ax = axs[0].figure.add_axes(new_bbox)
 
     return new_ax
 

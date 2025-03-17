@@ -1,3 +1,7 @@
+## `0.7.2`
+
+- 0.7.0 版本把 `add_side_axes` 函数漏掉了，现补回
+
 ## `0.7.1`
 
 - `pip install frykit` 只会安装基础包，`[data]` 则会额外安装 frykit_data。

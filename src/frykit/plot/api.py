@@ -1950,8 +1950,8 @@ def add_mini_axes(
 # TODO: mpl_toolkits.axes_grid1 实现
 def add_side_axes(
     ax: Axes | ArrayLike,
-    pad: float,
     width: float,
+    pad: float,
     loc: Literal["left", "right", "bottom", "top"] = "right",
 ) -> Axes:
     """
@@ -1962,11 +1962,11 @@ def add_side_axes(
     ax : Axes or array_like of Axes
         原有的 Axes。可以是一组 Axes 构成的数组。
 
-    pad : float
-        新旧 Axes 的间距。基于 Figure 坐标系。
-
     width : float
         新 Axes 的宽度（高度）。基于 Figure 坐标系。
+
+    pad : float
+        新旧 Axes 的间距。基于 Figure 坐标系。
 
     loc : {'left', 'right', 'bottom', 'top'}, default 'right'
         新 Axes 相对于 ax 的位置。

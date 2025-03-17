@@ -734,6 +734,10 @@ def get_values_between(values: ArrayLike, vmin: float, vmax: float) -> NDArray:
     return values[(values >= vmin) & (values <= vmax)].copy()
 
 
+@deprecator(alternative=region_mask, raise_error=True)
+def region_ind(*args, **kwargs): ...
+
+
 @deprecator(raise_error=True)
 def split_coords(*args, **kwargs): ...
 

@@ -57,7 +57,8 @@ class CoordsCodec:
             raise ValueError("coords 含有 NaN 或 Inf")
 
         coords = np.round((coords - self.add_offsets) / self.scale_factors)
-        assert coords.min() >= 0 and coords.max() <= UINT32_MAX
+        if coords.min() < 0 or coords.max() > UINT32_MAX:
+            raise ValueError("coords 超出 uint32 压缩范围")
         diff_coords = np.diff(coords, axis=0)
 
         if (

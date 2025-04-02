@@ -20,7 +20,7 @@
 特色是：
 
 - 自带高德地图和天地图的行政区划数据
-- 可同时用于 `Axes` 或 `GeoAxes`
+- 可同时用于 `Axes` 和 `GeoAxes`
 - 对画图速度有优化
 - 对裁剪出界问题有优化
 
@@ -28,7 +28,7 @@
 
 这个包只是作者自用的小工具集，函数编写粗糙，可能存在不少 bug，还请多多交流指正。类似的更完备的包还请移步 [cnmaps](https://github.com/cnmetlab/cnmaps)、[gma](https://gma.luosgeo.com/) 或 [EOmaps](https://github.com/raphaelquast/EOmaps)。
 
-> 答疑交流 QQ 群：1017694471
+> 有问题直接提 issue，也可以加交流 QQ 群：1017694471
 
 ## 安装
 
@@ -195,7 +195,7 @@ fplt.add_ocean(ax, fc='dodgerblue')
 fplt.add_geometries(ax, fshp.get_cn_border())
 ```
 
-底层的 `add_geometries` 函数类似 Cartopy 的 `GeoAxes.add_geometries`，可以绘制 Shapely 的 `LineString` 和 `Polygon` 对象。区别是能用于普通的 `Axes`，并且对投影和填色有优化。
+底层的 `add_geometries` 函数类似 Cartopy 的 `GeoAxes.add_geometries`，可以绘制 Shapely 的 `LineString` 和 `Polygon` 对象。区别是能用于普通的 `Axes`，并且对投影速度和填色有优化。
 
 画一个半径为 10 的圆：
 
@@ -206,10 +206,15 @@ circle = shapely.Point(0, 0).buffer(10)
 fplt.add_geometries(ax, circle)
 ```
 
-画自己的 shapefile（也可以用 Cartopy 的 `Reader`、PyShp 或 GeoPandas 读取）：
+画自己的 shapefile（也可以用 GeoPandas 读取）：
 
 ```python
-geometries = fshp.get_shapefile_geometries('2023年_CTAmap_1.12版/2023年县级/2023年县级.shp')
+from cartopy.io.shapereader import Reader
+
+reader = Reader('2023年_CTAmap_1.12版/2023年县级/2023年县级.shp')
+geometries = list(reader.geometries())
+reader.close()
+
 fplt.add_geometries(ax, reader.geometries(), fc='none', ec='k', lw=0.25)
 ```
 
@@ -291,7 +296,6 @@ data[~mask] = np.nan
 ```
 
 ### 设置地图范围和刻度
-
 
 `GeoAxes` 设置地图范围和刻度需要以下步骤：
 
@@ -418,7 +422,7 @@ cbar.set_ticks(boundaries)
 - [Cartopy 系列：裁剪填色图出界问题](https://zhajiman.github.io/post/cartopy_clip_outside/)
 - [Cartopy 添加南海小地图的三种方法](https://mp.weixin.qq.com/s/-QMVN6MS-UuQ9lQjz9vqBQ)
 - [Matplotlib 系列：colormap 的设置](https://zhajiman.github.io/post/matplotlib_colormap/)
-- [CALIPSO L2 VFM 产品的读取和绘制（with Python）](https://zhajiman.github.io/post/calipso_vfm/)
+- [天地图“带审图号”的行政区划数据](http://bbs.06climate.com/forum.php?mod=viewthread&tid=109893)
 
 ## 示例效果
 

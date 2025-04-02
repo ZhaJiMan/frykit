@@ -28,6 +28,7 @@ from matplotlib.quiver import Quiver
 from matplotlib.text import Text
 from matplotlib.ticker import Formatter
 from matplotlib.transforms import Bbox
+from numpy import ma
 from numpy.typing import ArrayLike, NDArray
 from shapely.geometry.base import BaseGeometry
 
@@ -903,7 +904,7 @@ def clip_by_polygon(
                 raise TypeError(format_type_error("artist", a, Artist))
 
     if len(artists) == 0:
-        return None
+        return
 
     if ax is None:
         for a in artists:
@@ -2135,18 +2136,18 @@ class CenteredBoundaryNorm(BoundaryNorm):
         if self.N1 < 1 or self.N2 < 1:
             raise ValueError("vcenter 两侧至少各有一条边界")
 
-    def __call__(self, value: Any, clip: bool | None = None) -> np.ma.MaskedArray:  # type: ignore
+    def __call__(self, value: Any, clip: bool | None = None) -> ma.MaskedArray:  # type: ignore
         # 将 BoundaryNorm 的 [0, N-1] 映射到 [0.0, 1.0] 内
         result = super().__call__(value, clip)
         if self.N1 + self.N2 == self.N - 1:
-            result = np.ma.where(
+            result = ma.where(
                 result < self.N1,
                 result / (2 * self.N1),
                 (result - self.N1 + self.N2 + 1) / (2 * self.N2),
             )
         else:
             # MaskedArray 除以零不会报错
-            result = np.ma.where(
+            result = ma.where(
                 result < self.N1,
                 result / (2 * (self.N1 - 1)),
                 (result - self.N1 + self.N2) / (2 * (self.N2 - 1)),

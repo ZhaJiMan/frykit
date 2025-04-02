@@ -42,7 +42,6 @@
   - `label_cn_xxx` 系列的 `short` 参数改名为 `short_name`
   - `add_geoms` 函数改名为 `add_geometries` 函数，与 Cartopy 保持一致。
   - 修正通过 geopandas 读取 `PolygonZ` 多边形的报错
-  - `clip_by_polygon` 函数取消 `ax` 参数，要求被裁减的 `Artist` 含有 `axes`。
   - `get_cross_section_xticks` 函数的 `lon` 和 `lat` 参数改名为 `lons` 和 `lats`。
   - `get_qualitative_palette` 函数改名为 `make_qualitative_palette`
   - `load_test_data` 函数现在直接返回字典，而不是 `NpzFile` 对象。

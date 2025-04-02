@@ -108,6 +108,7 @@ def polygon_mask(
     return cast(NDArray, mask)
 
 
+# https://gist.github.com/perrette/a78f99b76aed54b6babf3597e0b331f8
 def polygon_mask2(
     polygon: PolygonType, x: ArrayLike, y: ArrayLike, include_boundary: bool = True
 ) -> NDArray:
@@ -183,7 +184,7 @@ def polygon_mask2(
     def do_recursion(x: NDArray, y: NDArray, mask: NDArray) -> None:
         nx, ny = len(x), len(y)
         if nx == 0 or ny == 0:
-            return None
+            return
 
         x0, x1 = x[0], x[-1]
         y0, y1 = y[0], y[-1]
@@ -192,17 +193,17 @@ def polygon_mask2(
 
         if x_overlapping and y_overlapping:
             mask[:] = predicate(polygon, shapely.Point(x0, y0))
-            return None
+            return
         elif x_overlapping or y_overlapping:
             geometry = shapely.LineString([(x0, y0), (x1, y1)])
         else:
             geometry = shapely.box(x0, y0, x1, y1)
 
         if polygon.disjoint(geometry):
-            return None
+            return
         if predicate(polygon, geometry):
             mask[:] = True
-            return None
+            return
 
         hx, hy = nx // 2, ny // 2
         do_recursion(x[:hx], y[:hy], mask[:hy, :hx])

@@ -18,7 +18,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-data = ["frykit_data>=0.0.1"]
+data = ["frykit_data~=0.0.1"]
 
 [project.urls]
 Homepage = "https://github.com/ZhaJiMan/frykit"

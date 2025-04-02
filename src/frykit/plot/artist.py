@@ -22,6 +22,7 @@ from matplotlib.path import Path
 from matplotlib.quiver import Quiver, QuiverKey
 from matplotlib.text import Text
 from matplotlib.transforms import Affine2D, Bbox, ScaledTranslation, offset_copy
+from numpy import ma
 from numpy.typing import ArrayLike
 from shapely.geometry.base import BaseGeometry
 
@@ -170,10 +171,10 @@ class GeometryPathCollection(PathCollection):
         # 用投影后的 bbox 做初始化的 path
         if ax.get_autoscale_on() and len(geometries) > 0:
             bounds = shapely.bounds(geometries)
-            bounds = np.ma.masked_invalid(bounds)
+            bounds = ma.masked_invalid(bounds)
             x0, y0 = bounds[:, :2].min(axis=0)
             x1, y1 = bounds[:, 2:].max(axis=0)
-            if all(x is not np.ma.masked for x in [x0, y0, x1, y1]):
+            if all(x is not ma.masked for x in [x0, y0, x1, y1]):
                 path = box_path(x0, x1, y0, y1).interpolated(100)
                 polygon = shapely.Polygon(path.vertices)  # type: ignore
                 paths.append(self._geometry_to_path(polygon))
@@ -186,7 +187,7 @@ class GeometryPathCollection(PathCollection):
         if not self.skip_outside:
             paths = list(map(self._geometry_to_path, self.geometries))
             self.set_paths(paths)
-            return None
+            return
 
         # 只投影和绘制可见的几何对象
         ax = cast(Axes, self.axes)
@@ -664,7 +665,7 @@ class Frame(Artist):
 
         # 比例尺对象只设置上边框
         if isinstance(ax, ScaleBar):
-            return None
+            return
 
         bottom_paths = [
             box_path(xticks[i], xticks[i + 1], -dy, 0) for i in range(nx - 1)

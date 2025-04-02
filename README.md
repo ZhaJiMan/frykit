@@ -215,7 +215,7 @@ reader = Reader('2023年_CTAmap_1.12版/2023年县级/2023年县级.shp')
 geometries = list(reader.geometries())
 reader.close()
 
-fplt.add_geometries(ax, reader.geometries(), fc='none', ec='k', lw=0.25)
+fplt.add_geometries(ax, geometries, fc='none', ec='k', lw=0.25)
 ```
 
 画自己的 GeoJSON：

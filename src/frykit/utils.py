@@ -169,6 +169,8 @@ def format_literal_error(
     literal_values = to_list(literal_value)
     if len(literal_values) == 0:
         raise ValueError("literal_value 不能为空")
+    if len(literal_values) != len(set(literal_values)):
+        raise ValueError("literal_value 不能包含重复的元素")
 
     param_value_str = repr(param_value)
     literal_value_str = "{" + ", ".join(map(repr, literal_values)) + "}"

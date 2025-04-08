@@ -1861,7 +1861,7 @@ def add_mini_axes(
     loc: Literal[
         "lower left", "lower right", "upper left", "upper right"
     ] = "lower right",
-    projection: Literal["same", None] | CRS = "same",
+    projection: CRS | Literal["same"] | None = "same",
 ) -> Axes:
     """
     在 Axes 的角落添加一个新的 Axes 并返回
@@ -1880,7 +1880,7 @@ def add_mini_axes(
     loc : {'lower left', 'lower right', 'upper left', 'upper right'}, default 'lower right'
         指定放置在哪个角落。默认为 'lower right'。
 
-    projection : {'same', None} or CRS, default 'same'
+    projection : CRS or {'same', None}, default 'same'
         新 Axes 的投影。默认为 'same'，表示沿用 ax 的投影。
         如果是 None，表示没有投影。
 
@@ -1894,7 +1894,10 @@ def add_mini_axes(
 
     if projection == "same":
         projection = getattr(ax, "projection", None)
-    new_ax = ax.figure.add_subplot(projection=projection)  # type: ignore
+
+    if ax.figure is None:
+        raise ValueError("必须设置 ax.figure")
+    new_ax = ax.figure.add_subplot(projection=projection)
     new_ax.set_aspect(aspect)
     draw = new_ax.draw
 
@@ -1910,34 +1913,35 @@ def add_mini_axes(
         width = new_bbox.width * ratio
         height = new_bbox.height * ratio
 
-        if loc == "lower left":
-            x0 = bbox.x0
-            x1 = bbox.x0 + width
-            y0 = bbox.y0
-            y1 = bbox.y0 + height
-        elif loc == "lower right":
-            x0 = bbox.x1 - width
-            x1 = bbox.x1
-            y0 = bbox.y0
-            y1 = bbox.y0 + height
-        elif loc == "upper left":
-            x0 = bbox.x0
-            x1 = bbox.x0 + width
-            y0 = bbox.y1 - height
-            y1 = bbox.y1
-        elif loc == "upper right":
-            x0 = bbox.x1 - width
-            x1 = bbox.x1
-            y0 = bbox.y1 - height
-            y1 = bbox.y1
-        else:
-            raise ValueError(
-                format_literal_error(
-                    "loc",
-                    loc,
-                    {"lower left", "lower right", "upper left", "upper right"},
+        match loc:
+            case "lower left":
+                x0 = bbox.x0
+                x1 = bbox.x0 + width
+                y0 = bbox.y0
+                y1 = bbox.y0 + height
+            case "lower right":
+                x0 = bbox.x1 - width
+                x1 = bbox.x1
+                y0 = bbox.y0
+                y1 = bbox.y0 + height
+            case "upper left":
+                x0 = bbox.x0
+                x1 = bbox.x0 + width
+                y0 = bbox.y1 - height
+                y1 = bbox.y1
+            case "upper right":
+                x0 = bbox.x1 - width
+                x1 = bbox.x1
+                y0 = bbox.y1 - height
+                y1 = bbox.y1
+            case _:
+                raise ValueError(
+                    format_literal_error(
+                        "loc",
+                        loc,
+                        ["lower left", "lower right", "upper left", "upper right"],
+                    )
                 )
-            )
 
         new_bbox = Bbox.from_extents(x0, y0, x1, y1)
         new_ax.set_position(new_bbox)
@@ -2005,7 +2009,7 @@ def add_side_axes(
             y1 = y0 + width
         case _:
             raise ValueError(
-                format_literal_error("loc", loc, {"left", "right", "bottom", "top"})
+                format_literal_error("loc", loc, ["left", "right", "bottom", "top"])
             )
 
     new_bbox = Bbox.from_extents(x0, y0, x1, y1)

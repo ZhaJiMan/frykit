@@ -54,7 +54,7 @@ shapely>=2.0.0
 cartopy>=0.22.0
 ```
 
-Python 版本不满足要求时可能装上 `frykit==0.2.5`，不建议使用。
+Python 版本不满足要求时可能装上老版本的 frykit，缺少新函数或者在运行时报错。
 
 ## 更新记录
 
@@ -102,26 +102,42 @@ import frykit.shp as fshp
 安徽省的所有区县 = fshp.get_cn_district(province='安徽省')
 ```
 
-除了用字符串名称，也可以用行政区划代码（adcode）查询。
-
-默认使用高德地图行政区划 API 的数据，0.7.0 版本开始可以切换天地图公开的可视化数据。前者更精细，后者简略但画图更快。通过 `data_source` 参数指定：
+除了用字符串名称，也可以用行政区划代码（adcode）查询：
 
 ```python
-# 通过参数指定
-amap_provinces = fshp.get_cn_province(data_source='amap')
-tianditu_provinces = fshp.get_cn_province(data_source='tianditu')
+北京市 = fshp.get_cn_province(110000)
+京津冀 = fshp.get_cn_province([110000, 120000, 130000])
+```
 
-# 设置全局数据源
+### 切换数据源
+
+> 0.7 版本新增
+
+内置两套中国行政区划数据：高德地图行政区划 API 和天地图公开的可视化数据。区别是：
+
+- 高德数据更精细；天地图数据更精简，画图更快。
+- 市级和县级区划有差异，例如天地图有台湾的区县。
+- 高德数据存在飞地，例如内蒙古境内有黑龙江的飞地加格达奇区（[issue#5](https://github.com/ZhaJiMan/frykit/issues/5)）。
+- 高德数据的直辖市在市级的名称从 XX 市变为 XX 城区，adcode 也不同。
+
+默认使用高德数据。切换数据源的方法有：
+
+```python
+# 通过函数参数指定
+amap_cities = fshp.get_cn_city(data_source='amap')
+tianditu_cities = fshp.get_cn_city(data_source='tianditu')
+
+# 在脚本开头设置全局数据源
 import frykit
 frykit.set_option({'data_source': 'tianditu'})
 
-# 临时设置数据源
+# 用上下文管理器临时设置数据源
 with frykit.option_context({'data_source': 'tianditu'}):
-    provinces = fshp.get_cn_province()
-    some_function(provinces)
+    cities = fshp.get_cn_city()
+    some_function(cities)
 ```
 
-具体的数据说明见 [frykit_data](https://github.com/ZhaJiMan/frykit_data) 仓库。
+具体数据说明见 [frykit_data](https://github.com/ZhaJiMan/frykit_data) 仓库。
 
 ### 绘制中国行政区划
 
@@ -137,7 +153,7 @@ with frykit.option_context({'data_source': 'tianditu'}):
 - `label_cn_city`：标注市名
 - `label_cn_district`：标注县名
 
-同样可以通过 `data_source` 参数指定数据源。
+同样可以用 `data_source` 参数切换数据源。
 
 画出所有省份，同时用颜色区分京津冀地区：
 
@@ -206,7 +222,7 @@ circle = shapely.Point(0, 0).buffer(10)
 fplt.add_geometries(ax, circle)
 ```
 
-画自己的 shapefile（也可以用 GeoPandas 读取）：
+画自己的 shapefile：
 
 ```python
 from cartopy.io.shapereader import Reader
@@ -232,7 +248,7 @@ fplt.add_geometries(ax, geometries, fc='none', ec='k', lw=0.25)
 
 通过 `array`、 `cmap` 和 `norm` 参数还能实现类似分省填色的效果（详见 [fill.py](example/fill.py)）。
 
-`add_geometries` 默认直接用 pyproj 做地图投影变换，速度更快但也更容易出现错误的效果。可以指定参数 `fast_transform=False`，切换成更正确但速度更慢的模式。或者直接换用 `GeoAxes.add_geometries`。
+`add_geometries` 默认直接用 pyproj 做地图投影变换，速度更快但也更容易出现错误的效果。可以指定参数 `fast_transform=False`，切换成更正确但速度更慢的模式。或者改用 `GeoAxes.add_geometries`。
 
 ### 裁剪 Artist
 
@@ -274,7 +290,17 @@ plt.show()
 
 ```python
 jingjinji = ['北京市', '天津市', '河北省']
-fplt.clip_by_cn_province(cf, jingjinji)
+fplt.clip_by_cn_province(artist, jingjinji)
+```
+
+更复杂的裁剪需要手动处理多边形：
+
+```python
+北京市 = fshp.get_cn_province('北京市')
+保定市 = fshp.get_cn_city('保定市')
+张家口市 = fshp.get_cn_city('张家口市')
+polygon = shapely.union_all([北京市, 保定市, 张家口市])
+fplt.clip_by_polygon(artist, polygon)
 ```
 
 ### 制作掩膜
@@ -370,6 +396,12 @@ fplt.add_frame(ax)
 ```
 
 添加类似 [GMT](https://www.generic-mapping-tools.org/) 风格的黑白相间格子的边框。目前仅支持等经纬度或墨卡托投影的 `GeoAxes`。
+
+也可以用来制作 GMT 风格的比例尺：
+
+```python
+fplt.add_frame(scale_bar)
+```
 
 ### 特殊 colorbar
 

@@ -1,3 +1,8 @@
+## `0.7.3` ongoing
+
+- 恢复 `clear_data_cache` 函数
+- 移除 `region_mask` 函数的 `apply_and` 参数
+
 ## `0.7.2`
 
 - 0.7.0 版本把 `add_side_axes` 函数漏掉了，现补回。
@@ -18,10 +23,6 @@
 - `shp` 模块的 `get_cn_xxx` 系列函数和 `plot` 模块的 `add_cn_xxx` 系列函数增加标识数据源的 `data_source` 参数：
   - `data_source='amap'`：使用高德地图数据
   - `data_source='tianditu'`：使用天地图数据
-- 两种数据源的区别：
-  - 高德数据更精细，天地图数据更精简，后者的绘图速度明显快于前者。
-  - 高德的直辖市在市级的名称为“xx城区”，而天地图仍然是“xx市”。
-  - 二者的市级区划和县级区划有差异，例如天地图有台湾的区县、二者关于香港的 adcode 有差异、高德的黑龙江有飞地等。
 - 新增 `option` 模块，可以通过 `frykit.set_option` 和 `frykit.option_context` 设置全局配置，例如：
   - `data_source`
   - `fast_transform`

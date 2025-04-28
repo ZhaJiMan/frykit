@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from collections.abc import Callable, Sequence
 from functools import partial
-from typing import Any, Literal, overload
+from typing import Any
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -277,50 +277,25 @@ def make_circle(
     return make_ellipse(x, y, r, npts=npts, ccw=ccw)
 
 
-@overload
 def region_mask(
-    x: ArrayLike,
-    y: ArrayLike,
-    extents: Sequence[float],
-    apply_and: Literal[True],
-) -> NDArray: ...
-
-
-@overload
-def region_mask(
-    x: ArrayLike,
-    y: ArrayLike,
-    extents: Sequence[float],
-    apply_and: Literal[False] = False,
-) -> tuple[NDArray, NDArray]: ...
-
-
-def region_mask(
-    x: ArrayLike,
-    y: ArrayLike,
-    extents: Sequence[float],
-    apply_and: bool = False,
-) -> NDArray | tuple[NDArray, NDArray]:
+    x: ArrayLike, y: ArrayLike, extents: Sequence[float]
+) -> tuple[NDArray, NDArray]:
     """
     返回表示坐标点是否落入方框的布尔数组
 
     Parameters
     ----------
     x, y : array_like
-        xy 坐标。apply_and=True 时形状必须相同。
+        xy 坐标
 
     extents : (4,) tuple of float
         方框范围 (x0, x1, y0, y1)
 
-    apply_and: bool, default False
-        如果为 True，返回 x 和 y 的布尔数组求与的结果。
-        如果为 False，返回 x 和 y 的布尔数组组成的元组。
-        默认为 False。
 
     Returns
     -------
     ndarray or (2,) tuple of ndarray
-        表示是否落入方框的布尔数组
+        x 和 y 的布尔数组，元素为 True 表示落入方框。
 
     Examples
     --------
@@ -330,20 +305,13 @@ def region_mask(
     ixgrid = np.ix_(lat_mask, lon_mask)
     subset_data2d = data2d[ixgrid]
 
-    mask = region_mask(lon2d, lat2d, extents, apply_and=True)
+    lon_mask, lat_mask = region_mask(lon2d, lat2d, extents)
+    mask = lon_mask & lat_mask
     subset_data1d = data2d[mask]
     """
     x, y = asarrays(x, y)
-    if apply_and and x.shape != y.shape:
-        raise ValueError("apply_and=True 时 x 和 y 形状必须相同")
-
     x0, x1, y0, y1 = extents
-    xm = (x >= x0) & (x <= x1)
-    ym = (y >= y0) & (y <= y1)
-    if apply_and:
-        return xm & ym
-    else:
-        return xm, ym
+    return (x >= x0) & (x <= x1), (y >= y0) & (y <= y1)
 
 
 def count_consecutive_trues(mask: ArrayLike) -> NDArray:

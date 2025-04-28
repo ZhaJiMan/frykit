@@ -185,20 +185,20 @@ class DeprecationError(Exception):
 
 @overload
 def deprecator(
-    deprecated: None = None,
-    *,
-    alternative: str | Callable | Iterable[str | Callable] | None = None,
-    raise_error: bool = False,
-) -> Callable[[F], F]: ...
-
-
-@overload
-def deprecator(
     deprecated: F,
     *,
     alternative: str | Callable | Iterable[str | Callable] | None = None,
     raise_error: bool = False,
 ) -> F: ...
+
+
+@overload
+def deprecator(
+    deprecated: None = None,
+    *,
+    alternative: str | Callable | Iterable[str | Callable] | None = None,
+    raise_error: bool = False,
+) -> Callable[[F], F]: ...
 
 
 def deprecator(

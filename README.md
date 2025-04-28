@@ -289,8 +289,7 @@ plt.show()
 多省裁剪直接传入列表即可：
 
 ```python
-jingjinji = ['北京市', '天津市', '河北省']
-fplt.clip_by_cn_province(artist, jingjinji)
+fplt.clip_by_cn_province(artist, ['北京市', '天津市', '河北省'])
 ```
 
 更复杂的裁剪需要手动处理多边形：
@@ -437,13 +436,22 @@ cbar.set_ticks(boundaries)
 
 ## 性能测试
 
-![perf](image/perf.png)
+Cartopy 和 frykit 绘制行政区划的耗时如下表所示：
 
-测试内容：在等距方位投影的 `GeoAxes` 上绘制 frykit 自带的行政区划数据，分国、省、市、县四种，同时按 `GeoAxes` 的范围分全国和东南小区域两种。绘制四次运行的耗时，结果如上图所示。
+<table class="perf-table"><thead><tr><th rowspan="3">范围</th><th rowspan="3">区划</th><th colspan="6">方法</th></tr><tr><th colspan="3">cartopy</th><th colspan="3">frykit</th></tr><tr><th>1</th><th>2</th><th>3</th><th>1</th><th>2</th><th>3</th></tr></thead><tbody><tr><td rowspan="4">全国</td><td>国</td><td>4.75</td><td>0.15</td><td>0.18</td><td>0.65</td><td>0.16</td><td>0.15</td></tr><tr><td>省</td><td>15.23</td><td>0.20</td><td>0.21</td><td>0.96</td><td>0.21</td><td>0.28</td></tr><tr><td>市</td><td>41.31</td><td>0.43</td><td>0.45</td><td>1.92</td><td>0.40</td><td>0.44</td></tr><tr><td>县</td><td>96.16</td><td>0.83</td><td>0.83</td><td>4.09</td><td>0.86</td><td>0.83</td></tr><tr><td rowspan="4">南方</td><td>国</td><td>3.97</td><td>0.11</td><td>0.11</td><td>0.51</td><td>0.11</td><td>0.09</td></tr><tr><td>省</td><td>16.02</td><td>0.12</td><td>0.14</td><td>0.42</td><td>0.11</td><td>0.11</td></tr><tr><td>市</td><td>40.03</td><td>0.14</td><td>0.14</td><td>0.53</td><td>0.15</td><td>0.18</td></tr><tr><td>县</td><td>92.76</td><td>0.26</td><td>0.26</td><td>0.83</td><td>0.20</td><td>0.20</td></tr></tbody></table>
+<style>.perf-table th{background-color:#f2f2f2;text-align:center}</style>
 
-- frykit 模仿 Cartopy 实现了缓存机制，所以都是第一次画图耗时最长，后续三次会快很多。
-- Cartopy 首次画省图要 10 秒，市图要 40 秒，县图要 70 秒，基本不可接受；而 frykit 都在 3 秒以内。
-- Cartopy 0.23 在小区域画图时仍然会画出区域外的所有内容，所以耗时相比 0.22 反而大幅倒退。frykit 对此也有优化。
+```
+# 环境版本
+python==3.11.9
+cartopy==0.24.0
+frykit==0.7.2.post1
+```
+
+- 使用高德数据
+- 使用等距方位投影，以体现直接用 pyproj 和用 Cartopoy 做投影的时间差异。
+- `cartopy>=0.23` 时即便 `GeoAxes` 的范围很小，仍需要对范围外的所有多边形做投影，导致速度很慢。而 frykit 对此有优化。因此这里设置两种地图范围：全国 `(70, 140, 0, 60)` 和南方 `(115, 120, 24, 28)`。
+- 比较连续画三张图的结果，缓存机制会使第一次耗时最长，后续耗时大幅缩短。
 
 ## 详细介绍
 

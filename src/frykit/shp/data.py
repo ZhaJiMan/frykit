@@ -36,6 +36,7 @@ __all__ = [
     "get_ocean",
     "clear_data_cache",
     "get_nine_line",
+    "clear_data_cache",
 ]
 
 
@@ -673,8 +674,15 @@ def get_ocean() -> shapely.MultiPolygon:
         return cast(shapely.MultiPolygon, reader.geometry(0))
 
 
-@deprecator(raise_error=True)
-def clear_data_cache(*args, **kwargs): ...
+def clear_data_cache() -> None:
+    """清除数据缓存"""
+    _get_cn_table.cache_clear()
+    _get_cn_polygons.cache_clear()
+    _get_cn_border.cache_clear()
+    _get_cn_line_strings.cache_clear()
+    get_countries.cache_clear()
+    get_land.cache_clear()
+    get_ocean.cache_clear()
 
 
 @deprecator(alternative=get_cn_line)

@@ -438,8 +438,7 @@ cbar.set_ticks(boundaries)
 
 Cartopy 和 frykit 绘制行政区划的耗时如下表所示：
 
-<table class="perf-table"><thead><tr><th rowspan="3">范围</th><th rowspan="3">区划</th><th colspan="6">方法</th></tr><tr><th colspan="3">cartopy</th><th colspan="3">frykit</th></tr><tr><th>1</th><th>2</th><th>3</th><th>1</th><th>2</th><th>3</th></tr></thead><tbody><tr><td rowspan="4">全国</td><td>国</td><td>4.75</td><td>0.15</td><td>0.18</td><td>0.65</td><td>0.16</td><td>0.15</td></tr><tr><td>省</td><td>15.23</td><td>0.20</td><td>0.21</td><td>0.96</td><td>0.21</td><td>0.28</td></tr><tr><td>市</td><td>41.31</td><td>0.43</td><td>0.45</td><td>1.92</td><td>0.40</td><td>0.44</td></tr><tr><td>县</td><td>96.16</td><td>0.83</td><td>0.83</td><td>4.09</td><td>0.86</td><td>0.83</td></tr><tr><td rowspan="4">南方</td><td>国</td><td>3.97</td><td>0.11</td><td>0.11</td><td>0.51</td><td>0.11</td><td>0.09</td></tr><tr><td>省</td><td>16.02</td><td>0.12</td><td>0.14</td><td>0.42</td><td>0.11</td><td>0.11</td></tr><tr><td>市</td><td>40.03</td><td>0.14</td><td>0.14</td><td>0.53</td><td>0.15</td><td>0.18</td></tr><tr><td>县</td><td>92.76</td><td>0.26</td><td>0.26</td><td>0.83</td><td>0.20</td><td>0.20</td></tr></tbody></table>
-<style>.perf-table th{background-color:#f2f2f2;text-align:center}</style>
+<table><thead><tr><th rowspan="3">范围</th><th rowspan="3">区划</th><th colspan="3">cartopy</th><th colspan="3">frykit</th></tr><tr><th>1</th><th>2</th><th>3</th><th>1</th><th>2</th><th>3</th></tr></thead><tbody><tr><td rowspan="4">全国</td><td>国</td><td>4.75</td><td>0.15</td><td>0.18</td><td>0.65</td><td>0.16</td><td>0.15</td></tr><tr><td>省</td><td>15.23</td><td>0.20</td><td>0.21</td><td>0.96</td><td>0.21</td><td>0.28</td></tr><tr><td>市</td><td>41.31</td><td>0.43</td><td>0.45</td><td>1.92</td><td>0.40</td><td>0.44</td></tr><tr><td>县</td><td>96.16</td><td>0.83</td><td>0.83</td><td>4.09</td><td>0.86</td><td>0.83</td></tr><tr><td rowspan="4">南方</td><td>国</td><td>3.97</td><td>0.11</td><td>0.11</td><td>0.51</td><td>0.11</td><td>0.09</td></tr><tr><td>省</td><td>16.02</td><td>0.12</td><td>0.14</td><td>0.42</td><td>0.11</td><td>0.11</td></tr><tr><td>市</td><td>40.03</td><td>0.14</td><td>0.14</td><td>0.53</td><td>0.15</td><td>0.18</td></tr><tr><td>县</td><td>92.76</td><td>0.26</td><td>0.26</td><td>0.83</td><td>0.20</td><td>0.20</td></tr></tbody></table>
 
 ```
 # 环境版本
@@ -453,6 +452,8 @@ frykit==0.7.2.post1
 - `cartopy>=0.23` 时即便 `GeoAxes` 的范围很小，仍需要对范围外的所有多边形做投影，导致速度很慢。而 frykit 对此有优化。因此这里设置两种地图范围：全国 `(70, 140, 0, 60)` 和南方 `(115, 120, 24, 28)`。
 - 比较连续画三张图的结果，缓存机制会使第一次耗时最长，后续耗时大幅缩短。
 
+测试脚本见 [script/measure_time.py](script/measure_time.py)
+
 ## 详细介绍
 
 工具箱的原理和使用场景可见下面几篇博文：
@@ -462,7 +463,7 @@ frykit==0.7.2.post1
 - [Cartopy 系列：裁剪填色图出界问题](https://zhajiman.github.io/post/cartopy_clip_outside/)
 - [Cartopy 添加南海小地图的三种方法](https://mp.weixin.qq.com/s/-QMVN6MS-UuQ9lQjz9vqBQ)
 - [Matplotlib 系列：colormap 的设置](https://zhajiman.github.io/post/matplotlib_colormap/)
-- [天地图“带审图号”的行政区划数据](http://bbs.06climate.com/forum.php?mod=viewthread&tid=109893)
+- [天地图"带审图号"的行政区划数据](http://bbs.06climate.com/forum.php?mod=viewthread&tid=109893)
 
 ## 示例效果
 

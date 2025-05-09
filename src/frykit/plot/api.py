@@ -222,7 +222,7 @@ def add_cn_province(
         默认为 None，表示使用默认的全局配置（True）。
 
     data_source : {'amap', 'tianditu'} or None, default None
-        数据源。默认为 None，表示使用默认的全局配置（amap）。
+        数据源。默认为 None，表示使用默认的全局配置 'amap'。
 
     **kwargs
         PathCollection 类的关键字参数。
@@ -276,7 +276,7 @@ def add_cn_city(
         默认为 None，表示使用默认的全局配置（True）。
 
     data_source : {'amap', 'tianditu'} or None, default None
-        数据源。默认为 None，表示使用默认的全局配置（amap）。
+        数据源。默认为 None，表示使用默认的全局配置 'amap'。
 
     **kwargs
         PathCollection 类的关键字参数。
@@ -335,7 +335,7 @@ def add_cn_district(
         默认为 None，表示使用默认的全局配置（True）。
 
     data_source : {'amap', 'tianditu'} or None, default None
-        数据源。默认为 None，表示使用默认的全局配置（amap）。
+        数据源。默认为 None，表示使用默认的全局配置 'amap'。
 
     **kwargs
         PathCollection 类的关键字参数。
@@ -380,7 +380,7 @@ def add_cn_border(
         默认为 None，表示使用默认的全局配置（True）。
 
     data_source : {'amap', 'tianditu'} or None, default None
-        数据源。默认为 None，表示使用默认的全局配置（amap）。
+        数据源。默认为 None，表示使用默认的全局配置 'amap'。
 
     **kwargs
         PathCollection 类的关键字参数。
@@ -1007,7 +1007,7 @@ def clip_by_cn_province(
         默认为 None，表示使用默认的全局配置（False）。
 
     data_source : {'amap', 'tianditu'} or None, default None
-        数据源。默认为 None，表示使用默认的全局配置（amap）。
+        数据源。默认为 None，表示使用默认的全局配置 'amap'。
 
     Notes
     -----
@@ -1056,7 +1056,7 @@ def clip_by_cn_city(
         默认为 None，表示使用默认的全局配置（False）。
 
     data_source : {'amap', 'tianditu'} or None, default None
-        数据源。默认为 None，表示使用默认的全局配置（amap）。
+        数据源。默认为 None，表示使用默认的全局配置 'amap'。
 
     Notes
     -----
@@ -1105,7 +1105,7 @@ def clip_by_cn_district(
         默认为 None，表示使用默认的全局配置（False）。
 
     data_source : {'amap', 'tianditu'} or None, default None
-        数据源。默认为 None，表示使用默认的全局配置（amap）。
+        数据源。默认为 None，表示使用默认的全局配置 'amap'。
 
     Notes
     -----
@@ -1150,7 +1150,7 @@ def clip_by_cn_border(
         默认为 None，表示使用默认的全局配置（False）。
 
     data_source : {'amap', 'tianditu'} or None, default None
-        数据源。默认为 None，表示使用默认的全局配置（amap）。
+        数据源。默认为 None，表示使用默认的全局配置 'amap'。
 
     Notes
     -----
@@ -1578,6 +1578,7 @@ def quick_cn_map(
     extents: Sequence[float] = (70, 140, 0, 60),
     use_geoaxes: bool = True,
     figsize: tuple[float, float] | None = None,
+    data_source: DataSource | None = None,
 ) -> Axes:
     """
     快速制作带省界和九段线的中国地图
@@ -1593,6 +1594,9 @@ def quick_cn_map(
     figsize : (2,) tuple of int or None, default None
         Figure 的宽高。默认为 None，表示 (6.4, 4.8)。
 
+    data_source : {'amap', 'tianditu'} or None, default None
+        数据源。默认为 None，表示使用默认的全局配置 'amap'。
+
     Returns
     -------
     ax : Axes
@@ -1606,7 +1610,7 @@ def quick_cn_map(
         ax.set_aspect(1)
 
     set_map_ticks(ax, extents)
-    add_cn_province(ax)
+    add_cn_province(ax, data_source=data_source)
     add_cn_line(ax)
 
     return ax

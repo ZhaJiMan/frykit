@@ -1,7 +1,9 @@
-## `0.7.3` ongoing
+## `0.7.3`
 
+- `quick_cn_map` 函数增加 `data_source` 参数
 - 恢复 `clear_data_cache` 函数
 - 移除 `region_mask` 函数的 `apply_and` 参数
+- 限制对 frykit_data 的依赖版本
 
 ## `0.7.2`
 

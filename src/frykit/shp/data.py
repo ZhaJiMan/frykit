@@ -257,7 +257,7 @@ def get_cn_province_properties(
         省名或 adcode。可以是多个省。默认为 None，表示所有省。
 
     data_source : {'amap', 'tianditu'} or None, default None
-        数据源。默认为 None，表示使用默认的全局配置（amap）。
+        数据源。默认为 None，表示使用默认的全局配置 'amap'。
 
     Returns
     -------
@@ -309,7 +309,7 @@ def get_cn_city_properties(
         默认为 None，表示不指定省。
 
     data_source : {'amap', 'tianditu'} or None, default None
-        数据源。默认为 None，表示使用默认的全局配置（amap）。
+        数据源。默认为 None，表示使用默认的全局配置 'amap'。
 
     Returns
     -------
@@ -368,7 +368,7 @@ def get_cn_district_properties(
         默认为 None，表示不指定省。
 
     data_source : {'amap', 'tianditu'} or None, default None
-        数据源。默认为 None，表示使用默认的全局配置（amap）。
+        数据源。默认为 None，表示使用默认的全局配置 'amap'。
 
     Returns
     -------
@@ -462,7 +462,7 @@ def get_cn_province(
         省名或 adcode。可以是多个省。默认为 None，表示所有省。
 
     data_source : {'amap', 'tianditu'} or None, default None
-        数据源。默认为 None，表示使用默认的全局配置（amap）。
+        数据源。默认为 None，表示使用默认的全局配置 'amap'。
 
     Returns
     -------
@@ -513,7 +513,7 @@ def get_cn_city(
         默认为 None，表示不指定省。
 
     data_source : {'amap', 'tianditu'} or None, default None
-        数据源。默认为 None，表示使用默认的全局配置（amap）。
+        数据源。默认为 None，表示使用默认的全局配置 'amap'。
 
     Returns
     -------
@@ -571,7 +571,7 @@ def get_cn_district(
         默认为 None，表示不指定省。
 
     data_source : {'amap', 'tianditu'} or None, default None
-        数据源。默认为 None，表示使用默认的全局配置（amap）。
+        数据源。默认为 None，表示使用默认的全局配置 'amap'。
 
     Returns
     -------

@@ -463,7 +463,7 @@ frykit==0.7.2.post1
 - [Cartopy 系列：裁剪填色图出界问题](https://zhajiman.github.io/post/cartopy_clip_outside/)
 - [Cartopy 添加南海小地图的三种方法](https://mp.weixin.qq.com/s/-QMVN6MS-UuQ9lQjz9vqBQ)
 - [Matplotlib 系列：colormap 的设置](https://zhajiman.github.io/post/matplotlib_colormap/)
-- [天地图"带审图号"的行政区划数据](http://bbs.06climate.com/forum.php?mod=viewthread&tid=109893)
+- [天地图“带审图号”的行政区划数据](http://bbs.06climate.com/forum.php?mod=viewthread&tid=109893)
 
 ## 示例效果
 

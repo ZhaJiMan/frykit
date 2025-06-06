@@ -32,8 +32,8 @@ from numpy import ma
 from numpy.typing import ArrayLike, NDArray
 from shapely.geometry.base import BaseGeometry
 
+from frykit import get_data_dirpath
 from frykit.calc import asarrays, get_values_between, lon_to_180
-from frykit.data import get_data_dirpath
 from frykit.option import DataSource, get_option, validate_option
 from frykit.plot.artist import (
     Compass,

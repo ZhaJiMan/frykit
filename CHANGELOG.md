@@ -1,21 +1,25 @@
-## `0.7.3`
+## 0.7.4 (ongoing)
+
+- 移除 `frykit.data` 模块，将其中的 `get_data_dirpath` 函数直接放在 `frykit` 命名空间中。
+
+## 0.7.3 (2025-05-09)
 
 - `quick_cn_map` 函数增加 `data_source` 参数
 - 恢复 `clear_data_cache` 函数
 - 移除 `region_mask` 函数的 `apply_and` 参数
 - 限制对 frykit_data 的依赖版本
 
-## `0.7.2`
+## 0.7.2 (2025-03-17)
 
 - 0.7.0 版本把 `add_side_axes` 函数漏掉了，现补回。
 
-## `0.7.1`
+## 0.7.1 (2025-03-16)
 
 - `pip install frykit` 只会安装基础包，`[data]` 则会额外安装 frykit_data。
 - 修正 `GeometryPathCollection` 做 `autoscale` 可能会失败的问题。
 - `format_type_error`、`format_literal_error` 和 `deprecator` 函数传入空列表时会报错。
 
-## `0.7.0`
+## 0.7.0 (2025-03-15)
 
 - 依赖版本提高：
   - `python>=3.10.0`
@@ -56,13 +60,13 @@
 - `help` 模块改名为 `utils`，移除 `is_sequence` 函数。
 - `image` 模块修改 `merge_images` 函数的用法，现在需要用户通过二维数组预先决定合并排列。
 
-## `0.6.9`
+## 0.6.9 (2024-11-05)
 
 - 修正 `path_to_polygon` 函数里的拼写错误，之前会导致部分行政区划裁剪失败。
 - 移除 `region_ind` 函数，换为只返回布尔数组的 `region_mask` 函数。
 - 修改 `deprecator` 装饰器的 `alternatives` 参数为 `alternative`。
 
-## `0.6.8`
+## 0.6.8 (2024-09-28)
 
 - 新增对多个参数应用 `np.asarray` 的 `asarrays` 函数。
 - 新增将坐标数组分成两列的 `split_coords` 函数。
@@ -70,7 +74,7 @@
 - 移除 `geom_to_path` 和 `path_to_polygon` 函数的 `allow_empty` 参数，预期空几何对象对应于空 Path。
 - 彻底移除 `add_map_scale` 函数。
 
-## `0.6.7`
+## 0.6.7 (2024-08-27)
 
 - 对 `_artist.GeometryCollection` 类的修改：
   - 更名为 `GeomCollection`，避免跟 Shapely 的同名类撞名。
@@ -82,7 +86,7 @@
 - 修改 `timer` 装饰器的用法，使被包装的函数返回测量时间。
 - 移除 `Timer` 类，建议直接用 `time.time` 函数。
 
-## `0.6.6`
+## 0.6.6 (2024-08-18)
 
 - 新增 `clear_data_cache` 函数。
 - 新增统计布尔序列连续真值的 `count_consecutive_trues` 函数，和对连续真值进行分段的 `split_consecutive_trues` 函数。
@@ -94,7 +98,7 @@
 - 增强 `deprecator` 装饰器，`alternatives` 参数能接受多个函数。
 - 修正一些函数的类型提示，提高 NumPy 的版本要求为 `>=1.20.0`。
 
-## `0.6.5`
+## 0.6.5 (2024-07-19)
 
 - 新增 `add_geoms` 函数，类比 `GeoAxes.add_geometries`，能绘制 `Polygon` 和 `LineString`，替代原有的 `add_polygons` 函数。
 - 新增 `geom_to_path` 函数，能将 `Point`、`LineString` 和 `Polygon` 转为 `Path`，替代原有的 `polygon_to_path` 函数。
@@ -116,7 +120,7 @@
 - 新增 `PLATE_CARREE` 常量。
 - 新增绘制线 shapefile 的例子。
 
-## `0.6.4`
+## 0.6.4 (2024-06-15)
 
 - 增加中国区县数据。相关函数：
   - `get_cn_district`
@@ -137,20 +141,20 @@
 - `BinaryPacker` 和 `BinaryReader` 类新增 `region` 参数。
 - 新增获取 Matplotlib 可用字体名称的 `get_font_names` 函数。
 
-## `0.6.3`
+## 0.6.3 (2024-05-15)
 
 - 去除 `Frame` 中的默认 style，让外部的 style sheets 和 rcParams 能影响到 `Frame`。
 
-## `0.6.2`
+## 0.6.2 (2024-05-09)
 
 - 修正 `clip_by_polygon` 对 `clabel` 的返回值和任意 `Text` 的处理。
 - 新增同时裁剪 `contour` 和 `contourf` 的例子 `clabel.py`。
 
-## `0.6.1`
+## 0.6.1 (2024-05-09)
 
 - 把 `get_cn_province_names` 和 `get_cn_city_names` 函数又加回来了，同时修改了用法。
 
-## `0.6.0`
+## 0.6.0 (2024-05-08)
 
 - 新增 `_typing` 模块。
 - `BinaryConverter` 类更名为 `BinaryPacker`。
@@ -165,7 +169,7 @@
 - 修改 `hms_to_degrees2` 函数的输出类型。
 - 修改 docstring。
 
-## `0.5.3`
+## 0.5.3 (2024-04-22)
 
 - 新增保存图片的 `savefig` 函数，相当于有默认参数的 `Figure.savefig`。
 - `add_mini_axes` 函数新增 `aspect` 参数，用于修改 `Axes` 的宽高。
@@ -174,25 +178,23 @@
 - 移除 `clip_by_polygons` 函数。
 - 更新 README。
 
-## `0.5.2`
+## 0.5.2 (2024-04-14)
 
 - 新增快速创建中国地图的 `quick_cn_map` 函数。
 - `add_side_axes` 函数的 `depth` 参数更名为 `width`。
 - 修改 `add_texts` 函数的默认效果。
 - 修改 `make_gif` 函数的参数。
 
-## `0.5.1`
-
-- 版本号被浪费了，遂跳过。
-
-## `0.5.0`
+## 0.5.0 (2024-04-09)
 
 - 新增 `_artist` 模块，将风矢量图例、指北针、比例尺和 GMT 边框改用 `Artist` 实现，保证它们能自动更新状态。
+- 新增 `add_texts` 函数，通过跳过框外文本加速大量文本的绘制。
 - `add_map_scale` 函数更名为 `add_scale_bar`。
 - `gmt_style_frame` 函数更名为 `add_frame`，内部不再修改 `ax` 的刻度样式。
 - 移除 `move_axes_to_corner` 函数，新增功能更强的 `add_mini_axes` 函数。
 - 移除 `get_cn_shp` 函数。
 - 修改 `get_cn_xxx` 系列函数的参数名，修改它们查询地名的方式，现在只要有一个地名出错就会报错。另外移除了它们的 `as_dict` 参数（因为没见有人用过……）。
+- `ntick` 参数更名为 `nticks`。
 - 改进 `calc` 模块里角度转换的函数输出的数值范围。
 - `deprecator` 装饰器新增 `raise_error` 参数。
 - 将 `loc` 参数的取值 `bottom left` 和 `bottom right` 修改为 `lower left` 和 `lower right`。
@@ -200,25 +202,20 @@
 - 所有代码用 isort 做了格式化。
 - 添加 license。
 
-## `0.4.5`
-
-- 新增 `add_texts` 函数。
-- `ntick` 参数更名为 `nticks`。
-
-## `0.4.4`
+## 0.4.4 (2024-03-19)
 
 - `set_extent_and_ticks` 函数更名为 `set_map_ticks` 函数，新增 `dx` 和 `dy` 参数，`nx` 和 `ny` 参数改名为 `mx` 和 `my`。非等经纬度投影现已支持开启次刻度。
 - `load_test_nc` 函数更名为 `load_test_data`，移除对 xarray 和 netCDF4 的依赖。
 - `image` 模块各函数的输入现在可以是 `Image` 对象。
 - 新增墨卡托投影的例子。为避免错误，简化 `contourf.py` 例子。
 
-## `0.4.3`
+## 0.4.3 (2024-03-01)
 
 - 将影响坐标变换速度的 `Projection._as_mpl_transform` 修改成了 `Axes.transData`。
 - 新增时分秒转换度数的 `hms_to_degrees2` 函数。
 - 新增比较两张图片的 `compare_images` 函数。
 
-## `0.4.2`
+## 0.4.2 (2024-02-24)
 
 - 增加全球国家国界、50m 陆地和海洋的数据。相关函数：
   - `get_countries`、`add_countries`
@@ -232,11 +229,7 @@
 - 修改 `example` 中的例子。
 - 所有代码用 Black 做了格式化。
 
-## `0.4.1`
-
-- 明确安装依赖。
-
-## `0.4.0`
+## 0.4.0 (2024-02-05)
 
 - 通过 `mapshaper` 简化 shapefile 文件，安装包体积减小到 `0.3.0` 的三分之一。
 - Shapefile 文件属性中加入省名市名的简写和用来标注名称的经纬度。
@@ -250,25 +243,25 @@
 - `xy_to_polar` 和 `polar_to_xy` 函数改名为 `xy_to_rt` 和 `rt_to_xy`，并将 `radians` 参数修改为 `degrees`。
 - 移除 `_shp` 模块里与二进制文件无关的函数。
 
-## `0.3.6`
+## 0.3.6 (2024-01-16)
 
 - 修改 `BinaryConverter` 的用法。
 - 修改 `MANIFEST.in` 文件，纳入 `README.md` 文件。
 
-## `0.3.5`
+## 0.3.5 (2024-01-13)
 
 - 移除 `make_nine_line_file` 函数。
 - 移除 `get_dBZ_palette` 函数。
 - 修改制作行政区划数据的脚本。
 - 修改 `MANIFEST.in` 文件，降低安装包体积。
 
-## `0.3.4`
+## 0.3.4 (2024-01-09)
 
 - 以高德地图行政区域查询为数据源更新了 `data/shp` 目录里的矢量数据。
 - `set_extent_and_ticks` 和 `add_map_scale` 函数现已支持普通 `Axes`。
 - 改进 `get_cn_province` 和 `get_cn_city` 函数参数错误时的提示。
 
-## `0.3.3`
+## 0.3.3 (2024-01-02)
 
 - 新增 `_shp` 模块，改用自定义的二进制格式存储 shapefile 文件，减半文件体积的同时加快读取速度。
 - 将 `get_cn_shp` 函数拆分为三个函数：
@@ -283,47 +276,44 @@
 - `plot_colormap` 函数新增 `extend` 参数。
 - `make_qualitative_cmap` 函数改名为 `get_qualitative_palette`。
 
-## `0.3.2`
+## 0.3.2 (2023-11-26)
 
 - 新增 `image` 模块，提供拼图和切图的函数。
 - 修正 `binned_statistic_2d` 函数颠倒 xy 的问题。
 
-## `0.3.1`
+## 0.3.1 (2023-11-21)
 
 - `clip_by_polygon` 函数可以接受一组 `Artist`。
 - `add_box` 函数会对方框坐标做插值，保证方框在 `GeoAxes` 中平滑。
 - 新增用于测试的 `load_test_nc` 函数。
 
-## `0.3.0`
+## 0.3.0 (2023-11-20)
 
 - 要求 `python>=3.9.0`。
 - 所有代码加入类型提示。
 - 修改 `interp_nearest` 函数对数组维度的要求。
 
-## `0.2.5`
+## 0.2.5 (2023-11-18)
 
 - `add_compass` 函数可以通过 `angle` 参数指定角度。
-
-## `0.2.4`
-
 - 修正 `add_map_scale` 函数里取线段的方式。
 - 修正 `_transform` 函数里的 Shapely 版本问题。
 
-## `0.2.3`
+## 0.2.3 (2023-09-24)
 
 - 新增让 colormap 的白色对应于零值的 `CenteredBoundaryNorm` 类。
 - 新增快速展示 colormap 和 normalize 的 `plot_colormap` 函数。
 
-## `0.2.2`
+## 0.2.2 (2023-07-20)
 
 - 要求 `cartopy>=0.20.0`。
 - 修正 `set_extent_and_ticks` 函数受 `Axes.tick_params` 里 `top`、`right` 等参数影响的问题。
 
-## `0.2.1`
+## 0.2.1 (2023-07-16)
 
 - 修正 `clip_by_polygon` 函数在 `matplotlib<=3.6` 时报错的问题。
 
-## `0.2.0`
+## 0.2.0 (2023-05-06)
 
 - 以下函数加入缓存坐标变换结果的机制，只要维持对于多边形对象的引用，反复调用时就不会重复做坐标变换：
   - `add_polygon`

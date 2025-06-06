@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import shapely
 
-from frykit.data import get_data_dirpath
+from frykit import get_data_dirpath
 from frykit.option import DataSource, get_option, validate_option
 from frykit.shp.binary import BinaryReader
 from frykit.shp.typing import LineStringType, PolygonType

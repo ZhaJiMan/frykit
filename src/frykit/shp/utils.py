@@ -15,12 +15,14 @@ from frykit.shp.typing import (
     GeoJSONDict,
     GeometryCollectionDict,
     GeometryDict,
+    LineStringCoordinates,
     LineStringDict,
     LineStringType,
     MultiLineStringCoordinates,
     MultiLineStringDict,
     MultiPointCoordinates,
     MultiPointDict,
+    MultiPolygonCoordinates,
     MultiPolygonDict,
     PointCoordinates,
     PointDict,
@@ -35,11 +37,19 @@ __all__ = [
     "orient_polygon",
     "geometry_to_shape",
     "geometry_to_dict",
+    "dict_to_geometry",
     "get_geojson_properties",
     "get_geojson_geometries",
     "get_shapefile_properties",
     "get_shapefile_geometries",
     "get_representative_xy",
+    "make_point_dict",
+    "make_multi_point_dict",
+    "make_line_string_dict",
+    "make_multi_line_string_dict",
+    "make_polygon_dict",
+    "make_multi_polygon_dict",
+    "make_geometry_collection_dict",
     "make_feature",
     "make_geojson",
     "polygon_to_polys",
@@ -186,6 +196,41 @@ def geometry_to_dict(geometry: BaseGeometry) -> GeometryDict:
     return cast(GeometryDict, geometry_dict)
 
 
+@overload
+def dict_to_geometry(geometry_dict: PointDict) -> shapely.Point: ...
+
+
+@overload
+def dict_to_geometry(geometry_dict: MultiPointDict) -> shapely.MultiPoint: ...
+
+
+@overload
+def dict_to_geometry(geometry_dict: LineStringDict) -> shapely.LineString: ...
+
+
+@overload
+def dict_to_geometry(geometry_dict: MultiLineStringDict) -> shapely.MultiLineString: ...
+
+
+@overload
+def dict_to_geometry(geometry_dict: PolygonDict) -> shapely.Polygon: ...
+
+
+@overload
+def dict_to_geometry(geometry_dict: MultiPolygonDict) -> shapely.MultiPolygon: ...
+
+
+@overload
+def dict_to_geometry(
+    geometry_dict: GeometryCollectionDict,
+) -> shapely.GeometryCollection: ...
+
+
+def dict_to_geometry(geometry_dict: GeometryDict) -> BaseGeometry:
+    """GeoJSON 的 geometry 字典转为几何对象"""
+    return sgeom.shape(geometry_dict)  # type: ignore
+
+
 def get_geojson_properties(geojson_dict: GeoJSONDict) -> pd.DataFrame:
     """提取 GeoJSON 字典里的所有 properties 为 DataFrame"""
     records = [feature["properties"] for feature in geojson_dict["features"]]
@@ -194,7 +239,9 @@ def get_geojson_properties(geojson_dict: GeoJSONDict) -> pd.DataFrame:
 
 def get_geojson_geometries(geojson_dict: GeoJSONDict) -> list[BaseGeometry]:
     """提取 GeoJSON 字典里的所有几何对象"""
-    return [sgeom.shape(feature["geometry"]) for feature in geojson_dict["features"]]  # type: ignore
+    return [
+        dict_to_geometry(feature["geometry"]) for feature in geojson_dict["features"]
+    ]
 
 
 def get_shapefile_properties(filepath: PathType) -> pd.DataFrame:
@@ -216,9 +263,54 @@ def get_representative_xy(geometry: BaseGeometry) -> tuple[float, float]:
     return point.x, point.y
 
 
-def make_feature(geometry_dict: GeometryDict, properties: dict) -> FeatureDict:
+def make_point_dict(coordinates: PointCoordinates) -> PointDict:
+    """构造 Point 字典"""
+    return {"type": "Point", "coordinates": coordinates}
+
+
+def make_multi_point_dict(coordinates: MultiPointCoordinates) -> MultiPointDict:
+    """构造 MultiPoint 字典"""
+    return {"type": "MultiPoint", "coordinates": coordinates}
+
+
+def make_line_string_dict(coordinates: LineStringCoordinates) -> LineStringDict:
+    """构造 LineString 字典"""
+    return {"type": "LineString", "coordinates": coordinates}
+
+
+def make_multi_line_string_dict(
+    coordinates: MultiLineStringCoordinates,
+) -> MultiLineStringDict:
+    """构造 MultiLineString 字典"""
+    return {"type": "MultiLineString", "coordinates": coordinates}
+
+
+def make_polygon_dict(coordinates: PolygonCoordinates) -> PolygonDict:
+    """构造 Polygon 字典"""
+    return {"type": "Polygon", "coordinates": coordinates}
+
+
+def make_multi_polygon_dict(coordinates: MultiPolygonCoordinates) -> MultiPolygonDict:
+    """构造 MultiPolygon 字典"""
+    return {"type": "MultiPolygon", "coordinates": coordinates}
+
+
+def make_geometry_collection_dict(
+    geometries: list[GeometryDict],
+) -> GeometryCollectionDict:
+    """构造 GeometryCollection 字典"""
+    return {"type": "GeometryCollection", "geometries": geometries}
+
+
+def make_feature(
+    geometry_dict: GeometryDict, properties: dict | None = None
+) -> FeatureDict:
     """用 geometry 和 properties 字典构造 GeoJSON 的 feature 字典"""
-    return {"type": "Feature", "geometry": geometry_dict, "properties": properties}
+    feature = {"type": "Feature", "geometry": geometry_dict}
+    if properties is not None:
+        feature["properties"] = properties
+
+    return feature  # type: ignore
 
 
 def make_geojson(features: list[FeatureDict]) -> GeoJSONDict:

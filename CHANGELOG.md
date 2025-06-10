@@ -1,6 +1,9 @@
 ## 0.7.4 (ongoing)
 
 - 移除 `frykit.data` 模块，将其中的 `get_data_dirpath` 函数直接放在 `frykit` 命名空间中。
+- 新增将 GeoJSON 几何对象字典转为 shapely 对象的 `dict_to_geometry` 函数。
+- 新增构造 GeoJSON 几何对象字典的 `make_xxx_dict` 系列函数。
+- `make_feature` 函数的 `properties` 参数可以为 `None`，表示没有元数据字典。
 
 ## 0.7.3 (2025-05-09)
 

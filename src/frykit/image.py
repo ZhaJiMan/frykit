@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, cast
+from typing import Any, TypeAlias, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -9,7 +9,7 @@ from PIL import Image
 
 from frykit.typing import PathType
 
-ImageInput = PathType | Image.Image
+ImageInput: TypeAlias = PathType | Image.Image
 
 
 def _read_image(image: ImageInput) -> Image.Image:

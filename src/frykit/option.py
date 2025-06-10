@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, TypeAlias
 
 from frykit.utils import format_literal_error, format_type_error
 
@@ -15,7 +15,7 @@ __all__ = [
     "option_context",
 ]
 
-Validator = Callable[[Any], None]
+Validator: TypeAlias = Callable[[Any], None]
 
 
 @dataclass
@@ -65,7 +65,7 @@ class Option:
         self._data[name] = OptionItem(default, validator)
 
 
-DataSource = Literal["amap", "tianditu"]
+DataSource: TypeAlias = Literal["amap", "tianditu"]
 
 
 def _validate_data_source(data_source: DataSource) -> None:

@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
-from typing import TypeVar
+from typing import TypeAlias, TypeVar
 
 T = TypeVar("T")
 F = TypeVar("F", bound=Callable)
 
-PathType = str | Path
+PathType: TypeAlias = str | Path

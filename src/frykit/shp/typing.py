@@ -1,17 +1,17 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal, TypedDict, TypeVar, Union
+from typing import Literal, TypeAlias, TypedDict, TypeVar, Union
 
 import shapely
 from shapely.geometry.base import BaseGeometry
 
-PointCoordinates = Sequence[float]
-MultiPointCoordinates = Sequence[PointCoordinates]
-LineStringCoordinates = Sequence[PointCoordinates]
-MultiLineStringCoordinates = Sequence[LineStringCoordinates]
-PolygonCoordinates = Sequence[LineStringCoordinates]
-MultiPolygonCoordinates = Sequence[PolygonCoordinates]
+PointCoordinates: TypeAlias = Sequence[float]
+MultiPointCoordinates: TypeAlias = Sequence[PointCoordinates]
+LineStringCoordinates: TypeAlias = Sequence[PointCoordinates]
+MultiLineStringCoordinates: TypeAlias = Sequence[LineStringCoordinates]
+PolygonCoordinates: TypeAlias = Sequence[LineStringCoordinates]
+MultiPolygonCoordinates: TypeAlias = Sequence[PolygonCoordinates]
 
 
 # TODO: 用 NotRequired 标注 bbox 字段
@@ -45,8 +45,8 @@ class MultiPolygonDict(TypedDict):
     coordinates: MultiPolygonCoordinates
 
 
-# 此处只能用 Union？
-GeometryDict = Union[
+# https://docs.python.org/3/library/stdtypes.html#union-type
+GeometryDict: TypeAlias = Union[
     PointDict,
     MultiPointDict,
     LineStringDict,
@@ -73,7 +73,7 @@ class GeoJSONDict(TypedDict):
     features: list[FeatureDict]
 
 
-PointType = shapely.Point | shapely.MultiPoint
-LineStringType = shapely.LineString | shapely.MultiLineString
-PolygonType = shapely.Polygon | shapely.MultiPolygon
+PointType: TypeAlias = shapely.Point | shapely.MultiPoint
+LineStringType: TypeAlias = shapely.LineString | shapely.MultiLineString
+PolygonType: TypeAlias = shapely.Polygon | shapely.MultiPolygon
 GeometryT = TypeVar("GeometryT", bound=BaseGeometry)

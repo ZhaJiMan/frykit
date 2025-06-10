@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from enum import IntEnum
 from functools import cache
 from pathlib import Path
-from typing import Any, Literal, TypedDict, cast, overload
+from typing import Any, Literal, TypeAlias, TypedDict, cast, overload
 
 import numpy as np
 import pandas as pd
@@ -56,7 +56,7 @@ def _get_world_dirpath() -> Path:
     return get_data_dirpath() / "world"
 
 
-Level = Literal["province", "city", "district"]
+Level: TypeAlias = Literal["province", "city", "district"]
 
 
 @cache
@@ -106,7 +106,7 @@ def _get_index_locs(index: pd.Index, key: Any) -> list[int]:
         return [loc]
 
 
-NameOrAdcode = int | str
+NameOrAdcode: TypeAlias = int | str
 
 
 def _get_cn_locs(
@@ -609,7 +609,7 @@ def _get_cn_line_strings() -> list[LineStringType]:
         return cast(list[LineStringType], line_strings)
 
 
-LineName = Literal["省界", "特别行政区界", "九段线", "未定国界"]
+LineName: TypeAlias = Literal["省界", "特别行政区界", "九段线", "未定国界"]
 
 
 class LineEnum(IntEnum):

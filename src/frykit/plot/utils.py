@@ -74,22 +74,15 @@ def geometry_to_path(geometry: BaseGeometry) -> Path:
         case shapely.LineString():
             return Path(shapely.get_coordinates(geometry), _line_string_codes(geometry))
 
-        # 使用 orient 效率太低
+        # 直接使用 orient 效率太低
         case shapely.Polygon():
             vertices, codes = [], []
-            exterior = geometry.exterior
-            coords = shapely.get_coordinates(exterior)
-            if exterior.is_ccw:
-                coords = coords[::-1]
-            vertices.append(coords)
-            codes.extend(_linear_ring_codes(exterior))
-
-            for interior in geometry.interiors:
-                coords = shapely.get_coordinates(interior)
-                if not interior.is_ccw:
+            for i, linear_ring in enumerate([geometry.exterior, *geometry.interiors]):
+                coords = shapely.get_coordinates(linear_ring)
+                if (i == 0) == linear_ring.is_ccw:
                     coords = coords[::-1]
                 vertices.append(coords)
-                codes.extend(_linear_ring_codes(interior))
+                codes.extend(_linear_ring_codes(linear_ring))
 
             vertices = np.vstack(vertices)
             return Path(vertices, codes)
@@ -147,22 +140,21 @@ def _transform_geometry(
 ) -> GeometryT:
     """shapely.ops.transform 的修改版，会将变换后坐标含 nan 或 inf 的几何对象设为空对象。"""
     if isinstance(geometry, BaseGeometry) and geometry.is_empty:
-        return type(geometry)()  # type: ignore
+        return geometry
 
     match geometry:
         # Point 可以接受形如 (1, 2) 的坐标
         case shapely.Point() | shapely.LineString() | shapely.LinearRing():
-            geometry_type = type(geometry)
             coords = transform(shapely.get_coordinates(geometry))
-            if not is_finite(coords):
-                return geometry_type()
-            return geometry_type(coords)
+            if is_finite(coords):
+                return type(geometry)(coords)
+            else:
+                return type(geometry)()
 
         case shapely.Polygon():
-            geometry_type = type(geometry)
             shell = transform(shapely.get_coordinates(geometry.exterior))
             if not is_finite(shell):
-                return geometry_type()
+                return type(geometry)()
 
             holes = []
             for interior in geometry.interiors:
@@ -170,7 +162,7 @@ def _transform_geometry(
                 if is_finite(hole):
                     holes.append(hole)
 
-            return geometry_type(shell, holes)
+            return type(geometry)(shell, holes)
 
         case BaseMultipartGeometry():
             parts = [
@@ -193,7 +185,8 @@ def make_transformer(crs_from: CRS, crs_to: CRS) -> Transformer:
 def project_geometry(geometry: GeometryT, crs_from: CRS, crs_to: CRS) -> GeometryT:
     """对几何对象做投影"""
     if crs_from == crs_to:
-        return type(geometry)(geometry)  # type: ignore
+        return geometry
+
     transformer = make_transformer(crs_from, crs_to)
 
     def transform_coords(coords: NDArray) -> NDArray:

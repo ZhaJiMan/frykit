@@ -8,7 +8,6 @@ import shapefile
 import shapely
 import shapely.geometry as sgeom
 from shapely.geometry.base import BaseGeometry
-from shapely.geometry.polygon import orient
 
 from frykit.shp.typing import (
     FeatureDict,
@@ -60,6 +59,22 @@ __all__ = [
 ]
 
 
+def _orient(polygon: shapely.Polygon, ccw: bool = True) -> shapely.Polygon:
+    """调整 shapely.Polygon 的绕行方向"""
+    if polygon.is_empty:
+        return polygon
+
+    # 循环比向量化略快？
+    linear_rings = []
+    for i, linear_ring in enumerate([polygon.exterior, *polygon.interiors]):
+        if ((i == 0) == ccw) != linear_ring.is_ccw:
+            linear_ring = shapely.reverse(linear_ring)
+        linear_rings.append(linear_ring)
+    polygon = shapely.Polygon(linear_rings[0], linear_rings[1:])
+
+    return polygon
+
+
 @overload
 def orient_polygon(polygon: shapely.Polygon, ccw: bool = True) -> shapely.Polygon: ...
 
@@ -70,14 +85,14 @@ def orient_polygon(
 ) -> shapely.MultiPolygon: ...
 
 
+# TODO: shapely.orient_polygons in 2.1.0
 def orient_polygon(polygon: PolygonType, ccw: bool = True) -> PolygonType:
     """调整多边形的绕行方向。例如 ccw=True 时外环逆时针，内环顺时针。"""
-    sign = 1 if ccw else -1
     match polygon:
         case shapely.Polygon():
-            return orient(polygon, sign)
+            return _orient(polygon, ccw)
         case shapely.MultiPolygon():
-            return shapely.MultiPolygon([orient(part, sign) for part in polygon.geoms])
+            return shapely.MultiPolygon([_orient(part, ccw) for part in polygon.geoms])
         case _:
             raise TypeError(
                 format_type_error(
@@ -116,7 +131,7 @@ def geometry_to_shape(
         return shapely.get_coordinates(geometry).tolist()
 
     def polygon_to_shape(polygon: shapely.Polygon) -> PolygonCoordinates:
-        polygon = orient(polygon, sign=-1)
+        polygon = _orient(polygon, ccw=False)
         polys = [get_coordinates(polygon.exterior)]
         polys.extend(list(map(get_coordinates, polygon.interiors)))
 

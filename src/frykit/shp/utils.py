@@ -42,13 +42,6 @@ __all__ = [
     "get_shapefile_properties",
     "get_shapefile_geometries",
     "get_representative_xy",
-    "make_point_dict",
-    "make_multi_point_dict",
-    "make_line_string_dict",
-    "make_multi_line_string_dict",
-    "make_polygon_dict",
-    "make_multi_polygon_dict",
-    "make_geometry_collection_dict",
     "make_feature",
     "make_geojson",
     "polygon_to_polys",
@@ -60,7 +53,6 @@ __all__ = [
 
 
 def _orient(polygon: shapely.Polygon, ccw: bool = True) -> shapely.Polygon:
-    """调整 shapely.Polygon 的绕行方向"""
     if polygon.is_empty:
         return polygon
 
@@ -101,6 +93,42 @@ def orient_polygon(polygon: PolygonType, ccw: bool = True) -> PolygonType:
             )
 
 
+def _point_to_coordinates(point: shapely.Point) -> PointCoordinates:
+    return [point.x, point.y]
+
+
+def _multi_point_to_coordinates(
+    multi_point: shapely.MultiPoint,
+) -> MultiPointCoordinates:
+    return shapely.get_coordinates(multi_point).tolist()
+
+
+def _line_string_to_coordinates(
+    line_string: shapely.LineString,
+) -> LineStringCoordinates:
+    return shapely.get_coordinates(line_string).tolist()
+
+
+def _multi_line_string_to_coordinates(
+    multi_line_string: shapely.MultiLineString,
+) -> MultiLineStringCoordinates:
+    return list(map(_line_string_to_coordinates, multi_line_string.geoms))
+
+
+def _polygon_to_coordinates(
+    polygon: shapely.Polygon, ccw: bool = True
+) -> PolygonCoordinates:
+    polygon = _orient(polygon, ccw)
+    linear_rings = [polygon.exterior, *polygon.interiors]
+    return list(map(_line_string_to_coordinates, linear_rings))
+
+
+def _multi_polygon_to_coordinates(
+    multi_polygon: shapely.MultiPolygon, ccw: bool = True
+) -> MultiPolygonCoordinates:
+    return [_polygon_to_coordinates(polygon, ccw) for polygon in multi_polygon.geoms]
+
+
 @overload
 def geometry_to_shape(geometry: shapely.Point) -> PointCoordinates: ...
 
@@ -126,35 +154,26 @@ def geometry_to_shape(
     | PolygonCoordinates
 ):
     """几何对象转为 shapeifle 适用的坐标序列"""
-
-    def get_coordinates(geometry: BaseGeometry) -> list[list[float]]:
-        return shapely.get_coordinates(geometry).tolist()
-
-    def polygon_to_shape(polygon: shapely.Polygon) -> PolygonCoordinates:
-        polygon = _orient(polygon, ccw=False)
-        polys = [get_coordinates(polygon.exterior)]
-        polys.extend(list(map(get_coordinates, polygon.interiors)))
-
-        return polys
-
     match geometry:
         case shapely.Point():
-            return [geometry.x, geometry.y]
+            return _point_to_coordinates(geometry)
         case shapely.MultiPoint():
-            return get_coordinates(geometry)
+            return _multi_point_to_coordinates(geometry)
         case shapely.LinearRing():
             raise TypeError(
                 "geometry 是 shapely.LinearRing 类型，"
                 "需要先转换成 shapely.LineString 或 shapely.Polygon 类型"
             )
         case shapely.LineString():
-            return [get_coordinates(geometry)]
+            return [_line_string_to_coordinates(geometry)]
         case shapely.MultiLineString():
-            return list(map(get_coordinates, geometry.geoms))
+            return _multi_line_string_to_coordinates(geometry)
         case shapely.Polygon():
-            return polygon_to_shape(geometry)
+            return _polygon_to_coordinates(geometry, ccw=False)
         case shapely.MultiPolygon():
-            return list(chain(*map(polygon_to_shape, geometry.geoms)))
+            return list(
+                chain.from_iterable(_multi_polygon_to_coordinates(geometry, ccw=False))
+            )
         case shapely.GeometryCollection():
             raise TypeError(
                 "geometry 是 shapely.GeometryCollection 类型，在 shapefile 中没有直接对应的类型"
@@ -195,20 +214,33 @@ def geometry_to_dict(
 
 def geometry_to_dict(geometry: BaseGeometry) -> GeometryDict:
     """几何对象转为 GeoJSON 的 geometry 字典"""
-    if not isinstance(geometry, BaseGeometry):
-        raise TypeError(format_type_error("geometry", geometry, BaseGeometry))
+    match geometry:
+        case shapely.Point():
+            coordinates = _point_to_coordinates(geometry)
+        case shapely.MultiPoint():
+            coordinates = _multi_point_to_coordinates(geometry)
+        case shapely.LinearRing():
+            raise TypeError(
+                "geometry 是 shapely.LinearRing 类型，"
+                "需要先转换成 shapely.LineString 或 shapely.Polygon 类型"
+            )
+        case shapely.LineString():
+            coordinates = _line_string_to_coordinates(geometry)
+        case shapely.MultiLineString():
+            coordinates = _multi_line_string_to_coordinates(geometry)
+        case shapely.Polygon():
+            coordinates = _polygon_to_coordinates(geometry, ccw=True)
+        case shapely.MultiPolygon():
+            coordinates = _multi_polygon_to_coordinates(geometry, ccw=True)
+        case shapely.GeometryCollection():
+            return {
+                "type": "GeometryCollection",
+                "geometries": list(map(geometry_to_dict, geometry.geoms)),
+            }
+        case _:
+            raise TypeError(format_type_error("geometry", geometry, BaseGeometry))
 
-    if isinstance(geometry, shapely.LinearRing):
-        raise TypeError(
-            "geometry 是 shapely.LinearRing 类型，"
-            "需要先转换成 shapely.LineString 或 shapely.Polygon 类型"
-        )
-
-    if isinstance(geometry, (shapely.Polygon, shapely.MultiPolygon)):
-        geometry = orient_polygon(geometry)
-    geometry_dict = sgeom.mapping(geometry)
-
-    return cast(GeometryDict, geometry_dict)
+    return cast(GeometryDict, {"type": geometry.geom_type, "coordinates": coordinates})
 
 
 @overload
@@ -276,45 +308,6 @@ def get_representative_xy(geometry: BaseGeometry) -> tuple[float, float]:
     """计算保证在几何对象内部的代表点"""
     point = geometry.representative_point()
     return point.x, point.y
-
-
-def make_point_dict(coordinates: PointCoordinates) -> PointDict:
-    """构造 Point 字典"""
-    return {"type": "Point", "coordinates": coordinates}
-
-
-def make_multi_point_dict(coordinates: MultiPointCoordinates) -> MultiPointDict:
-    """构造 MultiPoint 字典"""
-    return {"type": "MultiPoint", "coordinates": coordinates}
-
-
-def make_line_string_dict(coordinates: LineStringCoordinates) -> LineStringDict:
-    """构造 LineString 字典"""
-    return {"type": "LineString", "coordinates": coordinates}
-
-
-def make_multi_line_string_dict(
-    coordinates: MultiLineStringCoordinates,
-) -> MultiLineStringDict:
-    """构造 MultiLineString 字典"""
-    return {"type": "MultiLineString", "coordinates": coordinates}
-
-
-def make_polygon_dict(coordinates: PolygonCoordinates) -> PolygonDict:
-    """构造 Polygon 字典"""
-    return {"type": "Polygon", "coordinates": coordinates}
-
-
-def make_multi_polygon_dict(coordinates: MultiPolygonCoordinates) -> MultiPolygonDict:
-    """构造 MultiPolygon 字典"""
-    return {"type": "MultiPolygon", "coordinates": coordinates}
-
-
-def make_geometry_collection_dict(
-    geometries: list[GeometryDict],
-) -> GeometryCollectionDict:
-    """构造 GeometryCollection 字典"""
-    return {"type": "GeometryCollection", "geometries": geometries}
 
 
 def make_feature(

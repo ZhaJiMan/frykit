@@ -141,10 +141,6 @@ def _encode_multi_line_string(multi_line_string: shapely.MultiLineString) -> byt
     return _concat_binaries(list(map(_encode_line_string, multi_line_string.geoms)))
 
 
-def _encode_linear_ring(linear_ring: shapely.LinearRing) -> bytes:
-    return _encode_line_string(linear_ring)
-
-
 def _encode_polygon(polygon: shapely.Polygon) -> bytes:
     polygon = orient_polygon(polygon, ccw=False)
     linear_rings = [polygon.exterior, *polygon.interiors]
@@ -156,14 +152,11 @@ def _encode_multi_polygon(multi_polygon: shapely.MultiPolygon) -> bytes:
 
 
 def _encode_geometry(geometry: BaseGeometry) -> bytes:
-    geometry_type = geometry.geom_type
     match geometry:
         case shapely.Point():
             binary = _encode_point(geometry)
         case shapely.MultiPoint():
             binary = _encode_multi_point(geometry)
-        case shapely.LinearRing():
-            binary = _encode_linear_ring(geometry)
         case shapely.LineString():
             binary = _encode_line_string(geometry)
         case shapely.MultiLineString():
@@ -176,9 +169,9 @@ def _encode_geometry(geometry: BaseGeometry) -> bytes:
             binaries = list(map(_encode_geometry, geometry.geoms))
             binary = _concat_binaries(binaries)
         case _:
-            raise ValueError(f"geometry_type: {geometry_type}")
+            raise ValueError(f"geometry_type: {geometry.geom_type}")
 
-    header = struct.pack(UINT32, GeometryEnum[geometry_type])
+    header = struct.pack(UINT32, GeometryEnum[geometry.geom_type])
     binary = header + binary
 
     return binary

@@ -73,7 +73,13 @@ from frykit.shp.data import (
     get_ocean,
 )
 from frykit.shp.typing import PolygonType
-from frykit.utils import deprecator, format_literal_error, format_type_error, to_list
+from frykit.utils import (
+    deprecator,
+    format_literal_error,
+    format_type_error,
+    get_package_version,
+    to_list,
+)
 
 __all__ = [
     "add_geometries",
@@ -844,8 +850,7 @@ def _get_geoaxes_boundary(ax: GeoAxes) -> shapely.Polygon:
     return boundary
 
 
-# 直接比较字符串时 3.10.0 会出错
-_MPL38 = tuple(map(int, mpl.__version__.split("."))) < (3, 8, 0)
+_MPL38 = get_package_version("matplotlib") >= (3, 8, 0)
 
 
 def clip_by_polygon(
@@ -896,7 +901,7 @@ def clip_by_polygon(
     artists: list[Artist] = []
     for a in to_list(artist):
         match a:
-            case ContourSet() if _MPL38:
+            case ContourSet() if not _MPL38:
                 artists.extend(a.collections)
             case Artist():
                 artists.append(a)

@@ -4,6 +4,7 @@ import shutil
 import warnings
 from collections.abc import Callable, Hashable, Iterable, Iterator
 from functools import wraps
+from importlib.metadata import version
 from pathlib import Path
 from typing import Any, TypeVar, overload
 
@@ -29,12 +30,12 @@ def del_dir(dirpath: PathType) -> Path:
 
 def renew_dir(dirpath: PathType) -> Path:
     """重建目录"""
-    dirpath = Path(dirpath)
-    if dirpath.exists():
-        shutil.rmtree(dirpath)
-    dirpath.mkdir(parents=True)
+    return new_dir(del_dir(dirpath))
 
-    return dirpath
+
+def get_package_version(name: str) -> tuple[int, ...]:
+    """获取包的版本号"""
+    return tuple(map(int, version(name).split(".")))
 
 
 def split_list(lst: list[T], n: int) -> Iterator[list[T]]:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal, TypeAlias, TypedDict, TypeVar, Union
+from typing import Any, Literal, TypeAlias, TypedDict, TypeVar, Union
 
 import shapely
 from shapely.geometry.base import BaseGeometry
@@ -65,7 +65,7 @@ class GeometryCollectionDict(TypedDict):
 class FeatureDict(TypedDict):
     type: Literal["Feature"]
     geometry: GeometryDict
-    properties: dict
+    properties: dict[str, Any]
 
 
 class GeoJSONDict(TypedDict):

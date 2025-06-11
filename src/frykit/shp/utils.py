@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from itertools import chain
-from typing import cast, overload
+from typing import Any, cast, overload
 
 import pandas as pd
 import shapefile
@@ -30,7 +30,7 @@ from frykit.shp.typing import (
     PolygonType,
 )
 from frykit.typing import PathType
-from frykit.utils import deprecator, format_type_error
+from frykit.utils import deprecator, format_type_error, get_package_version
 
 __all__ = [
     "orient_polygon",
@@ -67,6 +67,9 @@ def _orient(polygon: shapely.Polygon, ccw: bool = True) -> shapely.Polygon:
     return polygon
 
 
+_SHAPELY_21 = get_package_version("shapely") >= (2, 1, 0)
+
+
 @overload
 def orient_polygon(polygon: shapely.Polygon, ccw: bool = True) -> shapely.Polygon: ...
 
@@ -77,20 +80,22 @@ def orient_polygon(
 ) -> shapely.MultiPolygon: ...
 
 
-# TODO: shapely.orient_polygons in 2.1.0
 def orient_polygon(polygon: PolygonType, ccw: bool = True) -> PolygonType:
     """调整多边形的绕行方向。例如 ccw=True 时外环逆时针，内环顺时针。"""
-    match polygon:
-        case shapely.Polygon():
-            return _orient(polygon, ccw)
-        case shapely.MultiPolygon():
-            return shapely.MultiPolygon([_orient(part, ccw) for part in polygon.geoms])
-        case _:
-            raise TypeError(
-                format_type_error(
-                    "polygon", polygon, [shapely.Polygon, shapely.MultiPolygon]
-                )
+    if not isinstance(polygon, (shapely.Polygon, shapely.MultiPolygon)):
+        raise TypeError(
+            format_type_error(
+                "polygon", polygon, [shapely.Polygon, shapely.MultiPolygon]
             )
+        )
+
+    if _SHAPELY_21:
+        return shapely.orient_polygons(polygon, exterior_cw=not ccw)
+
+    if isinstance(polygon, shapely.Polygon):
+        return _orient(polygon, ccw)
+    else:
+        return shapely.MultiPolygon([_orient(part, ccw) for part in polygon.geoms])
 
 
 def _point_to_coordinates(point: shapely.Point) -> PointCoordinates:
@@ -311,7 +316,7 @@ def get_representative_xy(geometry: BaseGeometry) -> tuple[float, float]:
 
 
 def make_feature(
-    geometry_dict: GeometryDict, properties: dict | None = None
+    geometry_dict: GeometryDict, properties: dict[str, Any] | None = None
 ) -> FeatureDict:
     """用 geometry 和 properties 字典构造 GeoJSON 的 feature 字典"""
     feature = {"type": "Feature", "geometry": geometry_dict}

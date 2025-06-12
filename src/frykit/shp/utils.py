@@ -67,7 +67,7 @@ def _orient(polygon: shapely.Polygon, ccw: bool = True) -> shapely.Polygon:
     return polygon
 
 
-_SHAPELY_21 = get_package_version("shapely") >= (2, 1, 0)
+_SHAPELY_2_1 = get_package_version("shapely") >= (2, 1, 0)
 
 
 @overload
@@ -89,7 +89,7 @@ def orient_polygon(polygon: PolygonType, ccw: bool = True) -> PolygonType:
             )
         )
 
-    if _SHAPELY_21:
+    if _SHAPELY_2_1:
         return shapely.orient_polygons(polygon, exterior_cw=not ccw)
 
     if isinstance(polygon, shapely.Polygon):

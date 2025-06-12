@@ -850,7 +850,7 @@ def _get_geoaxes_boundary(ax: GeoAxes) -> shapely.Polygon:
     return boundary
 
 
-_MPL38 = get_package_version("matplotlib") >= (3, 8, 0)
+_MPL_3_8 = get_package_version("matplotlib") >= (3, 8, 0)
 
 
 def clip_by_polygon(
@@ -901,7 +901,7 @@ def clip_by_polygon(
     artists: list[Artist] = []
     for a in to_list(artist):
         match a:
-            case ContourSet() if not _MPL38:
+            case ContourSet() if not _MPL_3_8:
                 artists.extend(a.collections)
             case Artist():
                 artists.append(a)

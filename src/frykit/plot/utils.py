@@ -185,7 +185,7 @@ def make_transformer(crs_from: CRS, crs_to: CRS) -> Transformer:
 def project_geometry(geometry: GeometryT, crs_from: CRS, crs_to: CRS) -> GeometryT:
     """对几何对象做投影"""
     if crs_from == crs_to:
-        return geometry
+        return geometry  # 直接返回不可变对象
 
     transformer = make_transformer(crs_from, crs_to)
 

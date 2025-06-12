@@ -1,10 +1,10 @@
 [project]
 name = "frykit"
 version = "0.7.4"
-authors = [{name = "ZhaJiMan", email = "915023793@qq.com"}]
+authors = [{ name = "ZhaJiMan", email = "915023793@qq.com" }]
 description = "A simple toolbox for Matplotib and Cartopy"
 readme = "README.md"
-license = {file = "LICENSE"}
+license = { file = "LICENSE" }
 requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -32,3 +32,8 @@ build-backend = "setuptools.build_meta"
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F", "I"]
 ignore = ["F403", "E731"]
+
+[tool.typos.default.extend-identifiers]
+hav = "hav"
+arange2 = "arange2"
+NEO_modis_aer_od = "NEO_modis_aer_od"

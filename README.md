@@ -238,10 +238,12 @@ fplt.add_geometries(ax, geometries, fc='none', ec='k', lw=0.25)
 
 ```python
 import json
+import shapely.geometry as sgeom
 
 with open('天地图_行政区划可视化/中国_省.geojson') as f:
-    geojson_dict = json.load(f)
-geometries = fshp.get_geojson_geometries(geojson_dict)
+    geometries = [
+        sgeom.shape(feature["geometry"]) for feature in json.load(f)["features"]
+    ]
 
 fplt.add_geometries(ax, geometries, fc='none', ec='k', lw=0.25)
 ```

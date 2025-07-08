@@ -1,6 +1,6 @@
 [project]
 name = "frykit"
-version = "0.7.4"
+version = "0.7.5"
 authors = [{ name = "ZhaJiMan", email = "915023793@qq.com" }]
 description = "A simple toolbox for Matplotib and Cartopy"
 readme = "README.md"

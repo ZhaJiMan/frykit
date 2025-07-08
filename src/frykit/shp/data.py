@@ -11,7 +11,7 @@ import pandas as pd
 import shapely
 
 from frykit import get_data_dirpath
-from frykit.option import DataSource, get_option, validate_option
+from frykit._config import DataSource, config
 from frykit.shp.binary import BinaryReader
 from frykit.shp.typing import LineStringType, PolygonType
 from frykit.utils import deprecator, format_type_error, to_list
@@ -42,9 +42,9 @@ __all__ = [
 
 def _resolve_data_source(data_source: DataSource | None) -> DataSource:
     if data_source is None:
-        return get_option("data_source")
+        return config.data_source
     else:
-        validate_option("data_source", data_source)
+        config.validate("data_source", data_source)
         return data_source
 
 

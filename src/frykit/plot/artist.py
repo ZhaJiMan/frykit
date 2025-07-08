@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from functools import partial, wraps
 from threading import Lock
-from typing import Any, Literal, cast
+from typing import Any, Literal, TypeVar, cast
 from weakref import WeakKeyDictionary, WeakValueDictionary
 
 import numpy as np
@@ -16,7 +16,7 @@ from matplotlib.axes import Axes
 from matplotlib.backend_bases import RendererBase
 from matplotlib.cbook import normalize_kwargs
 from matplotlib.collections import PathCollection
-from matplotlib.figure import Figure
+from matplotlib.figure import Figure, SubFigure
 from matplotlib.patches import Rectangle
 from matplotlib.path import Path
 from matplotlib.quiver import Quiver, QuiverKey
@@ -26,8 +26,8 @@ from numpy import ma
 from numpy.typing import ArrayLike
 from shapely.geometry.base import BaseGeometry
 
+from frykit._config import config
 from frykit.calc import get_values_between, t_to_az
-from frykit.option import get_option, validate_option
 from frykit.plot.projection import PLATE_CARREE
 from frykit.plot.utils import (
     EMPTY_PATH,
@@ -37,10 +37,10 @@ from frykit.plot.utils import (
     project_geometry,
 )
 from frykit.shp.typing import PolygonType
-from frykit.typing import F
 from frykit.utils import format_literal_error, format_type_error
 
 _lock = Lock()
+F = TypeVar("F", bound=Callable)
 
 
 def _with_lock(func: F) -> F:
@@ -119,17 +119,17 @@ def _project_geometry_to_path(
 
 def _resolve_fast_transform(fast_transform: bool | None) -> bool:
     if fast_transform is None:
-        return get_option("fast_transform")
+        return config.fast_transform
     else:
-        validate_option("fast_transform", fast_transform)
+        config.validate("fast_transform", fast_transform)
         return fast_transform
 
 
 def _resolve_skip_outside(skip_outside: bool | None) -> bool:
     if skip_outside is None:
-        return get_option("skip_outside")
+        return config.skip_outside
     else:
-        validate_option("skip_outside", skip_outside)
+        config.validate("skip_outside", skip_outside)
         return skip_outside
 
 
@@ -241,7 +241,7 @@ class TextCollection(Artist):
             Text(xi, yi, si, **kwargs) for xi, yi, si in zip(self.x, self.y, self.s)
         ]
 
-    def set_figure(self, fig: Figure) -> None:
+    def set_figure(self, fig: Figure | SubFigure) -> None:
         super().set_figure(fig)
         for text in self.texts:
             text.set_figure(fig)
@@ -368,7 +368,7 @@ class QuiverLegend(QuiverKey):
     def _set_transform(self) -> None:
         pass  # 无效化 QuiveKey 的同名方法
 
-    def set_figure(self, fig: Figure) -> None:
+    def set_figure(self, fig: Figure | SubFigure) -> None:
         self.patch.set_figure(fig)
         super().set_figure(fig)
 
@@ -492,7 +492,7 @@ class Compass(PathCollection):
         self.text.set_rotation(-azimuth)
         self.set_transform(trans)
 
-    def set_figure(self, fig: Figure) -> None:
+    def set_figure(self, fig: Figure | SubFigure) -> None:
         self.text.set_figure(fig)
         super().set_figure(fig)
 
@@ -697,7 +697,7 @@ class Frame(Artist):
         fc = self.pc_dict["top"].get_facecolor()[-1]
         self.pc_dict["corner"].set_facecolor(fc)  # type: ignore
 
-    def set_figure(self, fig: Figure) -> None:
+    def set_figure(self, fig: Figure | SubFigure) -> None:
         super().set_figure(fig)
         for pc in self.pc_dict.values():
             pc.set_figure(fig)

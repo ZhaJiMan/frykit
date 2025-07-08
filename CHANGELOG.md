@@ -1,3 +1,9 @@
+## 0.7.5 (ongoing)
+
+- 弃用 `frykit.option` 模块，改为直接修改 `dataclass` 实例的属性来修改配置，以获取更好的 IDE 提示。例如：
+  - `frykit.config.data_source = 'tianditu'`
+  - `frykit.config.fast_transform = False`
+
 ## 0.7.4 (2025-06-27)
 
 - 移除 `frykit.data` 模块，将其中的 `get_data_dirpath` 函数直接放在 `frykit` 命名空间中。

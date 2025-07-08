@@ -3,9 +3,10 @@ from __future__ import annotations
 from functools import cache
 from pathlib import Path
 
+from frykit._config import config as config
 from frykit.option import *
 
-__version__ = "0.7.4"
+__version__ = "0.7.5"
 
 
 @cache

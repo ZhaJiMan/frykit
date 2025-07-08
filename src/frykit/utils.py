@@ -8,7 +8,7 @@ from importlib.metadata import version
 from pathlib import Path
 from typing import Any, TypeVar, overload
 
-from frykit.typing import F, PathType, T
+from frykit.typing import PathType
 
 
 def new_dir(dirpath: PathType) -> Path:
@@ -36,6 +36,9 @@ def renew_dir(dirpath: PathType) -> Path:
 def get_package_version(name: str) -> tuple[int, ...]:
     """获取包的版本号"""
     return tuple(map(int, version(name).split(".")))
+
+
+T = TypeVar("T")
 
 
 def split_list(lst: list[T], n: int) -> Iterator[list[T]]:
@@ -182,6 +185,9 @@ def format_literal_error(
 
 class DeprecationError(Exception):
     pass
+
+
+F = TypeVar("F", bound=Callable)
 
 
 @overload

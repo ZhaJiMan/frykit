@@ -685,6 +685,6 @@ def clear_data_cache() -> None:
     get_ocean.cache_clear()
 
 
-@deprecator(alternative=get_cn_line)
+@deprecator(alternative="frykit.shp.get_cn_line")
 def get_nine_line() -> shapely.MultiLineString:
     return cast(shapely.MultiLineString, get_cn_line())

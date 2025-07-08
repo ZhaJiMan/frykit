@@ -331,7 +331,7 @@ def make_geojson(features: list[FeatureDict]) -> GeoJSONDict:
     return {"type": "FeatureCollection", "features": features}
 
 
-@deprecator(alternative=geometry_to_shape)
+@deprecator(alternative="frykit.shp.geometry_to_shape")
 def polygon_to_polys(polygon: PolygonType) -> PolygonCoordinates:
     return geometry_to_shape(polygon)
 

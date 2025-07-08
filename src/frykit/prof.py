@@ -8,7 +8,6 @@ from typing import Any, TypeVar, cast
 from line_profiler import LineProfiler
 
 from frykit.typing import PathType
-from frykit.utils import deprecator
 
 F = TypeVar("F", bound=Callable)
 
@@ -43,7 +42,3 @@ def lprofiler(filepath: PathType) -> Callable[[F], F]:
         return cast(F, wrapper)
 
     return decorator
-
-
-@deprecator(raise_error=True)
-def timer(*args, **kwargs): ...

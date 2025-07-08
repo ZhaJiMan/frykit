@@ -222,6 +222,6 @@ def polygon_mask2(
     return mask
 
 
-@deprecator(alternative=polygon_mask)
+@deprecator(alternative="frykit.shp.polygon_mask")
 def polygon_to_mask(polygon: PolygonType, x: ArrayLike, y: ArrayLike) -> NDArray:
     return polygon_mask(polygon, x, y, include_boundary=False)

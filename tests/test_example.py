@@ -1,15 +1,18 @@
 import subprocess
 from pathlib import Path
+from subprocess import CalledProcessError
 from unittest import TestCase
 
 from frykit.utils import chdir_context, new_dir
 
 
 class TestExample(TestCase):
+    def setUp(self) -> None:
+        new_dir("image")
+
     @chdir_context("example")
     def test_run(self) -> None:
         """运行所有示例脚本"""
-        new_dir("image")
         for filepath in Path(".").glob("*.py"):
             if filepath.stem in {"clabel", "river", "nerv_style"}:
                 continue
@@ -21,6 +24,6 @@ class TestExample(TestCase):
                     text=True,
                 )
                 print(f"[OK] {filepath.stem}")
-            except subprocess.CalledProcessError as e:
+            except CalledProcessError as e:
                 print(f"[FAIL] {filepath.stem}")
                 print(e.stderr)

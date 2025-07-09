@@ -1,14 +1,16 @@
 from __future__ import annotations
 
+import os
 import shutil
 import warnings
-from collections.abc import Callable, Hashable, Iterable, Iterator
+from collections.abc import Callable, Generator, Iterable, Iterator
+from contextlib import contextmanager
 from functools import wraps
 from importlib.metadata import version
 from pathlib import Path
-from typing import Any, TypeVar, overload
+from typing import Any, overload
 
-from frykit.typing import PathType
+from frykit.typing import F, HashableT, PathType, T
 
 
 def new_dir(dirpath: PathType) -> Path:
@@ -33,12 +35,20 @@ def renew_dir(dirpath: PathType) -> Path:
     return new_dir(del_dir(dirpath))
 
 
+@contextmanager
+def chdir_context(dirpath: PathType) -> Generator[None]:
+    """临时切换工作目录的上下文管理器"""
+    cwd = Path.cwd()
+    try:
+        os.chdir(str(dirpath))
+        yield
+    finally:
+        os.chdir(str(cwd))
+
+
 def get_package_version(name: str) -> tuple[int, ...]:
     """获取包的版本号"""
     return tuple(map(int, version(name).split(".")))
-
-
-T = TypeVar("T")
 
 
 def split_list(lst: list[T], n: int) -> Iterator[list[T]]:
@@ -70,9 +80,6 @@ def to_list(obj: Any) -> list:
         return list(obj)
     except TypeError:
         return [obj]
-
-
-HashableT = TypeVar("HashableT", bound=Hashable)
 
 
 def compare_sets(
@@ -185,9 +192,6 @@ def format_literal_error(
 
 class DeprecationError(Exception):
     pass
-
-
-F = TypeVar("F", bound=Callable)
 
 
 @overload

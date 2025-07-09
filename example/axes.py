@@ -1,3 +1,5 @@
+"""将非 GeoAxes 的普通 Axes 当作 PlateCarree 投影的地图，绘制中国地图"""
+
 import matplotlib.pyplot as plt
 
 import frykit.plot as fplt

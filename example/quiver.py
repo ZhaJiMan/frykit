@@ -1,3 +1,9 @@
+"""
+绘制风场箭头并用国界裁剪
+
+需要安装 scipy
+"""
+
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.ndimage import gaussian_filter

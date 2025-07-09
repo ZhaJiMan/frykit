@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from functools import partial, wraps
 from threading import Lock
-from typing import Any, Literal, TypeVar, cast
+from typing import Any, Literal, cast
 from weakref import WeakKeyDictionary, WeakValueDictionary
 
 import numpy as np
@@ -26,8 +26,8 @@ from numpy import ma
 from numpy.typing import ArrayLike
 from shapely.geometry.base import BaseGeometry
 
-from frykit._config import config
 from frykit.calc import get_values_between, t_to_az
+from frykit.configuration import config
 from frykit.plot.projection import PLATE_CARREE
 from frykit.plot.utils import (
     EMPTY_PATH,
@@ -37,10 +37,10 @@ from frykit.plot.utils import (
     project_geometry,
 )
 from frykit.shp.typing import PolygonType
+from frykit.typing import F
 from frykit.utils import format_literal_error, format_type_error
 
 _lock = Lock()
-F = TypeVar("F", bound=Callable)
 
 
 def _with_lock(func: F) -> F:

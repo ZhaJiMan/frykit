@@ -1,8 +1,9 @@
 ## 0.7.5 (ongoing)
 
-- 弃用 `frykit.option` 模块，改为直接修改 `dataclass` 实例的属性来修改配置，以获取更好的 IDE 提示。例如：
+- 用 `frykit.configuration` 模块替代 `frykit.option` 模块，通过直接修改 `dataclass` 实例的属性来修改配置，同时获得更好的 IDE 提示。例如：
   - `frykit.config.data_source = 'tianditu'`
   - `frykit.config.fast_transform = False`
+- 新增临时切换工作目录的 `chdir_context` 上下文管理器。
 
 ## 0.7.4 (2025-06-27)
 

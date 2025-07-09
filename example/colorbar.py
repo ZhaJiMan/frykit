@@ -1,3 +1,13 @@
+"""
+展示 frykit.plot 里 colorbar 相关函数的效果：
+
+- make_qualitative_palette
+- CenteredBoundaryNorm
+- plot_colormap
+
+需要安装 cmaps
+"""
+
 import cmaps
 import matplotlib.pyplot as plt
 
@@ -5,7 +15,7 @@ import frykit.plot as fplt
 
 
 def plot_qualitative_cbar(ax):
-    """画出 make_qualitative_cmap 的效果"""
+    """画出 make_qualitative_palette 的效果"""
     colors = [
         "orangered",
         "orange",

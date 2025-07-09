@@ -1,3 +1,9 @@
+"""
+绘制 LineString 类型的河流 shapefile
+
+需要手动下载河流数据
+"""
+
 import matplotlib.pyplot as plt
 from cartopy.io.shapereader import Reader
 

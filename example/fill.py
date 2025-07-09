@@ -1,3 +1,5 @@
+"""模仿 GeoDataFrame.plot，按数值给每个省份填色"""
+
 import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 import numpy as np

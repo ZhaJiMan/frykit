@@ -1,3 +1,5 @@
+"""绘制省市县三个级别的地图并标注地名"""
+
 import matplotlib.pyplot as plt
 
 import frykit.plot as fplt

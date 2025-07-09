@@ -1,3 +1,5 @@
+"""比较高德和天地图数据在东北和台湾的差异"""
+
 import matplotlib.pyplot as plt
 
 import frykit

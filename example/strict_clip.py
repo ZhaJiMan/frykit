@@ -1,3 +1,5 @@
+"""当 GeoAxes 的边界不是矩形时，用 strict_clip 参数防止裁剪出界"""
+
 import matplotlib.pyplot as plt
 
 import frykit.plot as fplt

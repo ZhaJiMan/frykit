@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Generator, Mapping
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, fields
 from typing import Any, Literal, TypeAlias, TypedDict, cast
@@ -30,7 +30,7 @@ class ConfigDict(TypedDict):
 
 
 # TODO: 线程安全
-@dataclass
+@dataclass(kw_only=True)
 class Config:
     """表示全局配置的类"""
 
@@ -39,9 +39,14 @@ class Config:
     skip_outside: bool = True
     strict_clip: bool = False
 
+    def __post_init__(self) -> None:
+        self._field_names = {field.name for field in fields(self)}
+        for name in self._field_names:
+            self._validate(name, getattr(self, name))
+
     def assert_field(self, name: str) -> None:
         """断言名字是否属于配置字段"""
-        if name not in {field.name for field in fields(self)}:
+        if name not in self._field_names:
             raise ValueError(f"不存在的配置：{name}")
 
     def _validate(self, name: str, value: Any) -> None:
@@ -65,22 +70,23 @@ class Config:
         """将配置转换为字典"""
         return cast(ConfigDict, asdict(self))
 
-    def update(self, config_dict: Mapping[str, Any]) -> None:
-        """用字典更新配置"""
+    def update(self, **kwargs: Any) -> None:
+        """更新配置"""
         # 校验完再更新，避免校验失败导致部分更新
-        for name, value in config_dict.items():
+        for name, value in kwargs.items():
             self.validate(name, value)
-        for name, value in config_dict.items():
+        for name, value in kwargs.items():
             super().__setattr__(name, value)
 
     @contextmanager
-    def context(self) -> Generator[None]:
+    def context(self, **kwargs: Any) -> Generator[None]:
         """创建可以临时修改配置的上下文"""
         config_dict = self.to_dict()
         try:
+            self.update(**kwargs)
             yield
         finally:
-            self.update(config_dict)
+            self.update(**config_dict)
 
 
 config = Config()

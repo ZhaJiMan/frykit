@@ -1,3 +1,9 @@
+"""
+模仿 EVA 中 NERV 风格的地图
+
+需要安装 opencc 将省名繁体化，并安装 FOT-Matisse Pro 字体
+"""
+
 import matplotlib.pyplot as plt
 import opencc
 

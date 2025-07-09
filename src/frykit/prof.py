@@ -3,13 +3,11 @@ from __future__ import annotations
 import cProfile
 from collections.abc import Callable
 from functools import wraps
-from typing import Any, TypeVar, cast
+from typing import Any, cast
 
 from line_profiler import LineProfiler
 
-from frykit.typing import PathType
-
-F = TypeVar("F", bound=Callable)
+from frykit.typing import F, PathType
 
 
 def cprofiler(filepath: PathType) -> Callable[[F], F]:

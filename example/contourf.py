@@ -1,3 +1,9 @@
+"""
+绘制等值线填色图，添加南海小地图，并用国界裁剪填色图
+
+需要安装 scipy
+"""
+
 import matplotlib.pyplot as plt
 import numpy as np
 from cartopy.feature import LAND

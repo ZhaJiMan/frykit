@@ -2,7 +2,7 @@ from collections.abc import Generator, Mapping
 from contextlib import contextmanager
 from typing import Any
 
-from frykit._config import ConfigDict, config
+from frykit.configuration import ConfigDict, config
 from frykit.utils import deprecator
 
 __all__ = [
@@ -44,6 +44,5 @@ def validate_option(name: str, value: Any) -> None:
 @contextmanager
 def option_context(options: Mapping[str, Any]) -> Generator[None]:
     """临时在上下文中用键值对更新配置"""
-    with config.context():
-        config.update(options)
+    with config.context(**options):
         yield

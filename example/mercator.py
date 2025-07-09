@@ -1,3 +1,11 @@
+"""
+在 Web Mercator 投影的地图上绘制三种连线：
+
+- 经纬度连线
+- 等角航线
+- 大圆航线
+"""
+
 # https://scitools.org.uk/cartopy/docs/latest/matplotlib/intro.html
 import matplotlib.pyplot as plt
 import numpy as np

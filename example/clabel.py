@@ -1,3 +1,9 @@
+"""
+裁剪等值线填色图、等值线及其标签
+
+需要在 GUI 窗口里用鼠标点击决定标签位置
+"""
+
 import matplotlib.pyplot as plt
 import numpy as np
 

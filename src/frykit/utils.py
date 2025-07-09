@@ -40,10 +40,10 @@ def chdir_context(dirpath: PathType) -> Generator[None]:
     """临时切换工作目录的上下文管理器"""
     cwd = Path.cwd()
     try:
-        os.chdir(str(dirpath))
+        os.chdir(dirpath)
         yield
     finally:
-        os.chdir(str(cwd))
+        os.chdir(cwd)
 
 
 def get_package_version(name: str) -> tuple[int, ...]:

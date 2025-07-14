@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Any, TypeAlias, cast
 
 import numpy as np
@@ -53,8 +54,28 @@ def make_gif(images: Sequence[ImageInput], filepath: PathType, **kwargs: Any) ->
     )
 
 
+# numpy 1.20 后满足 __array__ 协议的对象会被自动转换为 numpy 数组，导致无法构造 object 数组
+def _images_to_array2d(images: Any) -> NDArray[Any]:
+    for obj in images:
+        if obj is None or isinstance(obj, (str, Path, Image.Image)):
+            arr = np.empty((1, len(images)), dtype=object)
+            for i, image in enumerate(images):
+                arr[0, i] = image
+        else:
+            arr = np.empty((len(images), len(obj)), dtype=object)
+            for i in range(len(images)):
+                for j in range(len(obj)):
+                    arr[i, j] = images[i][j]
+        break
+    else:
+        arr = np.empty((0, 0), dtype=object)
+
+    return arr
+
+
+# TODO: type hint
 def merge_images(
-    images: Any,  # TODO: type hint
+    images: Any,
     mode: str | None = None,
     bgcolor: float | tuple[float, ...] | str | None = "white",
 ) -> Image.Image:
@@ -72,26 +93,22 @@ def merge_images(
         合并后图片的 mode。默认为 None，表示采用第一张图片的 mode。
 
     bgcolor : float, tuple of float, str or None, default 'white'
-        合并后图片的背景颜色。默认为白色。
+        合并后图片的背景颜色。None 表示不初始化，默认为白色。
 
     Returns
     -------
     merged : Image
         合并后的图片
     """
-    images = np.array(images, dtype=object)
-    images = np.atleast_2d(images)
-    if images.ndim > 2:
-        raise ValueError("images 的维度不能超过 2")
-
     max_width = 0
     max_height = 0
     first_image = None
-    for index in np.ndindex(images.shape):
-        if images[index] is None:
+    arr = _images_to_array2d(images)
+    for index in np.ndindex(arr.shape):
+        if arr[index] is None:
             continue
-        image = _read_image(images[index])
-        images[index] = image
+        image = _read_image(arr[index])  # type: ignore
+        arr[index] = image
         if first_image is None:
             first_image = image
         max_width = max(max_width, image.width)
@@ -100,7 +117,7 @@ def merge_images(
     if first_image is None:
         raise ValueError("images 为空或者全为 None")
 
-    nrows, ncols = images.shape
+    nrows, ncols = arr.shape
     merged = Image.new(
         mode=first_image.mode if mode is None else mode,
         size=(ncols * max_width, nrows * max_height),
@@ -108,7 +125,7 @@ def merge_images(
     )
 
     # 居中粘贴
-    for (i, j), image in np.ndenumerate(images):
+    for (i, j), image in np.ndenumerate(arr):
         if image is not None:
             left = j * max_width + (max_width - image.width) // 2
             top = i * max_height + (max_height - image.height) // 2
@@ -117,7 +134,7 @@ def merge_images(
     return merged
 
 
-def split_image(image: ImageInput, shape: int | tuple[int, int]) -> NDArray:
+def split_image(image: ImageInput, shape: int | tuple[int, int]) -> NDArray[Any]:
     """
     将一张图片分割成形如 shape 的图片数组
 

@@ -12,10 +12,10 @@ import frykit.plot as fplt
 
 # 读取数据
 data = fplt.load_test_data()
-X, Y = np.meshgrid(data["longitude"], data["latitude"])
-t2m = gaussian_filter(data["t2m"] - 273.15, sigma=1)
-u10 = gaussian_filter(data["u10"], sigma=1)
-v10 = gaussian_filter(data["v10"], sigma=1)
+X, Y = np.meshgrid(data.lon, data.lat)
+t2m = gaussian_filter(data.t2m - 273.15, sigma=1)
+u10 = gaussian_filter(data.u10, sigma=1)
+v10 = gaussian_filter(data.v10, sigma=1)
 
 # 设置投影
 map_crs = fplt.CN_AZIMUTHAL_EQUIDISTANT

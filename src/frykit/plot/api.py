@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import math
 from collections.abc import Iterable, Sequence
+from dataclasses import dataclass
 from functools import wraps
-from typing import Any, Literal, TypedDict, cast
+from typing import Any, Literal, cast
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -2226,25 +2227,26 @@ def letter_axes(
     return texts
 
 
-class TestData(TypedDict):
-    longitude: NDArray
-    latitude: NDArray
-    t2m: NDArray
-    u10: NDArray
-    v10: NDArray
+@dataclass
+class TestData:
+    lon: NDArray[np.float32]
+    lat: NDArray[np.float32]
+    t2m: NDArray[np.float32]
+    u10: NDArray[np.float32]
+    v10: NDArray[np.float32]
 
 
 def load_test_data() -> TestData:
     """读取测试用的数据。包含地表 2m 气温（K）和水平 10m 风速。"""
     filepath = get_data_dirpath() / "test.npz"
     with np.load(filepath) as f:
-        return {
-            "longitude": f["longitude"],
-            "latitude": f["latitude"],
-            "t2m": f["t2m"],
-            "u10": f["u10"],
-            "v10": f["v10"],
-        }
+        return TestData(
+            lon=f["longitude"],
+            lat=f["latitude"],
+            t2m=f["t2m"],
+            u10=f["u10"],
+            v10=f["v10"],
+        )
 
 
 def savefig(fname: Any, fig: Figure | None = None, **kwargs: Any) -> None:

@@ -13,8 +13,8 @@ import frykit.plot as fplt
 
 # 读取数据
 data = fplt.load_test_data()
-X, Y = np.meshgrid(data["longitude"], data["latitude"])
-Z = gaussian_filter(data["t2m"] - 273.15, sigma=1)
+X, Y = np.meshgrid(data.lon, data.lat)
+Z = gaussian_filter(data.t2m - 273.15, sigma=1)
 
 # 设置投影
 map_crs = fplt.CN_AZIMUTHAL_EQUIDISTANT

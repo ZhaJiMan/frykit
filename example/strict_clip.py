@@ -11,9 +11,6 @@ path = fplt.box_path(*extents).interpolated(100)
 
 # 加载数据
 data = fplt.load_test_data()
-lon = data["longitude"]
-lat = data["latitude"]
-t2m = data["t2m"]
 
 # 设置地图
 crs = fplt.PLATE_CARREE
@@ -30,11 +27,11 @@ for i, ax in enumerate(axes):
     ax.gridlines(draw_labels=True, rotate_labels=False, color="k", ls="--")
 
 # 非严格裁剪会漏出来一点
-pc1 = axes[0].pcolormesh(lon, lat, t2m, transform=crs)
+pc1 = axes[0].pcolormesh(data.lon, data.lat, data.t2m, transform=crs)
 fplt.clip_by_cn_border(pc1)
 
 # 严格裁剪
-pc2 = axes[1].pcolormesh(lon, lat, t2m, transform=crs)
+pc2 = axes[1].pcolormesh(data.lon, data.lat, data.t2m, transform=crs)
 fplt.clip_by_cn_border(pc2, strict_clip=True)
 
 axes[0].set_title("strict_clip=False", fontsize="large", color="r")

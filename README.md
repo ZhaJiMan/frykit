@@ -274,9 +274,9 @@ fplt.add_cn_line(ax)
 
 data = fplt.load_test_data()
 cf = ax.contourf(
-    data['longitude'],
-    data['latitude'],
-    data['t2m'],
+    data.lon,
+    data.lat,
+    data.t2m,
     levels=20,
     cmap='rainbow',
     transform=fplt.PLATE_CARREE,

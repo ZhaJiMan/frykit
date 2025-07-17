@@ -2,7 +2,7 @@ from collections.abc import Generator, Mapping
 from contextlib import contextmanager
 from typing import Any
 
-from frykit.configuration import ConfigDict, config
+from frykit.conf import ConfigDict, config
 from frykit.utils import deprecator
 
 __all__ = [

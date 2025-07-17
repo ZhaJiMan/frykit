@@ -20,14 +20,14 @@ for ax in axes[:, 1]:
     ax.set_title("tianditu", fontsize="x-large")
 
 # 临时设置数据源
-with frykit.option_context({"data_source": "amap"}):
+with frykit.config.context(data_source="amap"):
     fplt.add_cn_province(axes[0, 0], fc=colors)
     fplt.label_cn_province(axes[0, 0])
 
     fplt.add_cn_district(axes[1, 0], fc=colors)
     fplt.label_cn_district(axes[1, 0])
 
-with frykit.option_context({"data_source": "tianditu"}):
+with frykit.config.context(data_source="tianditu"):
     fplt.add_cn_province(axes[0, 1], fc=colors)
     fplt.label_cn_province(axes[0, 1])
     fplt.add_cn_district(axes[1, 1], fc=colors)

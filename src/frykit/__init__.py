@@ -3,7 +3,7 @@ from __future__ import annotations
 from functools import cache
 from pathlib import Path
 
-from frykit.configuration import config as config
+from frykit.conf import config as config
 from frykit.option import *
 
 __version__ = "0.7.5"

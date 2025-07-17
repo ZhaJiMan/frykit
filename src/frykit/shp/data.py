@@ -11,7 +11,7 @@ import pandas as pd
 import shapely
 
 from frykit import get_data_dirpath
-from frykit.configuration import DataSource, config
+from frykit.conf import DataSource, config
 from frykit.shp.binary import BinaryReader
 from frykit.shp.typing import LineStringType, PolygonType
 from frykit.utils import deprecator, format_type_error, to_list

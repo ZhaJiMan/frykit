@@ -27,7 +27,7 @@ from numpy.typing import ArrayLike
 from shapely.geometry.base import BaseGeometry
 
 from frykit.calc import get_values_between, t_to_az
-from frykit.configuration import config
+from frykit.conf import config
 from frykit.plot.projection import PLATE_CARREE
 from frykit.plot.utils import (
     EMPTY_PATH,

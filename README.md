@@ -129,10 +129,12 @@ tianditu_cities = fshp.get_cn_city(data_source='tianditu')
 
 # 在脚本开头设置全局数据源
 import frykit
-frykit.set_option({'data_source': 'tianditu'})
+frykit.config.data_source = 'tianditu'            # frykit >= 0.7.5
+# frykit.set_option({'data_source': 'tianditu'})  # frykit <= 0.7.4
 
 # 用上下文管理器临时设置数据源
-with frykit.option_context({'data_source': 'tianditu'}):
+with frykit.config.context(data_source='tianditu'):          # frykit >= 0.7.5
+#  with frykit.option_context({'data_source': 'tianditu'}):  # frykit <= 0.7.4
     cities = fshp.get_cn_city()
     some_function(cities)
 ```

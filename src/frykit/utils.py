@@ -8,7 +8,7 @@ from contextlib import contextmanager
 from functools import wraps
 from importlib.metadata import version
 from pathlib import Path
-from typing import Any, overload
+from typing import Any, Protocol, cast, overload
 
 from frykit.typing import F, HashableT, PathType, T
 
@@ -62,15 +62,7 @@ def split_list(lst: list[T], n: int) -> Iterator[list[T]]:
         start = stop
 
 
-@overload
-def to_list(obj: Iterable[T]) -> list[T]: ...
-
-
-@overload
-def to_list(obj: T) -> list[T]: ...
-
-
-def to_list(obj: Any) -> list:
+def to_list(obj: Any) -> list[Any]:
     """可迭代对象转为列表，非可迭代对象和字符串用 list 包装。"""
     if isinstance(obj, str):
         return [obj]
@@ -99,17 +91,18 @@ def join_with_cn_comma(strings: Iterable[str]) -> str:
     return " 或 ".join("、".join(strings).rsplit("、", 1))
 
 
-def _get_full_name(obj: Any) -> str:
-    """获取对象的 {__module__}.{__qualname__}"""
-    module = getattr(obj, "__module__", None)
-    qualname = getattr(obj, "__qualname__", None)
-    if module is None or qualname is None:
-        raise ValueError("obj 的 __module__ 和 __qualname__ 属性不能为 None")
+class HasFullName(Protocol):
+    __module__: str
+    __qualname__: str
 
-    if module in {"__main__", "builtins"}:
-        return qualname
+
+def get_full_name(obj: HasFullName) -> str:
+    # 类方法无法用 runtime_checkable 检查
+    assert hasattr(obj, "__module__") and hasattr(obj, "__qualname__")
+    if obj.__module__ in {"__main__", "builtins"}:
+        return obj.__qualname__
     else:
-        return f"{module}.{qualname}"
+        return f"{obj.__module__}.{obj.__qualname__}"
 
 
 def format_type_error(
@@ -128,7 +121,7 @@ def format_type_error(
 
     expected_type: str, type or iterable object of str and type
         期望参数值是什么类型，在消息中用来表示 param_value 的类型与期望不符。
-        可以是字符串、type，或一组字符串和 type。字符串用来表示一些不方便表示的类型。
+        可以是字符串、类型，或一组字符串和类型。字符串用来表示一些不方便表示的类型。
 
     Returns
     -------
@@ -141,7 +134,7 @@ def format_type_error(
             case str():
                 names.append(typ)
             case type():
-                names.append(_get_full_name(typ))
+                names.append(get_full_name(typ))
             case _:
                 raise TypeError(format_type_error("expected_type", typ, [str, type]))
 
@@ -149,7 +142,7 @@ def format_type_error(
         raise ValueError("expected_type 不能为空")
 
     expected_type_str = join_with_cn_comma(names)
-    actual_type_str = _get_full_name(type(param_value))
+    actual_type_str = get_full_name(type(param_value))
     msg = f"{param_name} 必须是 {expected_type_str} 类型，但传入的是 {actual_type_str} 类型"
 
     return msg
@@ -212,6 +205,7 @@ def deprecator(
 ) -> Callable[[F], F]: ...
 
 
+# TODO: 类装饰器
 def deprecator(
     deprecated: F | None = None,
     *,
@@ -248,14 +242,14 @@ def deprecator(
 
         return decorator
 
-    msg = f"{_get_full_name(deprecated)} 已弃用"
+    msg = f"{get_full_name(deprecated)} 已弃用"
     if alternative is not None:
         names = []
         for func in to_list(alternative):
             if isinstance(func, str):
                 names.append(func)
             elif callable(func):
-                names.append(_get_full_name(func))
+                names.append(get_full_name(func))
             else:
                 raise TypeError(
                     format_type_error("alternative", func, [str, "callable"])
@@ -274,3 +268,36 @@ def deprecator(
             return deprecated(*args, **kwargs)
 
     return wrapper
+
+
+def simple_deprecator(reason: str, raise_error: bool = False) -> Callable[[F], F]:
+    """
+    提示函数弃用的装饰器
+
+    Parameters
+    ----------
+    reason : str
+        弃用原因。可以用 {name} 占位符表示被弃用的函数名。
+
+    raise_error : bool, default False
+        是否抛出错误。默认为 False，表示仅抛出警告。
+
+    Returns
+    -------
+    callable
+        以被弃用函数为参数的装饰器
+    """
+
+    def decorator(func: F) -> F:
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            msg = reason.format(name=get_full_name(func))
+            if raise_error:
+                raise DeprecationError(msg)
+            else:
+                warnings.warn(msg, DeprecationWarning, stacklevel=2)
+                return func(*args, **kwargs)
+
+        return cast(F, wrapper)
+
+    return decorator

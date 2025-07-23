@@ -7,6 +7,7 @@
 - 修正 `merge_images` 函数输入一组形状相同的 `Image` 对象时会报错的问题。
 - 修改 `load_test_data` 函数的返回值为 `dataclass` 实例，并且经纬度变量的名字简化为 `lon` 和 `lat`。
 - 新增临时切换工作目录的 `chdir_context` 上下文管理器。
+- 新增更简化的 `simple_deprecator` 装饰器。
 
 ## 0.7.4 (2025-06-27)
 

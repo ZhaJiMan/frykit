@@ -3,7 +3,7 @@ from contextlib import contextmanager
 from typing import Any
 
 from frykit.conf import ConfigDict, config
-from frykit.utils import deprecator
+from frykit.utils import deprecator, simple_deprecator
 
 __all__ = [
     "get_option",
@@ -14,7 +14,7 @@ __all__ = [
 ]
 
 
-@deprecator(alternative="frykit.config.{name}")
+@simple_deprecator("{name} 已弃用，建议直接访问 frykit.config 对象的属性")
 def get_option(name: str) -> Any:
     """获取一条配置"""
     config.assert_field(name)
@@ -27,7 +27,7 @@ def get_options() -> ConfigDict:
     return config.to_dict()
 
 
-@deprecator(alternative="frykit.config.{name} = {value}")
+@simple_deprecator("{name} 已弃用，建议直接修改 frykit.config 对象的属性")
 def set_option(name: str, value: Any) -> None:
     """用键值对更新配置"""
     config.assert_field(name)

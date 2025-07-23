@@ -2266,7 +2266,7 @@ def get_font_names(sub: str | None = None) -> list[str]:
     return names
 
 
-@deprecator(alternative="frykit.plot.add_geometries")
+@deprecator(alternative=add_geometries)
 def add_geoms(
     ax: Axes,
     geoms: BaseGeometry | Sequence[BaseGeometry],
@@ -2285,7 +2285,7 @@ def add_geoms(
     )
 
 
-@deprecator(alternative="frykit.plot.add_cn_line")
+@deprecator(alternative=add_cn_line)
 def add_nine_line(
     ax: Axes, fast_transform: bool = True, skip_outside: bool = True, **kwargs: Any
 ) -> GeometryPathCollection:
@@ -2294,7 +2294,7 @@ def add_nine_line(
     )
 
 
-@deprecator(alternative="frykit.plot.make_qualitative_palette")
+@deprecator(alternative=make_qualitative_palette)
 def get_qualitative_palette(
     colors: list | NDArray,
 ) -> tuple[ListedColormap, Normalize, NDArray]:

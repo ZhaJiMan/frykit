@@ -30,7 +30,12 @@ from frykit.shp.typing import (
     PolygonType,
 )
 from frykit.typing import PathType
-from frykit.utils import deprecator, format_type_error, get_package_version
+from frykit.utils import (
+    deprecator,
+    format_type_error,
+    get_package_version,
+    simple_deprecator,
+)
 
 __all__ = [
     "orient_polygon",
@@ -90,7 +95,7 @@ def orient_polygon(polygon: PolygonType, ccw: bool = True) -> PolygonType:
         )
 
     if _SHAPELY_2_1:
-        return shapely.orient_polygons(polygon, exterior_cw=not ccw)
+        return shapely.orient_polygons(polygon, exterior_cw=not ccw)  # type: ignore
 
     if isinstance(polygon, shapely.Polygon):
         return _orient(polygon, ccw)
@@ -331,26 +336,26 @@ def make_geojson(features: list[FeatureDict]) -> GeoJSONDict:
     return {"type": "FeatureCollection", "features": features}
 
 
-@deprecator(alternative="frykit.shp.geometry_to_shape")
+@deprecator(alternative=geometry_to_shape)
 def polygon_to_polys(polygon: PolygonType) -> PolygonCoordinates:
     return geometry_to_shape(polygon)
 
 
-@deprecator(alternative="frykit.plot.geometry_to_path")
+@deprecator(alternative="frykit.plot.utils.geometry_to_path")
 def geom_to_path(geom: BaseGeometry):
     from frykit.plot.utils import geometry_to_path
 
     return geometry_to_path(geom)
 
 
-@deprecator(alternative="frykit.plot.path_to_polygon")
+@deprecator(alternative="frykit.plot.utils.path_to_polygon")
 def path_to_polygon(path) -> PolygonType:
     from frykit.plot.utils import path_to_polygon
 
     return path_to_polygon(path)
 
 
-@deprecator(alternative="frykit.plot.box_path")
+@deprecator(alternative="frykit.plot.utils.box_path")
 def box_path(x0: float, x1: float, y0: float, y1: float):
     from frykit.plot.utils import box_path
 
@@ -358,5 +363,8 @@ def box_path(x0: float, x1: float, y0: float, y1: float):
 
 
 class GeometryTransformer:
-    @deprecator(alternative="frykit.plot.project_geometry", raise_error=True)
+    @simple_deprecator(
+        "frykit.shp.utils.GeometryTransformer 已弃用，建议换用 frykit.plot.utils.project_geometry",
+        raise_error=True,
+    )
     def __init__(self, *args, **kwargs): ...

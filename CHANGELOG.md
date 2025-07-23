@@ -3,6 +3,7 @@
 - 用 `frykit.conf` 模块替代 `frykit.option` 模块，通过直接修改 `dataclass` 实例的属性来修改配置，以获得更好的 IDE 提示。例如：
   - `frykit.config.data_source = 'tianditu'`
   - `frykit.config.fast_transform = False`
+- `get_data_dirpath` 函数改名为 `get_data_dir`。跟路径相关的函数，参数名 `filepath` 和 `dirpath` 改名为 `file_path` 和 `dir_path`。
 - 修正 `merge_images` 函数输入一组形状相同的 `Image` 对象时会报错的问题。
 - 修改 `load_test_data` 函数的返回值为 `dataclass` 实例，并且经纬度变量的名字简化为 `lon` 和 `lat`。
 - 新增临时切换工作目录的 `chdir_context` 上下文管理器。

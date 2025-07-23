@@ -248,9 +248,9 @@ def dump_geojson(geojson_dict: GeoJSONDict) -> bytes:
     return dump_geometries(get_geojson_geometries(geojson_dict))
 
 
-def dump_shapefile(filepath: PathType) -> bytes:
+def dump_shapefile(file_path: PathType) -> bytes:
     """将 shapefile 文件里的几何对象编码成二进制"""
-    return dump_geometries(get_shapefile_geometries(filepath))
+    return dump_geometries(get_shapefile_geometries(file_path))
 
 
 def load_binary(binary: bytes) -> list[BaseGeometry]:
@@ -261,8 +261,8 @@ def load_binary(binary: bytes) -> list[BaseGeometry]:
 class BinaryReader:
     """读取二进制文件的类"""
 
-    def __init__(self, filepath: PathType) -> None:
-        self.file = open(filepath, "rb")
+    def __init__(self, file_path: PathType) -> None:
+        self.file = open(file_path, "rb")
         self.num_geometries = struct.unpack(UINT32, self.file.read(UINT32_SIZE))[0]
         self.binary_sizes = np.frombuffer(
             self.file.read(self.num_geometries * UINT32_SIZE), dtype=UINT32

@@ -23,7 +23,7 @@ def _read_image(image: ImageInput) -> Image.Image:
 
 
 # TODO: alpha
-def make_gif(images: Sequence[ImageInput], filepath: PathType, **kwargs: Any) -> None:
+def make_gif(images: Sequence[ImageInput], file_path: PathType, **kwargs: Any) -> None:
     """
     制作 gif 图。结果的 mode 和尺寸由第一张图决定。
 
@@ -32,7 +32,7 @@ def make_gif(images: Sequence[ImageInput], filepath: PathType, **kwargs: Any) ->
     images : sequence of ImageInput
         输入的一组图片
 
-    filepath : PathType
+    file_path : PathType
         输出 gif 图片的路径
 
     **kwargs
@@ -50,7 +50,7 @@ def make_gif(images: Sequence[ImageInput], filepath: PathType, **kwargs: Any) ->
     images = cast(list[Image.Image], images)
 
     images[0].save(
-        filepath, format="gif", save_all=True, append_images=images[1:], **kwargs
+        file_path, format="gif", save_all=True, append_images=images[1:], **kwargs
     )
 
 

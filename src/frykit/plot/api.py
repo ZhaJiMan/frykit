@@ -33,7 +33,7 @@ from numpy import ma
 from numpy.typing import ArrayLike, NDArray
 from shapely.geometry.base import BaseGeometry
 
-from frykit import get_data_dirpath
+from frykit import get_data_dir
 from frykit.calc import asarrays, get_values_between, lon_to_180
 from frykit.conf import DataSource, config
 from frykit.plot.artist import (
@@ -651,8 +651,8 @@ def _add_cn_texts(
         and mpl.rcParams["font.family"][0] == "sans-serif"
         and mpl.rcParams["font.sans-serif"][0] == "DejaVu Sans"
     ):
-        filepath = get_data_dirpath() / "zh_font.otf"
-        kwargs.setdefault("fontproperties", filepath)
+        file_path = get_data_dir() / "zh_font.otf"
+        kwargs.setdefault("fontproperties", file_path)
 
     return add_texts(
         ax=ax,
@@ -2130,9 +2130,9 @@ def make_qualitative_palette(
 
 def get_aod_cmap() -> ListedColormap:
     """返回适用于 AOD 的 cmap"""
-    filepath = get_data_dirpath() / "NEO_modis_aer_od.csv"
-    rgb = np.loadtxt(str(filepath), delimiter=",") / 256
-    cmap = ListedColormap(rgb)
+    file_path = get_data_dir() / "NEO_modis_aer_od.csv"
+    colors = np.loadtxt(str(file_path), delimiter=",") / 256
+    cmap = ListedColormap(colors)
 
     return cmap
 
@@ -2238,8 +2238,8 @@ class TestData:
 
 def load_test_data() -> TestData:
     """读取测试用的数据。包含地表 2m 气温（K）和水平 10m 风速。"""
-    filepath = get_data_dirpath() / "test.npz"
-    with np.load(filepath) as f:
+    file_path = get_data_dir() / "test.npz"
+    with np.load(file_path) as f:
         return TestData(
             lon=f["longitude"],
             lat=f["latitude"],

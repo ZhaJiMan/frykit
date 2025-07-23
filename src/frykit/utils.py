@@ -13,34 +13,34 @@ from typing import Any, overload
 from frykit.typing import F, HashableT, PathType, T
 
 
-def new_dir(dirpath: PathType) -> Path:
+def new_dir(dir_path: PathType) -> Path:
     """新建目录"""
-    dirpath = Path(dirpath)
-    dirpath.mkdir(parents=True, exist_ok=True)
+    dir_path = Path(dir_path)
+    dir_path.mkdir(parents=True, exist_ok=True)
 
-    return dirpath
+    return dir_path
 
 
-def del_dir(dirpath: PathType) -> Path:
+def del_dir(dir_path: PathType) -> Path:
     """删除目录"""
-    dirpath = Path(dirpath)
-    if dirpath.exists():
-        shutil.rmtree(dirpath)
+    dir_path = Path(dir_path)
+    if dir_path.exists():
+        shutil.rmtree(dir_path)
 
-    return dirpath
+    return dir_path
 
 
-def renew_dir(dirpath: PathType) -> Path:
+def renew_dir(dir_path: PathType) -> Path:
     """重建目录"""
-    return new_dir(del_dir(dirpath))
+    return new_dir(del_dir(dir_path))
 
 
 @contextmanager
-def chdir_context(dirpath: PathType) -> Generator[None]:
+def chdir_context(dir_path: PathType) -> Generator[None]:
     """临时切换工作目录的上下文管理器"""
     cwd = Path.cwd()
     try:
-        os.chdir(dirpath)
+        os.chdir(dir_path)
         yield
     finally:
         os.chdir(cwd)

@@ -4,12 +4,18 @@ version = "0.7.5"
 authors = [{ name = "ZhaJiMan", email = "915023793@qq.com" }]
 description = "A simple toolbox for Matplotib and Cartopy"
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: GIS",
+    "Topic :: Scientific/Engineering :: Visualization",
     "Operating System :: OS Independent",
-    "License :: OSI Approved :: MIT License",
 ]
 dependencies = [
     "pandas>=1.2.0",

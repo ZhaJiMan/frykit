@@ -585,8 +585,8 @@ def binning2d(
 
     values : (n1, n2, ...) array_like
         数据点的变量值。如果含多个通道，那么要求其形状：
-        - channels_last=True 时形如 (n1, n2, ..., c)
-        - channels_last=False 时形如 (c, n1, n2, ...)
+        - in_channels_last=True 时形如 (n1, n2, ..., c)
+        - in_channels_last=False 时形如 (c, n1, n2, ...)
 
     xbins : (nx + 1,) array_like
         用于划分 x 的 bins。要求数值单调递增或递减。

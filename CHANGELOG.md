@@ -1,4 +1,4 @@
-## 0.7.5 (ongoing)
+## 0.7.5 (2025-07-25)
 
 - 用 `frykit.conf` 模块替代 `frykit.option` 模块，通过直接修改 `dataclass` 实例的属性来修改配置，以获得更好的 IDE 提示。例如：
   - `frykit.config.data_source = 'tianditu'`

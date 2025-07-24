@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import math
+import warnings
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from functools import wraps
 from typing import Any, Literal, cast
 
@@ -2235,6 +2236,19 @@ class TestData:
     t2m: NDArray[np.float32]
     u10: NDArray[np.float32]
     v10: NDArray[np.float32]
+
+    def __getitem__(self, key: str) -> NDArray[np.float32]:
+        warnings.warn(
+            "TestData 从字典改为 dataclass，请直接访问属性",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+        data_dict = asdict(self)
+        if key in {"longitude", "latitude"}:
+            key = key[:3]
+
+        return data_dict[key]
 
 
 def load_test_data() -> TestData:

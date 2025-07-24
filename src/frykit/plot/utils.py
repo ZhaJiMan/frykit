@@ -111,7 +111,7 @@ def path_to_polygon(path: Path) -> PolygonType:
 
     invalid_flag = False
     collection: list[tuple[shapely.LinearRing, list[shapely.LinearRing]]] = []
-    indices = np.nonzero(path.codes == Path.MOVETO)[0][1:]
+    indices = np.nonzero(path.codes == Path.MOVETO)[0][1:]  # type: ignore
     for vertices in np.vsplit(path.vertices, indices):
         if not is_finite(vertices):
             invalid_flag = True
@@ -136,7 +136,7 @@ def path_to_polygon(path: Path) -> PolygonType:
 
 
 def _transform_geometry(
-    geometry: GeometryT, transform: Callable[[NDArray], NDArray]
+    geometry: GeometryT, transform: Callable[[NDArray[np.float64]], NDArray[np.float64]]
 ) -> GeometryT:
     """shapely.ops.transform 的修改版，会将变换后坐标含 nan 或 inf 的几何对象设为空对象。"""
     if isinstance(geometry, BaseGeometry) and geometry.is_empty:
@@ -189,7 +189,7 @@ def project_geometry(geometry: GeometryT, crs_from: CRS, crs_to: CRS) -> Geometr
 
     transformer = make_transformer(crs_from, crs_to)
 
-    def transform_coords(coords: NDArray) -> NDArray:
+    def transform_coords(coords: NDArray[np.float64]) -> NDArray[np.float64]:
         return np.column_stack(transformer.transform(coords[:, 0], coords[:, 1]))
 
     return _transform_geometry(geometry, transform_coords)

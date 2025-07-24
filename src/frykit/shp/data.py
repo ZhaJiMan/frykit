@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterable
 from enum import IntEnum
 from functools import cache
 from pathlib import Path
@@ -56,11 +56,11 @@ def _get_world_dir() -> Path:
     return get_data_dir() / "world"
 
 
-Level: TypeAlias = Literal["province", "city", "district"]
+AdminLevel: TypeAlias = Literal["province", "city", "district"]
 
 
 @cache
-def _get_cn_table(level: Level, data_source: DataSource) -> pd.DataFrame:
+def _get_cn_table(level: AdminLevel, data_source: DataSource) -> pd.DataFrame:
     file_path = _get_china_dir() / data_source / f"cn_{level}.csv"
     return pd.read_csv(file_path)
 
@@ -98,34 +98,36 @@ def get_cn_district_table(data_source: DataSource | None = None) -> pd.DataFrame
 def _get_index_locs(index: pd.Index, key: Any) -> list[int]:
     """保证返回 list[int] 类型的 Index.get_loc"""
     loc = index.get_loc(key)
-    if isinstance(loc, slice):
-        return list(range(len(index))[loc])
-    elif isinstance(loc, np.ndarray):
-        return np.nonzero(loc)[0].tolist()
-    else:
-        return [loc]
+    match loc:
+        case slice():
+            return list(range(len(index))[loc])
+        case np.ndarray():
+            return np.nonzero(loc)[0].tolist()
+        case _:
+            return [loc]
 
 
 NameOrAdcode: TypeAlias = int | str
 
 
 def _get_cn_locs(
-    names: pd.Index, adcodes: pd.Index, key: NameOrAdcode | Sequence[NameOrAdcode]
+    names: pd.Index, adcodes: pd.Index, key: NameOrAdcode | Iterable[NameOrAdcode]
 ) -> list[int]:
     locs = []
     for k in to_list(key):
-        if isinstance(k, str):
-            locs.extend(_get_index_locs(names, k))
-        elif isinstance(k, int):
-            locs.extend(_get_index_locs(adcodes, k))
-        else:
-            raise TypeError(format_type_error("key", k, [str, int]))
+        match k:
+            case str():
+                locs.extend(_get_index_locs(names, k))
+            case int():
+                locs.extend(_get_index_locs(adcodes, k))
+            case _:
+                raise TypeError(format_type_error("key", k, [str, int]))
 
     return locs
 
 
 def _get_cn_province_locs(
-    province: NameOrAdcode | Sequence[NameOrAdcode] | None,
+    province: NameOrAdcode | Iterable[NameOrAdcode] | None,
     data_source: DataSource | None,
 ) -> list[int]:
     df = _get_cn_province_table(data_source)
@@ -140,8 +142,8 @@ def _get_cn_province_locs(
 
 
 def _get_cn_city_locs(
-    city: NameOrAdcode | Sequence[NameOrAdcode] | None,
-    province: NameOrAdcode | Sequence[NameOrAdcode] | None,
+    city: NameOrAdcode | Iterable[NameOrAdcode] | None,
+    province: NameOrAdcode | Iterable[NameOrAdcode] | None,
     data_source: DataSource | None,
 ) -> list[int]:
     df = _get_cn_city_table(data_source)
@@ -166,9 +168,9 @@ def _get_cn_city_locs(
 
 
 def _get_cn_district_locs(
-    district: NameOrAdcode | Sequence[NameOrAdcode] | None,
-    city: NameOrAdcode | Sequence[NameOrAdcode] | None,
-    province: NameOrAdcode | Sequence[NameOrAdcode] | None,
+    district: NameOrAdcode | Iterable[NameOrAdcode] | None,
+    city: NameOrAdcode | Iterable[NameOrAdcode] | None,
+    province: NameOrAdcode | Iterable[NameOrAdcode] | None,
     data_source: DataSource | None,
 ) -> list[int]:
     df = _get_cn_district_table(data_source)
@@ -239,13 +241,13 @@ def get_cn_province_properties(
 
 @overload
 def get_cn_province_properties(
-    province: Sequence[NameOrAdcode] | None = None,
+    province: Iterable[NameOrAdcode] | None = None,
     data_source: DataSource | None = None,
 ) -> list[ProvinceProperties]: ...
 
 
 def get_cn_province_properties(
-    province: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
+    province: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
     data_source: DataSource | None = None,
 ) -> ProvinceProperties | list[ProvinceProperties]:
     """
@@ -253,7 +255,7 @@ def get_cn_province_properties(
 
     Parameters
     ----------
-    province : NameOrAdcode or sequence of NameOrAdcode or None, default None
+    province : NameOrAdcode or iterable object of NameOrAdcode or None, default None
         省名或 adcode。可以是多个省。默认为 None，表示所有省。
 
     data_source : {'amap', 'tianditu'} or None, default None
@@ -278,22 +280,22 @@ def get_cn_province_properties(
 @overload
 def get_cn_city_properties(
     city: NameOrAdcode,
-    province: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
+    province: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
     data_source: DataSource | None = None,
 ) -> CityProperties: ...
 
 
 @overload
 def get_cn_city_properties(
-    city: Sequence[NameOrAdcode] | None = None,
-    province: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
+    city: Iterable[NameOrAdcode] | None = None,
+    province: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
     data_source: DataSource | None = None,
 ) -> list[CityProperties]: ...
 
 
 def get_cn_city_properties(
-    city: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
-    province: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
+    city: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
+    province: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
     data_source: DataSource | None = None,
 ) -> CityProperties | list[CityProperties]:
     """
@@ -301,10 +303,10 @@ def get_cn_city_properties(
 
     Parameters
     ----------
-    city : NameOrAdcode or sequence of NameOrAdcode or None, default None
+    city : NameOrAdcode or iterable object of NameOrAdcode or None, default None
         市名或 adcode。可以是多个市。默认为 None，表示所有市。
 
-    province : NameOrAdcode or sequence of NameOrAdcode or None, default None
+    province : NameOrAdcode or iterable object of NameOrAdcode or None, default None
         省名或 adcode。表示指定某个省的所有市。可以是多个省。
         默认为 None，表示不指定省。
 
@@ -330,25 +332,25 @@ def get_cn_city_properties(
 @overload
 def get_cn_district_properties(
     district: NameOrAdcode,
-    city: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
-    province: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
+    city: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
+    province: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
     data_source: DataSource | None = None,
 ) -> DistrictProperties: ...
 
 
 @overload
 def get_cn_district_properties(
-    district: Sequence[NameOrAdcode] | None = None,
-    city: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
-    province: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
+    district: Iterable[NameOrAdcode] | None = None,
+    city: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
+    province: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
     data_source: DataSource | None = None,
 ) -> list[DistrictProperties]: ...
 
 
 def get_cn_district_properties(
-    district: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
-    city: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
-    province: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
+    district: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
+    city: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
+    province: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
     data_source: DataSource | None = None,
 ) -> DistrictProperties | list[DistrictProperties]:
     """
@@ -356,14 +358,14 @@ def get_cn_district_properties(
 
     Parameters
     ----------
-    district : NameOrAdcode or sequence of NameOrAdcode or None, default None
+    district : NameOrAdcode or iterable object of NameOrAdcode or None, default None
         县名或 adcode。可以是多个县。默认为 None，表示所有县。
 
-    city : NameOrAdcode or sequence of NameOrAdcode or None, default None
+    city : NameOrAdcode or iterable object of NameOrAdcode or None, default None
         市名或 adcode。表示指定某个市的所有县。可以是多个市。
         默认为 None，表示不指定市。
 
-    province : NameOrAdcode or sequence of NameOrAdcode or None, default None
+    province : NameOrAdcode or iterable object of NameOrAdcode or None, default None
         省名或 adcode。表示指定某个省的所有县。可以是多个省。
         默认为 None，表示不指定省。
 
@@ -414,7 +416,7 @@ def get_cn_district_names(
 
 
 @cache  # TODO: 不要加载所有数据
-def _get_cn_polygons(level: Level, data_source: DataSource) -> list[PolygonType]:
+def _get_cn_polygons(level: AdminLevel, data_source: DataSource) -> list[PolygonType]:
     file_path = _get_china_dir() / data_source / f"cn_{level}.bin"
     with BinaryReader(file_path) as reader:
         polygons = reader.geometries()
@@ -444,13 +446,13 @@ def get_cn_province(
 
 @overload
 def get_cn_province(
-    province: Sequence[NameOrAdcode] | None = None,
+    province: Iterable[NameOrAdcode] | None = None,
     data_source: DataSource | None = None,
 ) -> list[PolygonType]: ...
 
 
 def get_cn_province(
-    province: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
+    province: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
     data_source: DataSource | None = None,
 ) -> PolygonType | list[PolygonType]:
     """
@@ -458,7 +460,7 @@ def get_cn_province(
 
     Parameters
     ----------
-    province : NameOrAdcode or sequence of NameOrAdcode or None, default None
+    province : NameOrAdcode or iterable object of NameOrAdcode or None, default None
         省名或 adcode。可以是多个省。默认为 None，表示所有省。
 
     data_source : {'amap', 'tianditu'} or None, default None
@@ -482,22 +484,22 @@ def get_cn_province(
 @overload
 def get_cn_city(
     city: NameOrAdcode,
-    province: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
+    province: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
     data_source: DataSource | None = None,
 ) -> PolygonType: ...
 
 
 @overload
 def get_cn_city(
-    city: Sequence[NameOrAdcode] | None = None,
-    province: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
+    city: Iterable[NameOrAdcode] | None = None,
+    province: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
     data_source: DataSource | None = None,
 ) -> list[PolygonType]: ...
 
 
 def get_cn_city(
-    city: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
-    province: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
+    city: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
+    province: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
     data_source: DataSource | None = None,
 ) -> PolygonType | list[PolygonType]:
     """
@@ -505,10 +507,10 @@ def get_cn_city(
 
     Parameters
     ----------
-    city : NameOrAdcode or sequence of NameOrAdcode or None, default None
+    city : NameOrAdcode or iterable object of NameOrAdcode or None, default None
         市名或 adcode。可以是多个市。默认为 None，表示所有市。
 
-    province : NameOrAdcode or sequence of NameOrAdcode or None, default None
+    province : NameOrAdcode or iterable object of NameOrAdcode or None, default None
         省名或 adcode。表示指定某个省的所有市。可以是多个省。
         默认为 None，表示不指定省。
 
@@ -533,25 +535,25 @@ def get_cn_city(
 @overload
 def get_cn_district(
     district: NameOrAdcode,
-    city: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
-    province: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
+    city: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
+    province: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
     data_source: DataSource | None = None,
 ) -> PolygonType: ...
 
 
 @overload
 def get_cn_district(
-    district: Sequence[NameOrAdcode] | None = None,
-    city: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
-    province: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
+    district: Iterable[NameOrAdcode] | None = None,
+    city: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
+    province: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
     data_source: DataSource | None = None,
 ) -> list[PolygonType]: ...
 
 
 def get_cn_district(
-    district: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
-    city: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
-    province: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
+    district: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
+    city: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
+    province: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
     data_source: DataSource | None = None,
 ) -> PolygonType | list[PolygonType]:
     """
@@ -559,14 +561,14 @@ def get_cn_district(
 
     Parameters
     ----------
-    district : NameOrAdcode or sequence of NameOrAdcode or None, default None
+    district : NameOrAdcode or iterable object of NameOrAdcode or None, default None
         县名或 adcode。可以是多个县。默认为 None，表示所有县。
 
-    city : NameOrAdcode or sequence of NameOrAdcode or None, default None
+    city : NameOrAdcode or iterable object of NameOrAdcode or None, default None
         市名或 adcode。表示指定某个市的所有县。可以是多个市。
         默认为 None，表示不指定市。
 
-    province : NameOrAdcode or sequence of NameOrAdcode or None, default None
+    province : NameOrAdcode or iterable object of NameOrAdcode or None, default None
         省名或 adcode。表示指定某个省的所有县。可以是多个省。
         默认为 None，表示不指定省。
 
@@ -624,18 +626,18 @@ def get_cn_line(name: LineName = "九段线") -> LineStringType: ...
 
 
 @overload
-def get_cn_line(name: Sequence[LineName]) -> list[LineStringType]: ...
+def get_cn_line(name: Iterable[LineName]) -> list[LineStringType]: ...
 
 
 def get_cn_line(
-    name: LineName | Sequence[LineName] = "九段线",
+    name: LineName | Iterable[LineName] = "九段线",
 ) -> LineStringType | list[LineStringType]:
     """
     获取中国的修饰线段
 
     Parameters
     ----------
-    name : {'省界', '特别行政区界', '九段线', '未定国界'} or sequence of str, default '九段线'
+    name : {'省界', '特别行政区界', '九段线', '未定国界'} or iterable object of str, default '九段线'
         线段名称。可以是多种线段。默认为 '九段线'。
 
     Returns

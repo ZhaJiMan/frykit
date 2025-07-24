@@ -130,7 +130,7 @@ __all__ = [
 # TODO: 用 scatter 绘制 Point
 def add_geometries(
     ax: Axes,
-    geometries: BaseGeometry | Sequence[BaseGeometry],
+    geometries: BaseGeometry | Iterable[BaseGeometry],
     crs: CRS | None = None,
     fast_transform: bool | None = None,
     skip_outside: bool | None = None,
@@ -144,7 +144,7 @@ def add_geometries(
     ax : Axes
         目标 Axes
 
-    geometries : BaseGeometry or sequence of BaseGeometry
+    geometries : BaseGeometry or iterable object of BaseGeometry
         一个或一组几何对象
 
     crs : CRS or None, default None
@@ -179,10 +179,9 @@ def add_geometries(
     - cartopy.mpl.geoaxes.GeoAxes.add_geometries
     - geopandas.GeoDataFrame.plot
     """
-    geometries = cast(list[BaseGeometry], to_list(geometries))
     return GeometryPathCollection(
         ax=ax,
-        geometries=geometries,
+        geometries=to_list(geometries),
         crs=crs,
         fast_transform=fast_transform,
         skip_outside=skip_outside,
@@ -203,7 +202,7 @@ def _set_pc_kwargs(kwargs: dict) -> dict:
 
 def add_cn_province(
     ax: Axes,
-    province: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
+    province: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
     fast_transform: bool | None = None,
     skip_outside: bool | None = None,
     data_source: DataSource | None = None,
@@ -217,7 +216,7 @@ def add_cn_province(
     ax : Axes
         目标 Axes
 
-    province : NameOrAdcode or sequence of NameOrAdcode or None, default None
+    province : NameOrAdcode or iterable object of NameOrAdcode or None, default None
         省名或 adcode。可以是多个省。默认为 None，表示所有省。
 
     fast_transform : bool or None, default None
@@ -252,8 +251,8 @@ def add_cn_province(
 
 def add_cn_city(
     ax: Axes,
-    city: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
-    province: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
+    city: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
+    province: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
     fast_transform: bool | None = None,
     skip_outside: bool | None = None,
     data_source: DataSource | None = None,
@@ -267,10 +266,10 @@ def add_cn_city(
     ax : Axes
         目标 Axes
 
-    city : NameOrAdcode or sequence of NameOrAdcode or None, default None
+    city : NameOrAdcode or iterable object of NameOrAdcode or None, default None
         市名或 adcode。可以是多个市。默认为 None，表示所有市。
 
-    province : NameOrAdcode or sequence of NameOrAdcode or None, default None
+    province : NameOrAdcode or iterable object of NameOrAdcode or None, default None
         省名或 adcode。表示指定某个省的所有市。可以是多个省。
         默认为 None，表示不指定省。
 
@@ -306,9 +305,9 @@ def add_cn_city(
 
 def add_cn_district(
     ax: Axes,
-    district: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
-    city: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
-    province: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
+    district: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
+    city: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
+    province: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
     fast_transform: bool | None = None,
     skip_outside: bool | None = None,
     data_source: DataSource | None = None,
@@ -322,14 +321,14 @@ def add_cn_district(
     ax : Axes
         目标 Axes
 
-    district : NameOrAdcode or sequence of NameOrAdcode or None, default None
+    district : NameOrAdcode or iterable object of NameOrAdcode or None, default None
         县名或 adcode。可以是多个县。默认为 None，表示所有县。
 
-    city : NameOrAdcode or sequence of NameOrAdcode or None, default None
+    city : NameOrAdcode or iterable object of NameOrAdcode or None, default None
         市名或 adcode。表示指定某个市的所有县。可以是多个市。
         默认为 None，表示不指定市。
 
-    province : NameOrAdcode or sequence of NameOrAdcode or None, default None
+    province : NameOrAdcode or iterable object of NameOrAdcode or None, default None
         省名或 adcode。表示指定某个省的所有县。可以是多个省。
         默认为 None，表示不指定省。
 
@@ -410,7 +409,7 @@ def add_cn_border(
 
 def add_cn_line(
     ax: Axes,
-    name: LineName | Sequence[LineName] = "九段线",
+    name: LineName | Iterable[LineName] = "九段线",
     fast_transform: bool | None = None,
     skip_outside: bool | None = None,
     **kwargs: Any,
@@ -423,7 +422,7 @@ def add_cn_line(
     ax : Axes
         目标 Axes
 
-    name : {'省界', '特别行政区界', '九段线', '未定国界'} or sequence of str, default '九段线'
+    name : {'省界', '特别行政区界', '九段线', '未定国界'} or iterable object of str, default '九段线'
         线段名称。可以是多种线段。默认为 '九段线'。
 
     fast_transform : bool or None, default None
@@ -666,7 +665,7 @@ def _add_cn_texts(
 
 def label_cn_province(
     ax: Axes,
-    province: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
+    province: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
     short_name: bool = True,
     skip_outside: bool | None = None,
     data_source: DataSource | None = None,
@@ -680,7 +679,7 @@ def label_cn_province(
     ax : Axes
         目标 Axes
 
-    province : NameOrAdcode or sequence of NameOrAdcode or None, default None
+    province : NameOrAdcode or iterable object of NameOrAdcode or None, default None
         省名或 adcode。可以是多个省。默认为 None，表示所有省。
 
     short_name : bool, default True
@@ -717,8 +716,8 @@ def label_cn_province(
 
 def label_cn_city(
     ax: Axes,
-    city: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
-    province: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
+    city: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
+    province: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
     short_name: bool = True,
     skip_outside: bool | None = None,
     data_source: DataSource | None = None,
@@ -732,10 +731,10 @@ def label_cn_city(
     ax : Axes
         目标 Axes
 
-    city : NameOrAdcode or sequence of NameOrAdcode or None, default None
+    city : NameOrAdcode or iterable object of NameOrAdcode or None, default None
         市名或 adcode。可以是多个市。默认为 None，表示所有市。
 
-    province : NameOrAdcode or sequence of NameOrAdcode or None, default None
+    province : NameOrAdcode or iterable object of NameOrAdcode or None, default None
         省名或 adcode。表示指定某个省的所有市。可以是多个省。
         默认为 None，表示不指定省。
 
@@ -773,9 +772,9 @@ def label_cn_city(
 
 def label_cn_district(
     ax: Axes,
-    district: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
-    city: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
-    province: NameOrAdcode | Sequence[NameOrAdcode] | None = None,
+    district: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
+    city: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
+    province: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
     short_name: bool = True,
     skip_outside: bool | None = None,
     data_source: DataSource | None = None,
@@ -789,14 +788,14 @@ def label_cn_district(
     ax : Axes
         目标 Axes
 
-    district : NameOrAdcode or sequence of NameOrAdcode or None, default None
+    district : NameOrAdcode or iterable object of NameOrAdcode or None, default None
         县名或 adcode。可以是多个县。默认为 None，表示所有县。
 
-    city : NameOrAdcode or sequence of NameOrAdcode or None, default None
+    city : NameOrAdcode or iterable object of NameOrAdcode or None, default None
         市名或 adcode。表示指定某个市的所有县。可以是多个市。
         默认为 None，表示不指定市。
 
-    province : NameOrAdcode or sequence of NameOrAdcode or None, default None
+    province : NameOrAdcode or iterable object of NameOrAdcode or None, default None
         省名或 adcode。表示指定某个省的所有县。可以是多个省。
         默认为 None，表示不指定省。
 
@@ -1262,10 +1261,10 @@ def clip_by_ocean(
 def _set_axes_ticks(
     ax: Axes,
     extents: tuple[float, float, float, float] | Literal["global"],
-    major_xticks: NDArray,
-    major_yticks: NDArray,
-    minor_xticks: NDArray,
-    minor_yticks: NDArray,
+    major_xticks: NDArray[np.integer | np.floating],
+    major_yticks: NDArray[np.integer | np.floating],
+    minor_xticks: NDArray[np.integer | np.floating],
+    minor_yticks: NDArray[np.integer | np.floating],
     xformatter: Formatter,
     yformatter: Formatter,
 ) -> None:
@@ -1293,10 +1292,10 @@ def _set_axes_ticks(
 def _set_simple_geoaxes_ticks(
     ax: GeoAxes,
     extents: tuple[float, float, float, float] | Literal["global"],
-    major_xticks: NDArray,
-    major_yticks: NDArray,
-    minor_xticks: NDArray,
-    minor_yticks: NDArray,
+    major_xticks: NDArray[np.integer | np.floating],
+    major_yticks: NDArray[np.integer | np.floating],
+    minor_xticks: NDArray[np.integer | np.floating],
+    minor_yticks: NDArray[np.integer | np.floating],
     xformatter: Formatter,
     yformatter: Formatter,
 ) -> None:
@@ -1332,10 +1331,10 @@ def _set_simple_geoaxes_ticks(
 def _set_complex_geoaxes_ticks(
     ax: GeoAxes,
     extents: tuple[float, float, float, float] | Literal["global"],
-    major_xticks: NDArray,
-    major_yticks: NDArray,
-    minor_xticks: NDArray,
-    minor_yticks: NDArray,
+    major_xticks: NDArray[np.integer | np.floating],
+    major_yticks: NDArray[np.integer | np.floating],
+    minor_xticks: NDArray[np.integer | np.floating],
+    minor_yticks: NDArray[np.integer | np.floating],
     xformatter: Formatter,
     yformatter: Formatter,
 ) -> None:
@@ -1361,7 +1360,7 @@ def _set_complex_geoaxes_ticks(
     lineR = shapely.LineString([(x1, y0), (x1, y1)])
 
     def get_two_xticks(
-        xticks: NDArray, npts: int = 100
+        xticks: NDArray[np.integer | np.floating], npts: int = 100
     ) -> tuple[list[float], list[float], list[str], list[str]]:
         """获取地图上下边框的 x 刻度和刻度标签"""
         xticksB = []
@@ -1387,7 +1386,7 @@ def _set_complex_geoaxes_ticks(
         return xticksB, xticksT, xticklabelsB, xticklabelsT
 
     def get_two_yticks(
-        yticks: NDArray, npts: int = 100
+        yticks: NDArray[np.integer | np.floating], npts: int = 100
     ) -> tuple[list[float], list[float], list[str], list[str]]:
         """获取地图左右边框的 y 刻度和刻度标签"""
         yticksL = []
@@ -1454,7 +1453,9 @@ def _set_complex_geoaxes_ticks(
         tick.tick1line.set_alpha(0)
 
 
-def _interp_minor_ticks(major_ticks: NDArray, m: int) -> NDArray:
+def _interp_minor_ticks(
+    major_ticks: NDArray[np.integer | np.floating], m: int
+) -> NDArray[np.float64]:
     """在主刻度的每段间隔内线性插值出 m 个次刻度"""
     n = len(major_ticks)
     if n <= 1 or m == 0:
@@ -1631,8 +1632,8 @@ def add_quiver_legend(
     loc: Literal[
         "lower left", "lower right", "upper left", "upper right"
     ] = "lower right",
-    qk_kwargs: dict | None = None,
-    patch_kwargs: dict | None = None,
+    qk_kwargs: dict[str, Any] | None = None,
+    patch_kwargs: dict[str, Any] | None = None,
 ) -> QuiverLegend:
     """
     在 Axes 的角落添加 Quiver 的图例（带矩形背景的 QuiverKey）
@@ -1693,8 +1694,8 @@ def add_compass(
     angle: float | None = None,
     size: float = 20,
     style: Literal["arrow", "star", "circle"] = "arrow",
-    pc_kwargs: dict | None = None,
-    text_kwargs: dict | None = None,
+    pc_kwargs: dict[str, Any] | None = None,
+    text_kwargs: dict[str, Any] | None = None,
 ) -> Compass:
     """
     在 Axes 上添加指北针
@@ -2034,7 +2035,7 @@ def get_cross_section_xticks(
     nticks: int = 6,
     lon_formatter: Formatter | None = None,
     lat_formatter: Formatter | None = None,
-) -> tuple[NDArray, NDArray, list[str]]:
+) -> tuple[NDArray[np.float64], NDArray[np.float64], list[str]]:
     """
     返回垂直截面图所需的横坐标，刻度位置和刻度标签。
 
@@ -2069,7 +2070,7 @@ def get_cross_section_xticks(
         用经纬度表示的刻度标签
     """
     # 线性插值计算刻度的经纬度值
-    lons, lats = asarrays(lons, lats)
+    lons, lats = asarrays(lons, lats, dtype=np.float64)
     if lons.ndim != 1:
         raise ValueError("lons 必须是一维数组")
     if len(lons) <= 1:
@@ -2099,8 +2100,8 @@ def get_cross_section_xticks(
 
 
 def make_qualitative_palette(
-    colors: list | NDArray,
-) -> tuple[ListedColormap, Normalize, NDArray]:
+    colors: list[Any] | NDArray[np.floating],
+) -> tuple[ListedColormap, Normalize, NDArray[np.int64]]:
     """
     创建一组定性的 colormap 和 norm，同时返回刻度位置。
 
@@ -2269,7 +2270,7 @@ def get_font_names(sub: str | None = None) -> list[str]:
 @deprecator(alternative=add_geometries)
 def add_geoms(
     ax: Axes,
-    geoms: BaseGeometry | Sequence[BaseGeometry],
+    geoms: BaseGeometry | Iterable[BaseGeometry],
     crs: CRS | None = None,
     fast_transform: bool = True,
     skip_outside: bool = True,
@@ -2296,6 +2297,6 @@ def add_nine_line(
 
 @deprecator(alternative=make_qualitative_palette)
 def get_qualitative_palette(
-    colors: list | NDArray,
-) -> tuple[ListedColormap, Normalize, NDArray]:
+    colors: list[Any] | NDArray[np.floating],
+) -> tuple[ListedColormap, Normalize, NDArray[np.int64]]:
     return make_qualitative_palette(colors)

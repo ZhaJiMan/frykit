@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import struct
-from collections.abc import Sequence
+from collections.abc import Iterable
 from enum import IntEnum
 from io import BytesIO
 from typing import Any
@@ -46,8 +46,10 @@ class CoordsCodec:
         self.lat1 = 90
 
         self.precision = 1e-6
-        self.add_offsets = np.array([self.lon0, self.lat0])
-        self.scale_factors = 2 * np.array([self.precision, self.precision])
+        self.add_offsets = np.array([self.lon0, self.lat0], dtype=np.float64)
+        self.scale_factors = 2 * np.array(
+            [self.precision, self.precision], dtype=np.float64
+        )
 
     def encode(self, coords: ArrayLike) -> bytes:
         coords = np.asarray(coords)
@@ -81,16 +83,23 @@ class CoordsCodec:
 
         return binary
 
-    def decode(self, binary: bytes) -> NDArray:
+    def decode(self, binary: bytes) -> NDArray[np.float64]:
         with BytesIO(binary) as f:
             use_diff = bool(struct.unpack(UINT32, f.read(UINT32_SIZE))[0])
             if use_diff:
                 first_point = np.frombuffer(f.read(2 * UINT32_SIZE), dtype=UINT32)
                 diff_coords = np.frombuffer(f.read(), dtype=INT16).reshape(-1, 2)
-                coords = np.vstack([first_point, diff_coords], dtype=int).cumsum(axis=0)
+                coords = np.vstack([first_point, diff_coords]).cumsum(
+                    axis=0, dtype=np.float64
+                )
             else:
-                coords = np.frombuffer(f.read(), dtype=UINT32).reshape(-1, 2)
-        coords = coords.astype(float) * self.scale_factors + self.add_offsets
+                coords = (
+                    np.frombuffer(f.read(), dtype=UINT32)
+                    .astype(np.float64)
+                    .reshape(-1, 2)
+                )
+
+        coords = coords * self.scale_factors + self.add_offsets
 
         return coords
 
@@ -238,7 +247,7 @@ def _decode_geometry(binary: bytes) -> BaseGeometry:
             raise ValueError(f"geometry_type: {geometry_type}")
 
 
-def dump_geometries(geometries: Sequence[BaseGeometry]) -> bytes:
+def dump_geometries(geometries: Iterable[BaseGeometry]) -> bytes:
     """将一组几何对象编码成二进制"""
     return _concat_binaries(list(map(_encode_geometry, geometries)))
 
@@ -266,7 +275,7 @@ class BinaryReader:
         self.num_geometries = struct.unpack(UINT32, self.file.read(UINT32_SIZE))[0]
         self.binary_sizes = np.frombuffer(
             self.file.read(self.num_geometries * UINT32_SIZE), dtype=UINT32
-        ).astype(int)
+        ).astype(np.int64)
         self.header_size = self.file.tell()
         self.binary_offsets = (
             self.binary_sizes.cumsum() - self.binary_sizes + self.header_size

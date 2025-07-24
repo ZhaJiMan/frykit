@@ -15,7 +15,7 @@ __all__ = ["polygon_mask", "polygon_mask2", "polygon_to_mask"]
 
 def polygon_mask(
     polygon: PolygonType, x: ArrayLike, y: ArrayLike, include_boundary: bool = True
-) -> NDArray:
+) -> NDArray[np.bool_]:
     """
     用多边形制作掩膜（mask）数组
 
@@ -60,16 +60,16 @@ def polygon_mask(
     if x.shape != y.shape:
         raise ValueError
 
-    def do_recursion(x: NDArray, y: NDArray) -> NDArray:
+    def do_recursion(x: NDArray, y: NDArray) -> NDArray[np.bool_]:
         if len(x) == 0:
-            return np.array([], dtype=bool)
+            return np.array([], dtype=np.bool_)
 
         # 只有一个元素时无惧浮点误差
         x0, x1 = x.min(), x.max()
         y0, y1 = y.min(), y.max()
         x_overlapping = x0 == x1
         y_overlapping = y0 == y1
-        mask = np.zeros_like(x, dtype=bool)
+        mask = np.zeros_like(x, dtype=np.bool_)
 
         # 处理数据点重合成单点或线段的情况
         if x_overlapping and y_overlapping:
@@ -100,7 +100,7 @@ def polygon_mask(
 
     # 处理 nan 和 inf
     valid = np.isfinite(x) & np.isfinite(y)
-    mask = np.zeros_like(x, dtype=bool)
+    mask = np.zeros_like(x, dtype=np.bool_)
     mask[valid] = do_recursion(x[valid], y[valid])
     if mask.ndim == 0:
         mask = np.bool_(mask)
@@ -111,7 +111,7 @@ def polygon_mask(
 # https://gist.github.com/perrette/a78f99b76aed54b6babf3597e0b331f8
 def polygon_mask2(
     polygon: PolygonType, x: ArrayLike, y: ArrayLike, include_boundary: bool = True
-) -> NDArray:
+) -> NDArray[np.bool_]:
     """
     用多边形制作掩膜（mask）数组
 
@@ -181,7 +181,7 @@ def polygon_mask2(
     else:
         raise ValueError("要求 y 单调递增或递减")
 
-    def do_recursion(x: NDArray, y: NDArray, mask: NDArray) -> None:
+    def do_recursion(x: NDArray, y: NDArray, mask: NDArray[np.bool_]) -> None:
         nx, ny = len(x), len(y)
         if nx == 0 or ny == 0:
             return
@@ -212,7 +212,7 @@ def polygon_mask2(
         do_recursion(x[hx:], y[hy:], mask[hy:, hx:])
 
     # 恢复顺序
-    mask = np.zeros((len(y), len(x)), dtype=bool)
+    mask = np.zeros((len(y), len(x)), dtype=np.bool_)
     do_recursion(x, y, mask)
     if not x_ascending:
         mask = mask[:, ::-1]
@@ -223,5 +223,7 @@ def polygon_mask2(
 
 
 @deprecator(alternative=polygon_mask)
-def polygon_to_mask(polygon: PolygonType, x: ArrayLike, y: ArrayLike) -> NDArray:
+def polygon_to_mask(
+    polygon: PolygonType, x: ArrayLike, y: ArrayLike
+) -> NDArray[np.bool_]:
     return polygon_mask(polygon, x, y, include_boundary=False)

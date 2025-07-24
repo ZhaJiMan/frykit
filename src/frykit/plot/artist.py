@@ -287,8 +287,8 @@ class QuiverLegend(QuiverKey):
         loc: Literal[
             "lower left", "lower right", "upper left", "upper right"
         ] = "lower right",
-        qk_kwargs: dict | None = None,
-        patch_kwargs: dict | None = None,
+        qk_kwargs: dict[str, Any] | None = None,
+        patch_kwargs: dict[str, Any] | None = None,
     ) -> None:
         self.units = units
         self.width = width
@@ -390,8 +390,8 @@ class Compass(PathCollection):
         angle: float | None = None,
         size: float = 20,
         style: Literal["arrow", "star", "circle"] = "arrow",
-        pc_kwargs: dict | None = None,
-        text_kwargs: dict | None = None,
+        pc_kwargs: dict[str, Any] | None = None,
+        text_kwargs: dict[str, Any] | None = None,
     ) -> None:
         self.x = x
         self.y = y

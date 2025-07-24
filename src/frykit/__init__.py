@@ -7,7 +7,7 @@ from frykit.conf import config as config
 from frykit.option import *
 from frykit.utils import deprecator
 
-__version__ = "0.7.5"
+__version__ = "0.7.5.post1"
 
 
 @cache

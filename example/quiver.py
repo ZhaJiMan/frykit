@@ -40,14 +40,15 @@ cf = ax.contourf(
 )
 fig.colorbar(cf, ax=ax, label="Temperature (℃)")
 
-# 绘制风场
+# inches 单位保证 jupyter 里效果一致
 Q = ax.quiver(
     X,
     Y,
     u10,
     v10,
-    scale=0.15,
-    scale_units="dots",
+    scale=40,
+    scale_units="inches",
+    headwidth=3.5,
     regrid_shape=35,
     transform=data_crs,
 )

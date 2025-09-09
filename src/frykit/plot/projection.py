@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from cartopy.crs import AzimuthalEquidistant, Mercator, PlateCarree
 
-__all__ = ["PLATE_CARREE", "WEB_MERCATOR", "CN_AZIMUTHAL_EQUIDISTANT"]
+__all__ = ["CN_AZIMUTHAL_EQUIDISTANT", "PLATE_CARREE", "WEB_MERCATOR"]
 
 # 等经纬度投影
 PLATE_CARREE = PlateCarree()

@@ -9,6 +9,8 @@ from line_profiler import LineProfiler
 
 from frykit.typing import F, PathType
 
+__all__ = ["cprofiler", "lprofiler"]
+
 
 def cprofiler(file_path: PathType) -> Callable[[F], F]:
     """cProfile 的装饰器。保存结果到指定路径。"""

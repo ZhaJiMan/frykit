@@ -84,47 +84,48 @@ from frykit.utils import (
 )
 
 __all__ = [
-    "add_geometries",
-    "add_cn_province",
+    "CenteredBoundaryNorm",
+    "TestData",
+    "add_box",
+    "add_cn_border",
     "add_cn_city",
     "add_cn_district",
-    "add_cn_border",
     "add_cn_line",
+    "add_cn_province",
+    "add_compass",
     "add_countries",
+    "add_frame",
+    "add_geometries",
+    "add_geoms",
     "add_land",
+    "add_mini_axes",
+    "add_nine_line",
     "add_ocean",
+    "add_quiver_legend",
+    "add_scale_bar",
+    "add_side_axes",
     "add_texts",
-    "label_cn_province",
-    "label_cn_city",
-    "label_cn_district",
-    "clip_by_polygon",
-    "clip_by_cn_province",
+    "clip_by_cn_border",
     "clip_by_cn_city",
     "clip_by_cn_district",
-    "clip_by_cn_border",
+    "clip_by_cn_province",
     "clip_by_land",
     "clip_by_ocean",
-    "set_map_ticks",
-    "quick_cn_map",
-    "add_quiver_legend",
-    "add_compass",
-    "add_scale_bar",
-    "add_frame",
-    "add_box",
-    "add_mini_axes",
-    "add_side_axes",
-    "get_cross_section_xticks",
-    "make_qualitative_palette",
+    "clip_by_polygon",
     "get_aod_cmap",
-    "CenteredBoundaryNorm",
-    "plot_colormap",
+    "get_cross_section_xticks",
+    "get_font_names",
+    "get_qualitative_palette",
+    "label_cn_city",
+    "label_cn_district",
+    "label_cn_province",
     "letter_axes",
     "load_test_data",
+    "make_qualitative_palette",
+    "plot_colormap",
+    "quick_cn_map",
     "savefig",
-    "get_font_names",
-    "add_geoms",
-    "add_nine_line",
-    "get_qualitative_palette",
+    "set_map_ticks",
 ]
 
 
@@ -1468,7 +1469,7 @@ def _interp_minor_ticks(
     major_ticks = np.sort(major_ticks)
     minor_ticks = np.interp(x, xp, major_ticks)
 
-    return minor_ticks
+    return cast(NDArray[np.float64], minor_ticks)
 
 
 def set_map_ticks(

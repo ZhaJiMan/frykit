@@ -16,14 +16,14 @@ from frykit.shp.typing import GeometryT, PolygonType
 from frykit.utils import format_type_error
 
 __all__ = [
-    "box_path",
     "EMPTY_PATH",
     "EMPTY_POLYGON",
+    "box_path",
     "geometry_to_path",
-    "path_to_polygon",
-    "make_transformer",
-    "project_geometry",
     "get_axes_extents",
+    "make_transformer",
+    "path_to_polygon",
+    "project_geometry",
 ]
 
 

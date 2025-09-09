@@ -1,3 +1,9 @@
+"""
+- 用类似 NetCDF 的有损压缩方式，将 GeoJSON 的坐标数据转换成 uint32 或 uint16 的二进制。
+高德地图数据精度为 1e-6，这里也指定压缩精度为 1e-6。
+- 多边形按外环顺时针，内环逆时针的顺序保存。
+"""
+
 from __future__ import annotations
 
 import struct
@@ -20,11 +26,15 @@ from frykit.shp.utils import (
 )
 from frykit.typing import PathType
 
-"""
-- 用类似 NetCDF 的有损压缩方式，将 GeoJSON 的坐标数据转换成 uint32 或 uint16 的二进制。
-高德地图数据精度为 1e-6，这里也指定压缩精度为 1e-6。
-- 多边形按外环顺时针，内环逆时针的顺序保存。
-"""
+__all__ = [
+    "BinaryReader",
+    "CoordsCodec",
+    "GeometryEnum",
+    "dump_geojson",
+    "dump_geometries",
+    "dump_shapefile",
+    "load_binary",
+]
 
 UINT32 = "<I"
 INT16 = "<h"

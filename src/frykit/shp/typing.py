@@ -1,10 +1,34 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Literal, TypeAlias, TypedDict, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias, TypedDict, TypeVar, Union
 
-import shapely
-from shapely.geometry.base import BaseGeometry
+if TYPE_CHECKING:
+    import shapely
+    from shapely.geometry.base import BaseGeometry
+
+__all__ = [
+    "FeatureDict",
+    "GeoJSONDict",
+    "GeometryCollectionDict",
+    "GeometryDict",
+    "GeometryT",
+    "LineStringCoordinates",
+    "LineStringDict",
+    "LineStringType",
+    "MultiLineStringCoordinates",
+    "MultiLineStringDict",
+    "MultiPointCoordinates",
+    "MultiPointDict",
+    "MultiPolygonCoordinates",
+    "MultiPolygonDict",
+    "PointCoordinates",
+    "PointDict",
+    "PointType",
+    "PolygonCoordinates",
+    "PolygonDict",
+    "PolygonType",
+]
 
 PointCoordinates: TypeAlias = Sequence[float]
 MultiPointCoordinates: TypeAlias = Sequence[PointCoordinates]
@@ -45,6 +69,7 @@ class MultiPolygonDict(TypedDict):
     coordinates: MultiPolygonCoordinates
 
 
+# X | Y 不支持前向引用
 # https://docs.python.org/3/library/stdtypes.html#union-type
 GeometryDict: TypeAlias = Union[
     PointDict,
@@ -73,7 +98,8 @@ class GeoJSONDict(TypedDict):
     features: list[FeatureDict]
 
 
-PointType: TypeAlias = shapely.Point | shapely.MultiPoint
-LineStringType: TypeAlias = shapely.LineString | shapely.MultiLineString
-PolygonType: TypeAlias = shapely.Polygon | shapely.MultiPolygon
-GeometryT = TypeVar("GeometryT", bound=BaseGeometry)
+# 这里的前向引用必须用字符串
+PointType: TypeAlias = "shapely.Point | shapely.MultiPoint"
+LineStringType: TypeAlias = "shapely.LineString | shapely.MultiLineString"
+PolygonType: TypeAlias = "shapely.Polygon | shapely.MultiPolygon"
+GeometryT = TypeVar("GeometryT", bound="BaseGeometry")

@@ -40,6 +40,16 @@ from frykit.shp.typing import PolygonType
 from frykit.typing import F
 from frykit.utils import format_literal_error, format_type_error
 
+__all__ = [
+    "Compass",
+    "Frame",
+    "GeometryKey",
+    "GeometryPathCollection",
+    "QuiverLegend",
+    "ScaleBar",
+    "TextCollection",
+]
+
 _lock = Lock()
 
 

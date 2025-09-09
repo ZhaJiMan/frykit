@@ -10,6 +10,8 @@ from PIL import Image
 
 from frykit.typing import PathType
 
+__all__ = ["ImageInput", "compare_images", "make_gif", "merge_images", "split_image"]
+
 ImageInput: TypeAlias = PathType | Image.Image
 
 

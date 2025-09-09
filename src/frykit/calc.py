@@ -3,13 +3,55 @@ from __future__ import annotations
 import math
 from collections.abc import Callable, Sequence
 from functools import partial
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
-import pandas as pd
 from numpy.typing import ArrayLike, NDArray
 
 from frykit.utils import deprecator
+
+if TYPE_CHECKING:
+    import pandas as pd
+
+__all__ = [
+    "arange2",
+    "asarrays",
+    "az_to_t",
+    "binned_average_2d",
+    "binning2d",
+    "count_consecutive_trues",
+    "dd_to_dm",
+    "dd_to_dms",
+    "dm_to_dd",
+    "dms_to_dd",
+    "dms_to_dd",
+    "get_values_between",
+    "hav",
+    "haversine",
+    "hms_to_degrees",
+    "hms_to_degrees2",
+    "interp_nearest_2d",
+    "interp_nearest_dd",
+    "is_finite",
+    "lon_to_180",
+    "lon_to_360",
+    "lonlat_to_xyz",
+    "make_circle",
+    "make_ellipse",
+    "make_evenly_bins",
+    "month_to_season",
+    "region_ind",
+    "region_mask",
+    "rt_to_xy",
+    "split_consecutive_trues",
+    "split_coords",
+    "t_to_az",
+    "uv_to_wswd",
+    "wswd_to_uv",
+    "xy_to_rt",
+]
+
+# TODO: 提供 dtype 参数，让用户决定类型精度
 
 R90 = np.pi / 2
 R180 = np.pi
@@ -620,6 +662,7 @@ def binning2d(
         - out_channels_last=True 时形如 (ny, nx, c, f)
         - out_channels_last=False 时形如 (c, f, ny, nx)
     """
+    import pandas as pd
 
     def process_bins(bins: NDArray) -> tuple[bool, NDArray]:
         """检查 bins 有效性，返回是否升序的 flag 和升序的 bins。"""

@@ -8,9 +8,9 @@ from frykit.utils import deprecator, simple_deprecator
 __all__ = [
     "get_option",
     "get_options",
+    "option_context",
     "set_option",
     "validate_option",
-    "option_context",
 ]
 
 

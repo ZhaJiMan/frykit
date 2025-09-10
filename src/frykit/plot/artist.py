@@ -241,7 +241,7 @@ class TextCollection(Artist):
             raise ValueError("x 必须是一维数组")
         if not self.x.shape == self.y.shape == self.s.shape:
             raise ValueError("x、y 和 s 长度必须相同")
-        self.coords = np.c_[self.x, self.y]
+        self.coords = np.column_stack([self.x, self.y])
 
         kwargs = normalize_kwargs(kwargs, Text)
         kwargs.setdefault("horizontalalignment", "center")

@@ -61,18 +61,22 @@ R450 = 5 * R90
 R540 = 3 * R180
 
 
-def lon_to_180(lon: ArrayLike, degrees: bool = True) -> NDArray[np.float64]:
+def lon_to_180(
+    lon: ArrayLike, degrees: bool = True
+) -> NDArray[np.integer | np.floating]:
     """经度从 [0, 360] 范围换算到 (-180, 180]，180 会映射到 180。默认使用角度。"""
-    lon = np.asarray(lon, dtype=np.float64)
+    lon = np.asarray(lon)
     if degrees:
         return (lon - 540) % -360 + 180
     else:
         return (lon - R540) % -R360 + R180
 
 
-def lon_to_360(lon: ArrayLike, degrees: bool = True) -> NDArray[np.float64]:
+def lon_to_360(
+    lon: ArrayLike, degrees: bool = True
+) -> NDArray[np.integer | np.floating]:
     """经度从 [-180, 180] 范围换算到 [0, 360)，0 会映射到 0。默认使用角度。"""
-    lon = np.asarray(lon, dtype=np.float64)
+    lon = np.asarray(lon)
     return lon % 360 if degrees else lon % R360
 
 
@@ -89,9 +93,9 @@ def asarrays(*args: ArrayLike, **kwargs: Any) -> list[NDArray[Any]]:
 
 def rt_to_xy(
     r: ArrayLike, t: ArrayLike, degrees: bool = False
-) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
     """极坐标转为直角坐标。默认使用弧度。"""
-    r, t = asarrays(r, t, dtype=np.float64)
+    r, t = asarrays(r, t)
     if degrees:
         t = np.radians(t)
     x = r * np.cos(t)
@@ -102,9 +106,9 @@ def rt_to_xy(
 
 def xy_to_rt(
     x: ArrayLike, y: ArrayLike, degrees: bool = False
-) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
     """直角坐标转为极坐标。角度范围 (-180, 180]。默认使用弧度。"""
-    x, y = asarrays(x, y, dtype=np.float64)
+    x, y = asarrays(x, y)
     r = np.hypot(x, y)
     t = np.arctan2(y, x)
     if degrees:
@@ -113,18 +117,18 @@ def xy_to_rt(
     return r, t
 
 
-def t_to_az(t: ArrayLike, degrees: bool = False) -> NDArray[np.float64]:
+def t_to_az(t: ArrayLike, degrees: bool = False) -> NDArray[np.integer | np.floating]:
     """x 轴夹角转为方位角。方位角范围 [0, 360)，90 会映射到 0。默认使用弧度。"""
-    t = np.asarray(t, dtype=np.float64)
+    t = np.asarray(t)
     if degrees:
         return (90 - t) % 360
     else:
         return (R90 - t) % R360
 
 
-def az_to_t(az: ArrayLike, degrees: bool = False) -> NDArray[np.float64]:
+def az_to_t(az: ArrayLike, degrees: bool = False) -> NDArray[np.integer | np.floating]:
     """方位角转为 x 轴夹角。夹角范围 (-180, 180]，270 会映射到 180。默认使用弧度。"""
-    az = np.asarray(az, dtype=np.float64)
+    az = np.asarray(az)
     if degrees:
         return -(az + 90) % -360 + 180
     else:
@@ -133,9 +137,9 @@ def az_to_t(az: ArrayLike, degrees: bool = False) -> NDArray[np.float64]:
 
 def lonlat_to_xyz(
     lon: ArrayLike, lat: ArrayLike, r: float = 1.0, degrees: bool = False
-) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
+) -> tuple[NDArray[np.floating], NDArray[np.floating], NDArray[np.floating]]:
     """经纬度转为球面 xyz 坐标。默认使用弧度。"""
-    lon, lat = asarrays(lon, lat, dtype=np.float64)
+    lon, lat = asarrays(lon, lat)
     if degrees:
         lon = np.radians(lon)
         lat = np.radians(lat)
@@ -149,9 +153,9 @@ def lonlat_to_xyz(
 
 def wswd_to_uv(
     ws: ArrayLike, wd: ArrayLike, degrees: bool = False
-) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
     """风向风速转为 uv。默认使用弧度。"""
-    ws, wd = asarrays(ws, wd, dtype=np.float64)
+    ws, wd = asarrays(ws, wd)
     if degrees:
         wd = np.radians(wd)
     u = -ws * np.sin(wd)
@@ -162,9 +166,9 @@ def wswd_to_uv(
 
 def uv_to_wswd(
     u: ArrayLike, v: ArrayLike, degrees: bool = False
-) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
     """uv 转为风向风速。默认使用弧度。"""
-    u, v = asarrays(u, v, dtype=np.float64)
+    u, v = asarrays(u, v)
     ws = np.hypot(u, v)
     wd = np.arctan2(u, v) + np.pi
     if degrees:
@@ -173,21 +177,23 @@ def uv_to_wswd(
     return ws, wd
 
 
-def dm_to_dd(d: ArrayLike, m: ArrayLike) -> NDArray[np.float64]:
+def dm_to_dd(d: ArrayLike, m: ArrayLike) -> NDArray[np.floating]:
     """度分转为十进制度数"""
-    d, m = asarrays(d, m, dtype=np.float64)
+    d, m = asarrays(d, m)
     return d + m / 60
 
 
-def dms_to_dd(d: ArrayLike, m: ArrayLike, s: ArrayLike) -> NDArray[np.float64]:
+def dms_to_dd(d: ArrayLike, m: ArrayLike, s: ArrayLike) -> NDArray[np.floating]:
     """度分秒转为十进制度数"""
-    d, m, s = asarrays(d, m, s, dtype=np.float64)
+    d, m, s = asarrays(d, m, s)
     return d + m / 60 + s / 3600
 
 
-def dd_to_dm(dd: ArrayLike) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+def dd_to_dm(
+    dd: ArrayLike,
+) -> tuple[NDArray[np.integer | np.floating], NDArray[np.integer | np.floating]]:
     """十进制度数转为度分"""
-    dd = np.asarray(dd, dtype=np.float64)
+    dd = np.asarray(dd)
     sign = np.sign(dd)
     dd = np.abs(dd)
 
@@ -200,7 +206,11 @@ def dd_to_dm(dd: ArrayLike) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
 
 def dd_to_dms(
     dd: ArrayLike,
-) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
+) -> tuple[
+    NDArray[np.integer | np.floating],
+    NDArray[np.integer | np.floating],
+    NDArray[np.integer | np.floating],
+]:
     """十进制度数转为度分秒"""
     d, m_ = dd_to_dm(dd)
     m = np.floor(m_)
@@ -209,10 +219,9 @@ def dd_to_dms(
     return d, m, s
 
 
-def hav(x: ArrayLike) -> NDArray[np.float64]:
+def hav(x: ArrayLike) -> NDArray[np.floating]:
     """半正矢函数"""
-    x = np.asarray(x, dtype=np.float64)
-    return np.square(np.sin(x / 2))
+    return np.square(np.sin(np.asarray(x) / 2))
 
 
 def haversine(
@@ -221,9 +230,9 @@ def haversine(
     lon2: ArrayLike,
     lat2: ArrayLike,
     degrees: bool = False,
-) -> NDArray[np.float64]:
+) -> NDArray[np.floating]:
     """用 haversine 公式计算两点间的圆心角。默认使用弧度。"""
-    lon1, lat1, lon2, lat2 = asarrays(lon1, lat1, lon2, lat2, dtype=np.float64)
+    lon1, lat1, lon2, lat2 = asarrays(lon1, lat1, lon2, lat2)
     if degrees:
         lon1, lat1, lon2, lat2 = map(np.radians, [lon1, lat1, lon2, lat2])
 
@@ -276,7 +285,7 @@ def make_ellipse(
         xy 坐标序列。最后一个点跟第一个点相同。
     """
     t = np.linspace(0, 2 * np.pi, npts)
-    verts = np.c_[np.cos(t), np.sin(t), np.ones_like(t)]
+    verts = np.column_stack([np.cos(t), np.sin(t), np.ones_like(t)])
 
     # 对单位圆做仿射变换
     b = a if b is None else b
@@ -701,7 +710,7 @@ def split_coords(*args, **kwargs): ...
 @deprecator(alternative=dms_to_dd)
 def hms_to_degrees(
     hour: ArrayLike, minute: ArrayLike, second: ArrayLike
-) -> NDArray[np.float64]:
+) -> NDArray[np.floating]:
     return dms_to_dd(hour, minute, second)
 
 
@@ -712,11 +721,10 @@ def hms_to_degrees2(*args, **kwargs): ...
 @deprecator(alternative=binning2d)
 def binned_average_2d(
     x: ArrayLike, y: ArrayLike, values: ArrayLike, xbins: ArrayLike, ybins: ArrayLike
-) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
-    xbins, ybins = asarrays(xbins, ybins, dtype=np.float64)
+) -> tuple[NDArray[np.floating], NDArray[np.floating], NDArray[np.floating]]:
+    xbins, ybins = asarrays(xbins, ybins)
     xlabels = (xbins[1:] + xbins[:-1]) / 2
     ylabels = (ybins[1:] + ybins[:-1]) / 2
     result = binning2d(x, y, values, xbins, ybins)
-    result = result.astype(np.float64)
 
     return xlabels, ylabels, result

@@ -1374,7 +1374,7 @@ def _set_complex_geoaxes_ticks(
         xticks = get_values_between(xticks, lon0, lon1)
         for xtick in xticks:
             lons = np.full_like(lats, xtick)
-            lon_line = shapely.LineString(np.c_[lons, lats])
+            lon_line = shapely.LineString(np.column_stack([lons, lats]))
             lon_line = ax.projection.project_geometry(lon_line, PLATE_CARREE)
             pointB = lineB.intersection(lon_line)
             if isinstance(pointB, shapely.Point) and not pointB.is_empty:
@@ -1399,7 +1399,7 @@ def _set_complex_geoaxes_ticks(
         yticks = get_values_between(yticks, lat0, lat1)
         for ytick in yticks:
             lats = np.full_like(lons, ytick)
-            lat_line = shapely.LineString(np.c_[lons, lats])
+            lat_line = shapely.LineString(np.column_stack([lons, lats]))
             lat_line = ax.projection.project_geometry(lat_line, PLATE_CARREE)
             pointL = lineL.intersection(lat_line)
             if isinstance(pointL, shapely.Point) and not pointL.is_empty:
@@ -2072,7 +2072,7 @@ def get_cross_section_xticks(
         用经纬度表示的刻度标签
     """
     # 线性插值计算刻度的经纬度值
-    lons, lats = asarrays(lons, lats, dtype=np.float64)
+    lons, lats = asarrays(lons, lats)
     if lons.ndim != 1:
         raise ValueError("lons 必须是一维数组")
     if len(lons) <= 1:

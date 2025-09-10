@@ -30,13 +30,13 @@ xs = np.linspace(x1, x2, npts)
 ys = np.linspace(y1, y2, npts)
 
 # 经纬度连线和等角航线
-plate_carree_line = np.c_[lons, lats]
+plate_carree_line = np.column_stack([lons, lats])
 rhumb_line = data_crs.transform_points(map_crs, xs, ys)[:, :2]
 
 # 大圆航线
 geod = Geod(ellps="WGS84")
 r = geod.inv_intermediate(lon1, lat1, lon2, lat2, npts, return_back_azimuth=True)
-great_circle_line = np.c_[r.lons, r.lats]
+great_circle_line = np.column_stack([r.lons, r.lats])
 
 fig = plt.figure(figsize=(8, 8))
 ax = fig.add_subplot(projection=map_crs)

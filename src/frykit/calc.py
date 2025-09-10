@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from functools import partial
 from typing import TYPE_CHECKING, Any
 
@@ -395,8 +395,6 @@ def interp_nearest_dd(
     xi: ArrayLike,
     radius: float = float("inf"),
     fill_value: Any = float("nan"),
-    in_channels_last: bool = False,
-    out_channels_last: bool = False,
 ) -> NDArray[Any]:
     """
     可以限制搜索半径的多维最近邻插值
@@ -404,15 +402,13 @@ def interp_nearest_dd(
     Parameters
     ----------
     points : (n, d) array_like
-        数据点的坐标。每个点有 d 个坐标分量。
+        数据点的坐标。有 n 个数据点，每个点有 d 个坐标分量
 
-    values : (n,) array_like
-        数据点的变量值。如果含有多个通道，那么要求其形状：
-        - in_channels_last=True 时形如 (n, c)
-        - in_channels_last=False 时形如 (c, n)
+    values : (c, n) array_like
+        数据点的变量值。其中通道维度 c 可以省略。
 
     xi: (m, d) array_like
-        插值点的坐标。每个点有 d 个坐标分量。
+        插值点的坐标。有 m 个插值点，每个点有 d 个坐标分量。
 
     radius : float, default inf
         插值点能匹配到数据点的最大距离（半径）。默认为 inf。
@@ -420,18 +416,10 @@ def interp_nearest_dd(
     fill_value : default nan
         距离超出 radius 的插值点用 fill_value 填充。默认为 nan。
 
-    in_channels_last : bool, default False
-        values 的通道维度是否放在最后。默认为 False。
-
-    out_channels_last : bool, default False
-        结果的通道维度是否放在最后。默认为 False。
-
     Returns
     -------
-    result : (m,) ndarray
-        插值结果。如果 values 含有多个通道，那么其形状满足：
-        - out_channels_last=True 时形如 (m, c)
-        - out_channels_last=False 时形如 (c, m)
+    result : (c, m) ndarray
+        插值结果。当 values 有通道维度 c 时 result 也会有。
     """
     from scipy.spatial import KDTree
 
@@ -440,35 +428,24 @@ def interp_nearest_dd(
         raise ValueError("points 必须是二维数组")
     if xi.ndim != 2:
         raise ValueError("xi 必须是二维数组")
-    if (in_channels_last and values.shape[:1] != points.shape[:1]) or (
-        not in_channels_last and values.shape[-1:] != points.shape[:1]
-    ):
+    if values.shape[-1:] != points.shape[:1]:
         raise ValueError("values 的形状跟 points 不匹配")
 
     tree = KDTree(points)
     dd, ii = tree.query(xi)
     mask = dd > radius
 
-    if in_channels_last:
-        ii_ = np.s_[ii, ...]
-        mask_ = np.s_[mask, ...]
-    else:
-        ii_ = np.s_[..., ii]
-        mask_ = np.s_[..., mask]
-
-    dtype = np.result_type(values, fill_value)
-    result = values[ii_].astype(dtype)
+    # 当 fill_value 是字符串时需要避免与 dtype 混淆
+    dtype = np.result_type(values, np.asarray(fill_value))
+    result = values[..., ii].astype(dtype)
     if mask.any():
-        result[mask_] = fill_value
-
-    # 用 moveaxis 滚动维度
-    if result.ndim >= 2:
-        if in_channels_last and not out_channels_last:
-            result = np.moveaxis(result, -1, 0)
-        if not in_channels_last and out_channels_last:
-            result = np.moveaxis(result, 0, -1)
+        result[..., mask] = fill_value
 
     return result
+
+
+def _ravel_stack(arrs: Iterable[NDArray[Any]]) -> NDArray[Any]:
+    return np.column_stack(list(map(np.ravel, arrs)))
 
 
 def interp_nearest_2d(
@@ -479,8 +456,6 @@ def interp_nearest_2d(
     yi: ArrayLike,
     radius: float = float("inf"),
     fill_value: Any = float("nan"),
-    in_channels_last: bool = False,
-    out_channels_last: bool = False,
 ) -> NDArray[Any]:
     """
     可以限制搜索半径的二维最近邻插值
@@ -492,10 +467,8 @@ def interp_nearest_2d(
     x, y : (n1, n2, ...) array_like
         数据点的坐标
 
-    values : (n1, n2, ...) array_like
-        数据点的变量值。如果含有多个通道，那么要求其形状：
-        - in_channels_last=True 时形如 (n1, n2, ..., c)
-        - in_channels_last=False 时形如 (c, n1, n2, ...)
+    values : (c, n1, n2, ...) array_like
+        数据点的变量值。其中通道维度 c 可以省略。
 
     xi, yi : (m1, m2, ...) array_like
         插值点的坐标
@@ -506,18 +479,10 @@ def interp_nearest_2d(
     fill_value : default nan
         距离超出 radius 的插值点用 fill_value 填充。默认为 nan。
 
-    in_channels_last : bool, default False
-        values 的通道维度是否放在最后。默认为 False。
-
-    out_channels_last : bool, default False
-        结果的通道维度是否放在最后。默认为 False。
-
     Returns
     -------
-    result : (m1, m2, ...) ndarray
-        插值结果。如果 values 含有多个通道，那么其形状满足：
-        - out_channels_last=True 时形如 (m1, m2, ..., c)
-        - out_channels_last=False 时形如 (c, m1, m2, ...)
+    result : (c, m1, m2, ...) ndarray
+        插值结果。当 values 有通道维度 c 时 result 也会有。
     """
     x, y, xi, yi, values = asarrays(x, y, xi, yi, values)
     if x.ndim == 0:
@@ -528,33 +493,18 @@ def interp_nearest_2d(
         raise ValueError("xi 至少是一维数组")
     if xi.shape != yi.shape:
         raise ValueError("要求 xi 和 yi 形状相同")
-    if (in_channels_last and values.shape[: x.ndim] != x.shape) or (
-        not in_channels_last and values.shape[-x.ndim :] != x.shape
-    ):
+    if values.shape[-x.ndim :] != x.shape:
         raise ValueError("values 的形状跟 x 不匹配")
 
     # 元组解包能避免出现多余的维度
-    if in_channels_last:
-        channel_shape = values.shape[x.ndim :]
-        values_shape = (-1, *channel_shape)
-    else:
-        channel_shape = values.shape[: -x.ndim]
-        values_shape = (*channel_shape, -1)
-
-    if out_channels_last:
-        result_shape = (*xi.shape, *channel_shape)
-    else:
-        result_shape = (*channel_shape, *xi.shape)
-
+    channel_shape = values.shape[: -x.ndim]
     return interp_nearest_dd(
-        points=np.c_[x.ravel(), y.ravel()],
-        values=values.reshape(values_shape),
-        xi=np.c_[xi.ravel(), yi.ravel()],
+        points=_ravel_stack([x, y]),
+        values=values.reshape(*channel_shape, -1),
+        xi=_ravel_stack([xi, yi]),
         radius=radius,
         fill_value=fill_value,
-        in_channels_last=in_channels_last,
-        out_channels_last=out_channels_last,
-    ).reshape(result_shape)
+    ).reshape(*channel_shape, *xi.shape)
 
 
 def arange2(start: float, stop: float, step: float) -> NDArray[np.float64]:
@@ -611,24 +561,20 @@ def binning2d(
     | Callable[[pd.Series], Any]
     | Sequence[str | Callable[[pd.Series], Any]] = "mean",
     fill_value: Any = float("nan"),
+    right: bool = True,
     include_lowest: bool = False,
-    in_channels_last: bool = False,
-    out_channels_last: bool = False,
 ) -> NDArray[Any]:
     """
     对散点数据做二维分箱
 
-    内部通过 pd.cut 实现，分箱区间满足左开右闭的规则。
-    当 bins 单调递减时，会先排成升序再调用 pd.cut，最后倒转结果顺序。
+    内部通过 pd.cut 实现。当 bins 单调递减时，会先排成升序再调用 pd.cut，最后倒转结果顺序。
 
     Parameters
     x, y : (n1, n2, ...) array_like
         数据点的坐标
 
-    values : (n1, n2, ...) array_like
-        数据点的变量值。如果含多个通道，那么要求其形状：
-        - in_channels_last=True 时形如 (n1, n2, ..., c)
-        - in_channels_last=False 时形如 (c, n1, n2, ...)
+    values : (c, n1, n2, ...) array_like
+        数据点的变量值。其中通道维度 c 可以省略。
 
     xbins : (nx + 1,) array_like
         用于划分 x 的 bins。要求数值单调递增或递减。
@@ -640,27 +586,22 @@ def binning2d(
         对落入 bin 中的数据点做聚合的函数。
         可以是函数名，例如 'count'、'min'、'max'、'mean'、'median' 等；
         或者是输入为至少含一个点的 DataFrame，输出一个标量的函数对象；
-        或者是由字符串和函数组成的序列。
-        默认为 'mean'。
+        或者是由字符串和函数组成的序列。默认为 'mean'。
 
     fill_value : default nan
         没有数据点落入的 bin 会用 fill_value 填充。默认为 nan。
 
+    right : bool, default True
+        True 时分箱区间右闭合 (x0, x1]；False 时左闭合 [x0, x1)。默认为 True。
+
     include_lowest: bool, default False
-        第一个分箱区间是否包含左边缘
-
-    in_channels_last : bool, default False
-        values 的通道维度是否放在最后。默认为 False。
-
-    out_channels_last : bool, default False
-        结果的通道维度是否放在最后。默认为 False。
+        第一个分箱区间是否包含左边缘。但 right=False 时看不出效果。
 
     Returns
     -------
-    result : (ny, nx) ndarray
-        binning 的结果。如果 values 含多个通道或 func 是序列，那么其形状满足：
-        - out_channels_last=True 时形如 (ny, nx, c, f)
-        - out_channels_last=False 时形如 (c, f, ny, nx)
+    result : (c, f, ny, nx) ndarray
+        binning 的结果。当 values 有通道维度 c 时 result 也会有；
+        当 func 是序列时 result 会有聚合维度 f。
     """
     import pandas as pd
 
@@ -683,20 +624,8 @@ def binning2d(
         raise ValueError("要求 x 和 y 形状相同")
     if values.ndim - x.ndim > 1:
         raise ValueError("values 最多只能有一个通道维度")
-    if (in_channels_last and values.shape[: x.ndim] != x.shape) or (
-        not in_channels_last and values.shape[-x.ndim :] != x.shape
-    ):
+    if values.shape[-x.ndim :] != x.shape:
         raise ValueError("values 的形状跟 x 不匹配")
-
-    if in_channels_last:
-        channel_shape = values.shape[x.ndim :]
-        values = values.reshape(-1, *channel_shape)
-    else:
-        # 一维数组转置后形状不变
-        channel_shape = values.shape[: -x.ndim]
-        values = values.reshape(*channel_shape, -1).T
-    x = x.ravel()
-    y = y.ravel()
 
     x_ascending, xbins = process_bins(xbins)
     y_ascending, ybins = process_bins(ybins)
@@ -706,16 +635,29 @@ def binning2d(
     # index 用来 reindex 和恢复顺序
     xlabels = np.arange(nx)
     ylabels = np.arange(ny)
-    xlabels_ = xlabels if x_ascending else xlabels[::-1]
-    ylabels_ = ylabels if y_ascending else ylabels[::-1]
-    index = pd.MultiIndex.from_product([ylabels_, xlabels_])
+    index = pd.MultiIndex.from_product(
+        [
+            ylabels if y_ascending else ylabels[::-1],
+            xlabels if x_ascending else xlabels[::-1],
+        ]
+    )
 
-    df = pd.DataFrame(
-        {
-            "x": pd.cut(x, xbins, labels=xlabels, include_lowest=include_lowest),  # type: ignore
-            "y": pd.cut(y, ybins, labels=ylabels, include_lowest=include_lowest),  # type: ignore
-            "value": values,
-        }
+    # 一维数组转置形状不变，并且 DataFrame 会正确处理
+    channel_shape = values.shape[: -x.ndim]
+    df = pd.DataFrame(values.reshape(*channel_shape, -1).T)
+    df["x"] = pd.cut(
+        x=x.ravel(),
+        bins=xbins,
+        labels=xlabels,
+        right=right,
+        include_lowest=include_lowest,
+    )
+    df["y"] = pd.cut(
+        x=y.ravel(),
+        bins=ybins,
+        labels=ylabels,
+        right=right,
+        include_lowest=include_lowest,
     )
 
     result = (
@@ -728,12 +670,9 @@ def binning2d(
     if isinstance(func, str) or callable(func):
         func_shape = tuple()
     else:
-        func_shape = (len(func),)
-
-    if out_channels_last:
-        result = result.reshape(ny, nx, *channel_shape, *func_shape)
-    else:
-        result = result.T.reshape(*channel_shape, *func_shape, ny, nx)
+        func_shape = tuple([len(func)])
+    result_shape = (*channel_shape, *func_shape, ny, nx)
+    result = result.T.reshape(result_shape)
 
     return result
 

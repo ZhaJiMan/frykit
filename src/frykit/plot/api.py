@@ -708,8 +708,8 @@ def label_cn_province(
 
     return _add_cn_texts(
         ax=ax,
-        lons=df["lon"],
-        lats=df["lat"],
+        lons=df.lon,
+        lats=df.lat,
         names=df[key],
         skip_outside=skip_outside,
         **kwargs,
@@ -764,8 +764,8 @@ def label_cn_city(
 
     return _add_cn_texts(
         ax=ax,
-        lons=df["lon"],
-        lats=df["lat"],
+        lons=df.lon,
+        lats=df.lat,
         names=df[key],
         skip_outside=skip_outside,
         **kwargs,
@@ -825,8 +825,8 @@ def label_cn_district(
 
     return _add_cn_texts(
         ax=ax,
-        lons=df["lon"],
-        lats=df["lat"],
+        lons=df.lon,
+        lats=df.lat,
         names=df[key],
         skip_outside=skip_outside,
         **kwargs,

@@ -8,10 +8,10 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from frykit.utils import deprecator
-
 if TYPE_CHECKING:
     import pandas as pd
+
+from frykit.utils import deprecator
 
 __all__ = [
     "arange2",

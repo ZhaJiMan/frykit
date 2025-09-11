@@ -141,8 +141,8 @@ def _get_cn_province_locs(
     if province is None:
         return list(range(len(df)))
 
-    names = pd.Index(df["province_name"])
-    adcodes = pd.Index(df["province_adcode"])
+    names = pd.Index(df.province_name)
+    adcodes = pd.Index(df.province_adcode)
     locs = _get_cn_locs(names, adcodes, province)
 
     return locs
@@ -160,13 +160,13 @@ def _get_cn_city_locs(
         raise ValueError("不能同时指定 city 和 province")
 
     if city is not None:
-        names = pd.Index(df["city_name"])
-        adcodes = pd.Index(df["city_adcode"])
+        names = pd.Index(df.city_name)
+        adcodes = pd.Index(df.city_adcode)
         key = city
 
     if province is not None:
-        names = pd.Index(df["province_name"])
-        adcodes = pd.Index(df["province_adcode"])
+        names = pd.Index(df.province_name)
+        adcodes = pd.Index(df.province_adcode)
         key = province
 
     locs = _get_cn_locs(names, adcodes, key)  # type: ignore
@@ -188,18 +188,18 @@ def _get_cn_district_locs(
         raise ValueError("district、city 和 province 三个参数中只能指定一个")
 
     if district is not None:
-        names = pd.Index(df["district_name"])
-        adcodes = pd.Index(df["district_adcode"])
+        names = pd.Index(df.district_name)
+        adcodes = pd.Index(df.district_adcode)
         key = district
 
     if city is not None:
-        names = pd.Index(df["city_name"])
-        adcodes = pd.Index(df["city_adcode"])
+        names = pd.Index(df.city_name)
+        adcodes = pd.Index(df.city_adcode)
         key = city
 
     if province is not None:
-        names = pd.Index(df["province_name"])
-        adcodes = pd.Index(df["province_adcode"])
+        names = pd.Index(df.province_name)
+        adcodes = pd.Index(df.province_adcode)
         key = province
 
     locs = _get_cn_locs(names, adcodes, key)  # type: ignore

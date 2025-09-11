@@ -4,11 +4,14 @@ from collections.abc import Iterable
 from enum import IntEnum
 from functools import cache
 from pathlib import Path
-from typing import Any, Literal, TypeAlias, TypedDict, cast, overload
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias, TypedDict, cast, overload
 
 import numpy as np
 import pandas as pd
 import shapely
+
+if TYPE_CHECKING:
+    import geopandas as gpd
 
 from frykit import get_data_dir
 from frykit.conf import DataSource, config
@@ -28,15 +31,21 @@ __all__ = [
     "clear_data_cache",
     "get_cn_border",
     "get_cn_city",
+    "get_cn_city_dataframe",
+    "get_cn_city_geodataframe",
     "get_cn_city_names",
     "get_cn_city_properties",
     "get_cn_city_table",
     "get_cn_district",
+    "get_cn_district_dataframe",
+    "get_cn_district_geodataframe",
     "get_cn_district_names",
     "get_cn_district_properties",
     "get_cn_district_table",
     "get_cn_line",
     "get_cn_province",
+    "get_cn_province_dataframe",
+    "get_cn_province_geodataframe",
     "get_cn_province_names",
     "get_cn_province_properties",
     "get_cn_province_table",
@@ -72,17 +81,17 @@ def _get_cn_table(level: AdminLevel, data_source: DataSource) -> pd.DataFrame:
     return pd.read_csv(file_path)
 
 
-def _get_cn_province_table(data_source: DataSource | None) -> pd.DataFrame:
+def _get_cn_province_table(data_source: DataSource | None = None) -> pd.DataFrame:
     data_source = _resolve_data_source(data_source)
     return _get_cn_table("province", data_source)
 
 
-def _get_cn_city_table(data_source: DataSource | None) -> pd.DataFrame:
+def _get_cn_city_table(data_source: DataSource | None = None) -> pd.DataFrame:
     data_source = _resolve_data_source(data_source)
     return _get_cn_table("city", data_source)
 
 
-def _get_cn_district_table(data_source: DataSource | None) -> pd.DataFrame:
+def _get_cn_district_table(data_source: DataSource | None = None) -> pd.DataFrame:
     data_source = _resolve_data_source(data_source)
     return _get_cn_table("district", data_source)
 
@@ -135,7 +144,7 @@ def _get_cn_locs(
 
 def _get_cn_province_locs(
     province: NameOrAdcode | Iterable[NameOrAdcode] | None,
-    data_source: DataSource | None,
+    data_source: DataSource | None = None,
 ) -> list[int]:
     df = _get_cn_province_table(data_source)
     if province is None:
@@ -151,7 +160,7 @@ def _get_cn_province_locs(
 def _get_cn_city_locs(
     city: NameOrAdcode | Iterable[NameOrAdcode] | None,
     province: NameOrAdcode | Iterable[NameOrAdcode] | None,
-    data_source: DataSource | None,
+    data_source: DataSource | None = None,
 ) -> list[int]:
     df = _get_cn_city_table(data_source)
     if city is None and province is None:
@@ -178,7 +187,7 @@ def _get_cn_district_locs(
     district: NameOrAdcode | Iterable[NameOrAdcode] | None,
     city: NameOrAdcode | Iterable[NameOrAdcode] | None,
     province: NameOrAdcode | Iterable[NameOrAdcode] | None,
-    data_source: DataSource | None,
+    data_source: DataSource | None = None,
 ) -> list[int]:
     df = _get_cn_district_table(data_source)
     num_keys = sum(key is not None for key in [district, city, province])
@@ -422,7 +431,7 @@ def get_cn_district_names(
     return df[key].tolist()
 
 
-@cache  # TODO: 不要加载所有数据
+@cache
 def _get_cn_polygons(level: AdminLevel, data_source: DataSource) -> list[PolygonType]:
     file_path = _get_china_dir() / data_source / f"cn_{level}.bin"
     with BinaryReader(file_path) as reader:
@@ -430,17 +439,21 @@ def _get_cn_polygons(level: AdminLevel, data_source: DataSource) -> list[Polygon
         return cast(list[PolygonType], polygons)
 
 
-def _get_cn_province_polygons(data_source: DataSource | None) -> list[PolygonType]:
+def _get_cn_province_polygons(
+    data_source: DataSource | None = None,
+) -> list[PolygonType]:
     data_source = _resolve_data_source(data_source)
     return _get_cn_polygons("province", data_source)
 
 
-def _get_cn_city_polygons(data_source: DataSource | None) -> list[PolygonType]:
+def _get_cn_city_polygons(data_source: DataSource | None = None) -> list[PolygonType]:
     data_source = _resolve_data_source(data_source)
     return _get_cn_polygons("city", data_source)
 
 
-def _get_cn_district_polygons(data_source: DataSource | None) -> list[PolygonType]:
+def _get_cn_district_polygons(
+    data_source: DataSource | None = None,
+) -> list[PolygonType]:
     data_source = _resolve_data_source(data_source)
     return _get_cn_polygons("district", data_source)
 
@@ -681,6 +694,64 @@ def get_ocean() -> shapely.MultiPolygon:
     file_path = _get_world_dir() / "ocean.bin"
     with BinaryReader(file_path) as reader:
         return cast(shapely.MultiPolygon, reader.geometry(0))
+
+
+@cache
+def _get_cn_dataframe(level: AdminLevel, data_source: DataSource) -> pd.DataFrame:
+    df = _get_cn_table(level, data_source)
+    polygons = _get_cn_polygons(level, data_source)
+    return df.assign(geometry=polygons)
+
+
+def get_cn_province_dataframe(data_source: DataSource | None = None) -> pd.DataFrame:
+    """获取中国省界的多边形和元数据的 DataFrame"""
+    data_source = _resolve_data_source(data_source)
+    return _get_cn_dataframe("province", data_source).copy()
+
+
+def get_cn_city_dataframe(data_source: DataSource | None = None) -> pd.DataFrame:
+    """获取中国市界的多边形和元数据的 DataFrame"""
+    data_source = _resolve_data_source(data_source)
+    return _get_cn_dataframe("city", data_source).copy()
+
+
+def get_cn_district_dataframe(data_source: DataSource | None = None) -> pd.DataFrame:
+    """获取中国县界的多边形和元数据的 DataFrame"""
+    data_source = _resolve_data_source(data_source)
+    return _get_cn_dataframe("district", data_source).copy()
+
+
+@cache
+def _get_cn_geodataframe(
+    level: AdminLevel, data_source: DataSource
+) -> gpd.GeoDataFrame:
+    import geopandas as gpd
+
+    df = _get_cn_table(level, data_source)
+    polygons = _get_cn_polygons(level, data_source)
+    return gpd.GeoDataFrame(df, geometry=polygons, crs="EPSG:4326", copy=True)
+
+
+def get_cn_province_geodataframe(
+    data_source: DataSource | None = None,
+) -> gpd.GeoDataFrame:
+    """获取中国省界的多边形和元数据的 GeoDataFrame"""
+    data_source = _resolve_data_source(data_source)
+    return _get_cn_geodataframe("province", data_source)
+
+
+def get_cn_city_geodataframe(data_source: DataSource | None = None) -> gpd.GeoDataFrame:
+    """获取中国市界的多边形和元数据的 GeoDataFrame"""
+    data_source = _resolve_data_source(data_source)
+    return _get_cn_geodataframe("city", data_source)
+
+
+def get_cn_district_geodataframe(
+    data_source: DataSource | None = None,
+) -> gpd.GeoDataFrame:
+    """获取中国县界的多边形和元数据的 GeoDataFrame"""
+    data_source = _resolve_data_source(data_source)
+    return _get_cn_geodataframe("district", data_source)
 
 
 def clear_data_cache() -> None:

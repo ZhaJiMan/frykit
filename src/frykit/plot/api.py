@@ -44,8 +44,8 @@ from frykit.plot.artist import (
     QuiverLegend,
     ScaleBar,
     TextCollection,
-    _geometry_to_path,
-    _project_geometry_to_path,
+    _cached_geometry_to_path,
+    _cached_project_geometry_to_path,
     _resolve_fast_transform,
 )
 from frykit.plot.projection import PLATE_CARREE
@@ -946,7 +946,7 @@ def clip_by_polygon(
     if isinstance(ax, GeoAxes):
         if crs is None:
             crs = PLATE_CARREE
-        path = _project_geometry_to_path(
+        path = _cached_project_geometry_to_path(
             geometry=polygon,
             crs_from=crs,
             crs_to=ax.projection,
@@ -959,7 +959,7 @@ def clip_by_polygon(
     else:
         if crs is not None:
             raise ValueError("ax 不是 GeoAxes 时 crs 只能为 None")
-        path = _geometry_to_path(polygon)
+        path = _cached_geometry_to_path(polygon)
 
     # TODO
     # - 严格防文字出界的方案：fig.canvas.draw + t.get_window_extent

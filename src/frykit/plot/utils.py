@@ -135,6 +135,7 @@ def path_to_polygon(path: Path) -> PolygonType:
             return shapely.MultiPolygon(polygons)
 
 
+# TODO: shapely.set_coordinates
 def _transform_geometry(
     geometry: GeometryT, transform: Callable[[NDArray[np.float64]], NDArray[np.float64]]
 ) -> GeometryT:

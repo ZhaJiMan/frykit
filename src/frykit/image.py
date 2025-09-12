@@ -60,17 +60,17 @@ def make_gif(images: Sequence[ImageInput], file_path: PathType, **kwargs: Any) -
 def _images_to_array2d(images: Any) -> NDArray[Any]:
     for obj in images:
         if obj is None or isinstance(obj, (str, Path, Image.Image)):
-            arr = np.empty((1, len(images)), dtype=object)
+            arr = np.empty((1, len(images)), dtype=np.object_)
             for i, image in enumerate(images):
                 arr[0, i] = image
         else:
-            arr = np.empty((len(images), len(obj)), dtype=object)
+            arr = np.empty((len(images), len(obj)), dtype=np.object_)
             for i in range(len(images)):
                 for j in range(len(obj)):
                     arr[i, j] = images[i][j]
         break
     else:
-        arr = np.empty((0, 0), dtype=object)
+        arr = np.empty((0, 0), dtype=np.object_)
 
     return arr
 

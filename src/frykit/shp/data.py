@@ -760,6 +760,8 @@ def clear_data_cache() -> None:
     _get_cn_polygons.cache_clear()
     _get_cn_border.cache_clear()
     _get_cn_line_strings.cache_clear()
+    _get_cn_dataframe.cache_clear()
+    _get_cn_geodataframe.cache_clear()
     get_countries.cache_clear()
     get_land.cache_clear()
     get_ocean.cache_clear()

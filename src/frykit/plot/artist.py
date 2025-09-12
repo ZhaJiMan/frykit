@@ -48,6 +48,7 @@ __all__ = [
     "QuiverLegend",
     "ScaleBar",
     "TextCollection",
+    "clear_path_cache",
 ]
 
 _lock = Lock()
@@ -84,6 +85,12 @@ _key_to_geometry: WeakValueDictionary[GeometryKey, BaseGeometry] = WeakValueDict
 _key_to_crs_to_path: WeakKeyDictionary[
     GeometryKey, dict[tuple[CRS, bool] | None, Path]
 ] = WeakKeyDictionary()
+
+
+def clear_path_cache() -> None:
+    """清理几何对象到 Path 的缓存"""
+    _key_to_geometry.clear()
+    _key_to_crs_to_path.clear()
 
 
 @_with_lock

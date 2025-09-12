@@ -47,6 +47,7 @@ from frykit.plot.artist import (
     _cached_geometry_to_path,
     _cached_project_geometry_to_path,
     _resolve_fast_transform,
+    clear_path_cache,
 )
 from frykit.plot.projection import PLATE_CARREE
 from frykit.plot.utils import (
@@ -105,6 +106,7 @@ __all__ = [
     "add_scale_bar",
     "add_side_axes",
     "add_texts",
+    "clear_path_cache",
     "clip_by_cn_border",
     "clip_by_cn_city",
     "clip_by_cn_district",

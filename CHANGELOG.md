@@ -1,5 +1,7 @@
 ## 0.7.6 (ongoing)
 
+- 依赖版本提高：
+  - `pandas>=2.0.0`
 - `plot` 模块新增 `clear_path_cache` 函数。
 - `shp` 模块新增 `get_cn_xxx_dataframe` 和 `get_cn_xxx_geodataframe` 系列函数，将中国行政区划的元数据和多边形打包成 `DataFrame` 或 `GeoDataFrame`，方便过滤使用。
 - `calc` 模块里的角度换算函数不再强制转换输入输出为 float64，而是根据输入的精度让 numpy 决定。

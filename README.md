@@ -49,7 +49,7 @@ pip install -U frykit
 
 ```
 python>=3.10.0
-pandas>=1.2.0
+pandas>=2.0.0
 shapely>=2.0.0
 cartopy>=0.22.0
 ```

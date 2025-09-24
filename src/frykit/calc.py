@@ -11,6 +11,7 @@ from numpy.typing import ArrayLike, NDArray
 if TYPE_CHECKING:
     import pandas as pd
 
+from frykit.typing import RealNumber, RealNumberT
 from frykit.utils import deprecator
 
 __all__ = [
@@ -51,8 +52,6 @@ __all__ = [
     "xy_to_rt",
 ]
 
-# TODO: 提供 dtype 参数，让用户决定类型精度
-
 R90 = np.pi / 2
 R180 = np.pi
 R270 = 3 * R90
@@ -61,9 +60,7 @@ R450 = 5 * R90
 R540 = 3 * R180
 
 
-def lon_to_180(
-    lon: ArrayLike, degrees: bool = True
-) -> NDArray[np.integer | np.floating]:
+def lon_to_180(lon: ArrayLike, degrees: bool = True) -> NDArray[RealNumber]:
     """经度从 [0, 360] 范围换算到 (-180, 180]，180 会映射到 180。默认使用角度。"""
     lon = np.asarray(lon)
     if degrees:
@@ -72,9 +69,7 @@ def lon_to_180(
         return (lon - R540) % -R360 + R180
 
 
-def lon_to_360(
-    lon: ArrayLike, degrees: bool = True
-) -> NDArray[np.integer | np.floating]:
+def lon_to_360(lon: ArrayLike, degrees: bool = True) -> NDArray[RealNumber]:
     """经度从 [-180, 180] 范围换算到 [0, 360)，0 会映射到 0。默认使用角度。"""
     lon = np.asarray(lon)
     return lon % 360 if degrees else lon % R360
@@ -117,7 +112,7 @@ def xy_to_rt(
     return r, t
 
 
-def t_to_az(t: ArrayLike, degrees: bool = False) -> NDArray[np.integer | np.floating]:
+def t_to_az(t: ArrayLike, degrees: bool = False) -> NDArray[RealNumber]:
     """x 轴夹角转为方位角。方位角范围 [0, 360)，90 会映射到 0。默认使用弧度。"""
     t = np.asarray(t)
     if degrees:
@@ -126,7 +121,7 @@ def t_to_az(t: ArrayLike, degrees: bool = False) -> NDArray[np.integer | np.floa
         return (R90 - t) % R360
 
 
-def az_to_t(az: ArrayLike, degrees: bool = False) -> NDArray[np.integer | np.floating]:
+def az_to_t(az: ArrayLike, degrees: bool = False) -> NDArray[RealNumber]:
     """方位角转为 x 轴夹角。夹角范围 (-180, 180]，270 会映射到 180。默认使用弧度。"""
     az = np.asarray(az)
     if degrees:
@@ -189,9 +184,7 @@ def dms_to_dd(d: ArrayLike, m: ArrayLike, s: ArrayLike) -> NDArray[np.floating]:
     return d + m / 60 + s / 3600
 
 
-def dd_to_dm(
-    dd: ArrayLike,
-) -> tuple[NDArray[np.integer | np.floating], NDArray[np.integer | np.floating]]:
+def dd_to_dm(dd: ArrayLike) -> tuple[NDArray[RealNumber], NDArray[RealNumber]]:
     """十进制度数转为度分"""
     dd = np.asarray(dd)
     sign = np.sign(dd)
@@ -206,11 +199,7 @@ def dd_to_dm(
 
 def dd_to_dms(
     dd: ArrayLike,
-) -> tuple[
-    NDArray[np.integer | np.floating],
-    NDArray[np.integer | np.floating],
-    NDArray[np.integer | np.floating],
-]:
+) -> tuple[NDArray[RealNumber], NDArray[RealNumber], NDArray[RealNumber]]:
     """十进制度数转为度分秒"""
     d, m_ = dd_to_dm(dd)
     m = np.floor(m_)
@@ -614,7 +603,7 @@ def binning2d(
     """
     import pandas as pd
 
-    def process_bins(bins: NDArray) -> tuple[bool, NDArray]:
+    def process_bins(bins: NDArray[RealNumberT]) -> tuple[bool, NDArray[RealNumberT]]:
         """检查 bins 有效性，返回是否升序的 flag 和升序的 bins。"""
         if bins.ndim != 1 or len(bins) < 2:
             raise ValueError("bins 必须是长度至少为 2 的一维数组")
@@ -677,7 +666,7 @@ def binning2d(
     )
 
     if isinstance(func, str) or callable(func):
-        func_shape = tuple()
+        func_shape: tuple[int, ...] = tuple()
     else:
         func_shape = tuple([len(func)])
     result_shape = (*channel_shape, *func_shape, ny, nx)
@@ -693,7 +682,7 @@ def is_finite(a: ArrayLike) -> bool:
 
 def get_values_between(
     values: ArrayLike, vmin: float, vmax: float
-) -> NDArray[np.integer | np.floating]:
+) -> NDArray[RealNumber]:
     """获取 vmin <= values <= vmax 的元素"""
     values = np.asarray(values)
     return values[(values >= vmin) & (values <= vmax)].copy()

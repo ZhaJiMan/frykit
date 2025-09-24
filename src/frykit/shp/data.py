@@ -129,7 +129,7 @@ NameOrAdcode: TypeAlias = int | str
 def _get_cn_locs(
     names: pd.Index, adcodes: pd.Index, key: NameOrAdcode | Iterable[NameOrAdcode]
 ) -> list[int]:
-    locs = []
+    locs: list[int] = []
     for k in to_list(key):
         match k:
             case str():

@@ -74,7 +74,7 @@ class CoordsCodec:
         diff_coords = np.diff(coords, axis=0)
 
         if (
-            diff_coords.shape[0] > 0
+            len(diff_coords) > 0
             and diff_coords.min() >= INT16_MIN
             and diff_coords.max() <= INT16_MAX
         ):
@@ -231,7 +231,7 @@ def _decode_multi_polygon(binary: bytes) -> shapely.MultiPolygon:
 def _decode_geometry(binary: bytes) -> BaseGeometry:
     with BytesIO(binary) as f:
         enum_value = struct.unpack(UINT32, f.read(UINT32_SIZE))[0]
-        geometry_type = GeometryEnum(enum_value).name
+        geometry_type = GeometryEnum(enum_value).name  # 错误的枚举值会报错
         binary = f.read()
 
     match geometry_type:
@@ -253,8 +253,6 @@ def _decode_geometry(binary: bytes) -> BaseGeometry:
             return shapely.GeometryCollection(
                 list(map(_decode_geometry, _split_binary(binary)))
             )
-        case _:
-            raise ValueError(f"geometry_type: {geometry_type}")
 
 
 def dump_geometries(geometries: Iterable[BaseGeometry]) -> bytes:

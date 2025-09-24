@@ -8,20 +8,18 @@ from contextlib import contextmanager
 from functools import wraps
 from importlib.metadata import version
 from pathlib import Path
-from typing import Any, Protocol, cast, overload
+from typing import Any, cast, overload
 
 from frykit.typing import F, HashableT, PathType, T
 
 __all__ = [
     "DeprecationError",
-    "HasFullName",
     "chdir_context",
     "compare_sets",
     "del_dir",
     "deprecator",
     "format_literal_error",
     "format_type_error",
-    "get_full_name",
     "get_package_version",
     "join_with_cn_comma",
     "new_dir",
@@ -110,13 +108,8 @@ def join_with_cn_comma(strings: Iterable[str]) -> str:
     return " 或 ".join("、".join(strings).rsplit("、", 1))
 
 
-class HasFullName(Protocol):
-    __module__: str
-    __qualname__: str
-
-
-def get_full_name(obj: HasFullName) -> str:
-    # 类方法无法用 runtime_checkable 检查
+def _get_full_name(obj: Any) -> str:
+    """获取 __module__.__qualname__ 的字符串"""
     assert hasattr(obj, "__module__") and hasattr(obj, "__qualname__")
     if obj.__module__ in {"__main__", "builtins"}:
         return obj.__qualname__
@@ -147,13 +140,13 @@ def format_type_error(
     msg : str
         消息字符串
     """
-    names = []
+    names: list[str] = []
     for typ in to_list(expected_type):
         match typ:
             case str():
                 names.append(typ)
             case type():
-                names.append(get_full_name(typ))
+                names.append(_get_full_name(typ))
             case _:
                 raise TypeError(format_type_error("expected_type", typ, [str, type]))
 
@@ -161,7 +154,7 @@ def format_type_error(
         raise ValueError("expected_type 不能为空")
 
     expected_type_str = join_with_cn_comma(names)
-    actual_type_str = get_full_name(type(param_value))
+    actual_type_str = _get_full_name(type(param_value))
     msg = f"{param_name} 必须是 {expected_type_str} 类型，但传入的是 {actual_type_str} 类型"
 
     return msg
@@ -210,7 +203,10 @@ class DeprecationError(Exception):
 def deprecator(
     deprecated: F,
     *,
-    alternative: str | Callable | Iterable[str | Callable] | None = None,
+    alternative: str
+    | Callable[..., Any]
+    | Iterable[str | Callable[..., Any]]
+    | None = None,
     raise_error: bool = False,
 ) -> F: ...
 
@@ -219,7 +215,10 @@ def deprecator(
 def deprecator(
     deprecated: None = None,
     *,
-    alternative: str | Callable | Iterable[str | Callable] | None = None,
+    alternative: str
+    | Callable[..., Any]
+    | Iterable[str | Callable[..., Any]]
+    | None = None,
     raise_error: bool = False,
 ) -> Callable[[F], F]: ...
 
@@ -228,7 +227,10 @@ def deprecator(
 def deprecator(
     deprecated: F | None = None,
     *,
-    alternative: str | Callable | Iterable[str | Callable] | None = None,
+    alternative: str
+    | Callable[..., Any]
+    | Iterable[str | Callable[..., Any]]
+    | None = None,
     raise_error: bool = False,
 ) -> F | Callable[[F], F]:
     """
@@ -261,14 +263,14 @@ def deprecator(
 
         return decorator
 
-    msg = f"{get_full_name(deprecated)} 已弃用"
+    msg = f"{_get_full_name(deprecated)} 已弃用"
     if alternative is not None:
-        names = []
+        names: list[str] = []
         for func in to_list(alternative):
             if isinstance(func, str):
                 names.append(func)
             elif callable(func):
-                names.append(get_full_name(func))
+                names.append(_get_full_name(func))
             else:
                 raise TypeError(
                     format_type_error("alternative", func, [str, "callable"])
@@ -310,7 +312,7 @@ def simple_deprecator(reason: str, raise_error: bool = False) -> Callable[[F], F
     def decorator(func: F) -> F:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            msg = reason.format(name=get_full_name(func))
+            msg = reason.format(name=_get_full_name(func))
             if raise_error:
                 raise DeprecationError(msg)
             else:

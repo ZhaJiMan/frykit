@@ -76,6 +76,7 @@ from frykit.shp.data import (
     get_ocean,
 )
 from frykit.shp.typing import PolygonType
+from frykit.typing import RealNumber
 from frykit.utils import (
     deprecator,
     format_literal_error,
@@ -193,7 +194,7 @@ def add_geometries(
     )
 
 
-def _set_pc_kwargs(kwargs: dict) -> dict:
+def _set_pc_kwargs(kwargs: dict[str, Any]) -> dict[str, Any]:
     """设置 add_cn_xxx 系列函数的 kwargs"""
     kwargs = normalize_kwargs(kwargs, PathCollection)
     kwargs.setdefault("linewidth", 0.5)
@@ -1265,10 +1266,10 @@ def clip_by_ocean(
 def _set_axes_ticks(
     ax: Axes,
     extents: tuple[float, float, float, float] | Literal["global"],
-    major_xticks: NDArray[np.integer | np.floating],
-    major_yticks: NDArray[np.integer | np.floating],
-    minor_xticks: NDArray[np.integer | np.floating],
-    minor_yticks: NDArray[np.integer | np.floating],
+    major_xticks: NDArray[RealNumber],
+    major_yticks: NDArray[RealNumber],
+    minor_xticks: NDArray[RealNumber],
+    minor_yticks: NDArray[RealNumber],
     xformatter: Formatter,
     yformatter: Formatter,
 ) -> None:
@@ -1296,10 +1297,10 @@ def _set_axes_ticks(
 def _set_simple_geoaxes_ticks(
     ax: GeoAxes,
     extents: tuple[float, float, float, float] | Literal["global"],
-    major_xticks: NDArray[np.integer | np.floating],
-    major_yticks: NDArray[np.integer | np.floating],
-    minor_xticks: NDArray[np.integer | np.floating],
-    minor_yticks: NDArray[np.integer | np.floating],
+    major_xticks: NDArray[RealNumber],
+    major_yticks: NDArray[RealNumber],
+    minor_xticks: NDArray[RealNumber],
+    minor_yticks: NDArray[RealNumber],
     xformatter: Formatter,
     yformatter: Formatter,
 ) -> None:
@@ -1335,10 +1336,10 @@ def _set_simple_geoaxes_ticks(
 def _set_complex_geoaxes_ticks(
     ax: GeoAxes,
     extents: tuple[float, float, float, float] | Literal["global"],
-    major_xticks: NDArray[np.integer | np.floating],
-    major_yticks: NDArray[np.integer | np.floating],
-    minor_xticks: NDArray[np.integer | np.floating],
-    minor_yticks: NDArray[np.integer | np.floating],
+    major_xticks: NDArray[RealNumber],
+    major_yticks: NDArray[RealNumber],
+    minor_xticks: NDArray[RealNumber],
+    minor_yticks: NDArray[RealNumber],
     xformatter: Formatter,
     yformatter: Formatter,
 ) -> None:
@@ -1364,13 +1365,13 @@ def _set_complex_geoaxes_ticks(
     lineR = shapely.LineString([(x1, y0), (x1, y1)])
 
     def get_two_xticks(
-        xticks: NDArray[np.integer | np.floating], npts: int = 100
+        xticks: NDArray[RealNumber], npts: int = 100
     ) -> tuple[list[float], list[float], list[str], list[str]]:
         """获取地图上下边框的 x 刻度和刻度标签"""
-        xticksB = []
-        xticksT = []
-        xticklabelsB = []
-        xticklabelsT = []
+        xticksB: list[float] = []
+        xticksT: list[float] = []
+        xticklabelsB: list[str] = []
+        xticklabelsT: list[str] = []
         lats = np.linspace(lat0, lat1, npts)
         xticks = lon_to_180(xticks)
         xticks = get_values_between(xticks, lon0, lon1)
@@ -1390,13 +1391,13 @@ def _set_complex_geoaxes_ticks(
         return xticksB, xticksT, xticklabelsB, xticklabelsT
 
     def get_two_yticks(
-        yticks: NDArray[np.integer | np.floating], npts: int = 100
+        yticks: NDArray[RealNumber], npts: int = 100
     ) -> tuple[list[float], list[float], list[str], list[str]]:
         """获取地图左右边框的 y 刻度和刻度标签"""
-        yticksL = []
-        yticksR = []
-        yticklabelsL = []
-        yticklabelsR = []
+        yticksL: list[float] = []
+        yticksR: list[float] = []
+        yticklabelsL: list[str] = []
+        yticklabelsR: list[str] = []
         lons = np.linspace(lon0, lon1, npts)
         yticks = get_values_between(yticks, lat0, lat1)
         for ytick in yticks:
@@ -1458,7 +1459,7 @@ def _set_complex_geoaxes_ticks(
 
 
 def _interp_minor_ticks(
-    major_ticks: NDArray[np.integer | np.floating], m: int
+    major_ticks: NDArray[RealNumber], m: int
 ) -> NDArray[np.float64]:
     """在主刻度的每段间隔内线性插值出 m 个次刻度"""
     n = len(major_ticks)
@@ -2090,7 +2091,7 @@ def get_cross_section_xticks(
     tlat = np.interp(xticks, x, lats)
 
     # 获取字符串形式的刻度标签
-    xticklabels = []
+    xticklabels: list[str] = []
     if lon_formatter is None:
         lon_formatter = LongitudeFormatter(number_format=".1f")
     if lat_formatter is None:
@@ -2215,7 +2216,7 @@ def letter_axes(
     x = np.full_like(axes, x) if np.isscalar(x) else np.asarray(x)
     y = np.full_like(axes, y) if np.isscalar(y) else np.asarray(y)
 
-    texts = []
+    texts: list[Text] = []
     for i, (ax, xi, yi) in enumerate(zip(axes.flat, x.flat, y.flat)):
         letter = chr(ord("a") + i)
         text = ax.text(

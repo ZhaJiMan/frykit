@@ -8,6 +8,7 @@ from numpy.typing import ArrayLike, NDArray
 
 from frykit.calc import asarrays, is_monotonic_decreasing, is_monotonic_increasing
 from frykit.shp.typing import PolygonType
+from frykit.typing import RealNumber
 from frykit.utils import deprecator, format_type_error
 
 __all__ = ["polygon_mask", "polygon_mask2", "polygon_to_mask"]
@@ -60,7 +61,9 @@ def polygon_mask(
     if x.shape != y.shape:
         raise ValueError
 
-    def do_recursion(x: NDArray, y: NDArray) -> NDArray[np.bool_]:
+    def do_recursion(
+        x: NDArray[RealNumber], y: NDArray[RealNumber]
+    ) -> NDArray[np.bool_]:
         if len(x) == 0:
             return np.array([], dtype=np.bool_)
 
@@ -105,7 +108,7 @@ def polygon_mask(
     if mask.ndim == 0:
         mask = np.bool_(mask)
 
-    return cast(NDArray, mask)
+    return cast(NDArray[np.bool_], mask)
 
 
 # https://gist.github.com/perrette/a78f99b76aed54b6babf3597e0b331f8
@@ -181,7 +184,9 @@ def polygon_mask2(
     else:
         raise ValueError("要求 y 单调递增或递减")
 
-    def do_recursion(x: NDArray, y: NDArray, mask: NDArray[np.bool_]) -> None:
+    def do_recursion(
+        x: NDArray[RealNumber], y: NDArray[RealNumber], mask: NDArray[np.bool_]
+    ) -> None:
         nx, ny = len(x), len(y)
         if nx == 0 or ny == 0:
             return

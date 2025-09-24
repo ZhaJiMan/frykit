@@ -184,8 +184,8 @@ class GeometryPathCollection(PathCollection):
             case _:
                 raise TypeError(format_type_error("ax", ax, Axes))
 
-        paths = []
         # 用投影后的 bbox 做初始化的 path
+        paths: list[Path] = []
         if ax.get_autoscale_on() and len(geometries) > 0:
             bounds = shapely.bounds(geometries)
             bounds = ma.masked_invalid(bounds)
@@ -433,12 +433,11 @@ class Compass(PathCollection):
             case "star":
                 width = head / 3
                 axis = head + width / 2
-                paths = []
-                path1, path2 = self._make_paths(width, head, axis)
-                for deg in range(0, 360, 90):
+                paths = self._make_paths(width, head, axis)
+                for deg in range(90, 360, 90):
                     rotation = Affine2D().rotate_deg(deg)
-                    paths.append(path1.transformed(rotation))
-                    paths.append(path2.transformed(rotation))
+                    paths.append(paths[0].transformed(rotation))
+                    paths.append(paths[1].transformed(rotation))
                 colors = ["k", "w"]
             case _:
                 raise ValueError(
@@ -469,15 +468,15 @@ class Compass(PathCollection):
         )
 
     @staticmethod
-    def _make_paths(width: float, head: float, axis: float) -> tuple[Path, Path]:
+    def _make_paths(width: float, head: float, axis: float) -> list[Path]:
         # 箭头方向朝上
         # width: 箭头宽度
         # head: 箭头长度
         # axis: 箭头中轴长度
-        path1 = Path([(0, 0), (0, axis), (-width / 2, axis - head), (0, 0)])
-        path2 = Path([(0, 0), (width / 2, axis - head), (0, axis), (0, 0)])
-
-        return path1, path2
+        return [
+            Path([(0, 0), (0, axis), (-width / 2, axis - head), (0, 0)]),
+            Path([(0, 0), (width / 2, axis - head), (0, axis), (0, 0)]),
+        ]
 
     def _init(self) -> None:
         if self.axes is None:

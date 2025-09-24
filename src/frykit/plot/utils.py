@@ -39,13 +39,11 @@ EMPTY_PATH = Path(np.empty((0, 2)))
 EMPTY_POLYGON = shapely.Polygon()
 
 
-def _line_string_codes(line_string: shapely.LineString) -> list[np.uint8]:
-    n = shapely.get_num_points(line_string)
+def _line_string_codes(n: int) -> list[np.uint8]:
     return [Path.MOVETO, *([Path.LINETO] * (n - 1))]
 
 
-def _linear_ring_codes(linear_ring: shapely.LinearRing) -> list[np.uint8]:
-    n = shapely.get_num_points(linear_ring)
+def _linear_ring_codes(n: int) -> list[np.uint8]:
     return [Path.MOVETO, *([Path.LINETO] * (n - 2)), Path.CLOSEPOLY]
 
 
@@ -69,22 +67,25 @@ def geometry_to_path(geometry: BaseGeometry) -> Path:
             return Path([[geometry.x, geometry.y]], [Path.MOVETO])
 
         case shapely.LinearRing():
-            return Path(shapely.get_coordinates(geometry), _linear_ring_codes(geometry))
+            coords = shapely.get_coordinates(geometry)
+            return Path(coords, _linear_ring_codes(len(coords)))
 
         case shapely.LineString():
-            return Path(shapely.get_coordinates(geometry), _line_string_codes(geometry))
+            coords = shapely.get_coordinates(geometry)
+            return Path(coords, _line_string_codes(len(coords)))
 
         # 直接使用 orient 效率太低
         case shapely.Polygon():
-            vertices, codes = [], []
+            codes: list[np.uint8] = []
+            coords_list: list[NDArray[np.float64]] = []
             for i, linear_ring in enumerate([geometry.exterior, *geometry.interiors]):
                 coords = shapely.get_coordinates(linear_ring)
                 if (i == 0) == linear_ring.is_ccw:
                     coords = coords[::-1]
-                vertices.append(coords)
-                codes.extend(_linear_ring_codes(linear_ring))
+                codes.extend(_linear_ring_codes(len(coords)))
+                coords_list.append(coords)
 
-            vertices = np.vstack(vertices)
+            vertices = np.vstack(coords_list)
             return Path(vertices, codes)
 
         case BaseMultipartGeometry():
@@ -112,11 +113,11 @@ def path_to_polygon(path: Path) -> PolygonType:
     invalid_flag = False
     collection: list[tuple[shapely.LinearRing, list[shapely.LinearRing]]] = []
     indices = np.nonzero(path.codes == Path.MOVETO)[0][1:]  # type: ignore
-    for vertices in np.vsplit(path.vertices, indices):
-        if not is_finite(vertices):
+    for coords in np.vsplit(path.vertices, indices):
+        if not is_finite(coords):
             invalid_flag = True
             continue
-        linear_ring = shapely.LinearRing(vertices)
+        linear_ring = shapely.LinearRing(coords)
         if linear_ring.is_ccw:
             if not invalid_flag:
                 assert len(collection) > 0
@@ -157,7 +158,7 @@ def _transform_geometry(
             if not is_finite(shell):
                 return type(geometry)()
 
-            holes = []
+            holes: list[NDArray[np.float64]] = []
             for interior in geometry.interiors:
                 hole = transform(shapely.get_coordinates(interior))
                 if is_finite(hole):

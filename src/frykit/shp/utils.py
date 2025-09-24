@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 from itertools import chain
-from typing import Any, cast, overload
+from typing import TYPE_CHECKING, Any, cast, overload
 
 import pandas as pd
 import shapefile
 import shapely
 import shapely.geometry as sgeom
 from shapely.geometry.base import BaseGeometry
+
+if TYPE_CHECKING:
+    from matplotlib.path import Path
 
 from frykit.shp.typing import (
     FeatureDict,
@@ -62,7 +65,7 @@ def _orient(polygon: shapely.Polygon, ccw: bool = True) -> shapely.Polygon:
         return polygon
 
     # 循环比向量化略快？
-    linear_rings = []
+    linear_rings: list[shapely.LinearRing] = []
     for i, linear_ring in enumerate([polygon.exterior, *polygon.interiors]):
         if ((i == 0) == ccw) != linear_ring.is_ccw:
             linear_ring = shapely.reverse(linear_ring)
@@ -324,7 +327,7 @@ def make_feature(
     geometry_dict: GeometryDict, properties: dict[str, Any] | None = None
 ) -> FeatureDict:
     """用 geometry 和 properties 字典构造 GeoJSON 的 feature 字典"""
-    feature = {"type": "Feature", "geometry": geometry_dict}
+    feature: dict[str, Any] = {"type": "Feature", "geometry": geometry_dict}
     if properties is not None:
         feature["properties"] = properties
 
@@ -349,7 +352,7 @@ def geom_to_path(geom: BaseGeometry):
 
 
 @deprecator(alternative="frykit.plot.utils.path_to_polygon")
-def path_to_polygon(path) -> PolygonType:
+def path_to_polygon(path: Path) -> PolygonType:
     from frykit.plot.utils import path_to_polygon
 
     return path_to_polygon(path)

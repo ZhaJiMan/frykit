@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from functools import partial, wraps
 from threading import Lock
 from typing import Any, Literal, cast
@@ -37,7 +37,7 @@ from frykit.plot.utils import (
     project_geometry,
 )
 from frykit.shp.typing import PolygonType
-from frykit.typing import F
+from frykit.typing import P, T
 from frykit.utils import format_literal_error, format_type_error
 
 __all__ = [
@@ -54,13 +54,13 @@ __all__ = [
 _lock = Lock()
 
 
-def _with_lock(func: F) -> F:
+def _with_lock(func: Callable[P, T]) -> Callable[P, T]:
     @wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
         with _lock:
             return func(*args, **kwargs)
 
-    return cast(F, wrapper)
+    return wrapper
 
 
 # https://github.com/SciTools/cartopy/blob/main/lib/cartopy/mpl/feature_artist.py

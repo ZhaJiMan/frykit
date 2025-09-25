@@ -1,16 +1,17 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Hashable
+from collections.abc import Hashable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, TypeAlias, TypeVar
+from typing import TYPE_CHECKING, ParamSpec, TypeAlias, TypeVar
 
 if TYPE_CHECKING:
     import numpy as np
 
-__all__ = ["F", "HashableT", "PathType", "RealNumber", "RealNumberT", "T"]
+__all__ = ["HashableT", "P", "PathType", "RealNumber", "RealNumberT", "T"]
 
 T = TypeVar("T")
-F = TypeVar("F", bound=Callable[..., Any])
+P = ParamSpec("P")
+
 HashableT = TypeVar("HashableT", bound=Hashable)
 
 PathType: TypeAlias = str | Path

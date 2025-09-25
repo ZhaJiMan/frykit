@@ -8,9 +8,9 @@ from contextlib import contextmanager
 from functools import wraps
 from importlib.metadata import version
 from pathlib import Path
-from typing import Any, cast, overload
+from typing import Any, overload
 
-from frykit.typing import F, HashableT, PathType, T
+from frykit.typing import HashableT, P, PathType, T
 
 __all__ = [
     "DeprecationError",
@@ -201,14 +201,14 @@ class DeprecationError(Exception):
 
 @overload
 def deprecator(
-    deprecated: F,
+    deprecated: Callable[P, T],
     *,
     alternative: str
     | Callable[..., Any]
     | Iterable[str | Callable[..., Any]]
     | None = None,
     raise_error: bool = False,
-) -> F: ...
+) -> Callable[P, T]: ...
 
 
 @overload
@@ -220,19 +220,19 @@ def deprecator(
     | Iterable[str | Callable[..., Any]]
     | None = None,
     raise_error: bool = False,
-) -> Callable[[F], F]: ...
+) -> Callable[[Callable[P, T]], Callable[P, T]]: ...
 
 
 # TODO: 类装饰器
 def deprecator(
-    deprecated: F | None = None,
+    deprecated: Callable[P, T] | None = None,
     *,
     alternative: str
     | Callable[..., Any]
     | Iterable[str | Callable[..., Any]]
     | None = None,
     raise_error: bool = False,
-) -> F | Callable[[F], F]:
+) -> Callable[P, T] | Callable[[Callable[P, T]], Callable[P, T]]:
     """
     提示函数弃用的装饰器
 
@@ -256,7 +256,7 @@ def deprecator(
     """
     if deprecated is None:
 
-        def decorator(deprecated: F) -> F:
+        def decorator(deprecated: Callable[P, T]) -> Callable[P, T]:
             return deprecator(
                 deprecated, alternative=alternative, raise_error=raise_error
             )
@@ -281,7 +281,7 @@ def deprecator(
         msg += f"，建议换用 {join_with_cn_comma(names)}"
 
     @wraps(deprecated)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
         if raise_error:
             raise DeprecationError(msg)
         else:
@@ -291,7 +291,9 @@ def deprecator(
     return wrapper
 
 
-def simple_deprecator(reason: str, raise_error: bool = False) -> Callable[[F], F]:
+def simple_deprecator(
+    reason: str, raise_error: bool = False
+) -> Callable[[Callable[P, T]], Callable[P, T]]:
     """
     提示函数弃用的装饰器
 
@@ -309,9 +311,9 @@ def simple_deprecator(reason: str, raise_error: bool = False) -> Callable[[F], F
         以被弃用函数为参数的装饰器
     """
 
-    def decorator(func: F) -> F:
+    def decorator(func: Callable[P, T]) -> Callable[P, T]:
         @wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             msg = reason.format(name=_get_full_name(func))
             if raise_error:
                 raise DeprecationError(msg)
@@ -319,6 +321,6 @@ def simple_deprecator(reason: str, raise_error: bool = False) -> Callable[[F], F
                 warnings.warn(msg, DeprecationWarning, stacklevel=2)
                 return func(*args, **kwargs)
 
-        return cast(F, wrapper)
+        return wrapper
 
     return decorator

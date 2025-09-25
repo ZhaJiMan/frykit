@@ -38,7 +38,6 @@ PolygonCoordinates: TypeAlias = Sequence[LineStringCoordinates]
 MultiPolygonCoordinates: TypeAlias = Sequence[PolygonCoordinates]
 
 
-# TODO: 用 NotRequired 标注 bbox 字段
 class PointDict(TypedDict):
     type: Literal["Point"]
     coordinates: PointCoordinates
@@ -69,7 +68,7 @@ class MultiPolygonDict(TypedDict):
     coordinates: MultiPolygonCoordinates
 
 
-# X | Y 不支持前向引用
+# X | Y 不支持部分前向引用
 # https://docs.python.org/3/library/stdtypes.html#union-type
 GeometryDict: TypeAlias = Union[
     PointDict,
@@ -84,18 +83,20 @@ GeometryDict: TypeAlias = Union[
 
 class GeometryCollectionDict(TypedDict):
     type: Literal["GeometryCollection"]
-    geometries: list[GeometryDict]
+    geometries: Sequence[GeometryDict]
 
 
 class FeatureDict(TypedDict):
     type: Literal["Feature"]
     geometry: GeometryDict
     properties: dict[str, Any]
+    # bbox: NotRequired[Sequence[float]]
 
 
 class GeoJSONDict(TypedDict):
     type: Literal["FeatureCollection"]
-    features: list[FeatureDict]
+    features: Sequence[FeatureDict]
+    # bbox: NotRequired[Sequence[float]]
 
 
 # 这里的前向引用必须用字符串

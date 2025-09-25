@@ -57,7 +57,7 @@ def make_gif(images: Sequence[ImageInput], file_path: PathType, **kwargs: Any) -
 
 
 # numpy 1.20 后满足 __array__ 协议的对象会被自动转换为 numpy 数组，导致无法构造 object 数组
-def _images_to_array2d(images: Any) -> NDArray[Any]:
+def _images_to_array2d(images: Any) -> NDArray[np.object_]:
     for obj in images:
         if obj is None or isinstance(obj, (str, Path, Image.Image)):
             arr = np.empty((1, len(images)), dtype=np.object_)
@@ -136,7 +136,7 @@ def merge_images(
     return merged
 
 
-def split_image(image: ImageInput, shape: int | tuple[int, int]) -> NDArray[Any]:
+def split_image(image: ImageInput, shape: int | tuple[int, int]) -> NDArray[np.object_]:
     """
     将一张图片分割成形如 shape 的图片数组
 
@@ -163,7 +163,7 @@ def split_image(image: ImageInput, shape: int | tuple[int, int]) -> NDArray[Any]
     width = image.width // ncols
     height = image.height // nrows
 
-    split = np.empty((nrows, ncols), object)
+    split = np.empty((nrows, ncols), dtype=np.object_)
     for i in range(nrows):
         for j in range(ncols):
             left = j * width

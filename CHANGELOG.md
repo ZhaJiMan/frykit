@@ -5,6 +5,7 @@
 - 用缓存提高 `shp` 模块用省市县多次查询数据的速度。
 - `plot` 模块新增 `clear_path_cache` 函数。
 - `shp` 模块新增 `get_cn_xxx_dataframe` 和 `get_cn_xxx_geodataframe` 系列函数，将中国行政区划的元数据和多边形打包成 `DataFrame` 或 `GeoDataFrame`，方便过滤使用。
+- `make_feature` 函数当 `properties` 参数是 `None` 时也会往返回的字典里插入空的 `properties` 字典。
 - `calc` 模块里的角度换算函数不再强制转换输入输出为 float64，而是根据输入的精度让 numpy 决定。
 - `interp_nearest_xx`、和 `binning2d` 函数移除 `in_channels_last` 和 `out_channels_last` 参数，强制保证 channels first 的输入输出。
 - 修正 `interp_nearest_xx` 函数输入字符串类型 `fill_value` 的报错。

@@ -327,11 +327,11 @@ def make_feature(
     geometry_dict: GeometryDict, properties: dict[str, Any] | None = None
 ) -> FeatureDict:
     """用 geometry 和 properties 字典构造 GeoJSON 的 feature 字典"""
-    feature: dict[str, Any] = {"type": "Feature", "geometry": geometry_dict}
-    if properties is not None:
-        feature["properties"] = properties
-
-    return feature  # type: ignore
+    return {
+        "type": "Feature",
+        "geometry": geometry_dict,
+        "properties": {} if properties is None else properties,
+    }
 
 
 def make_geojson(features: list[FeatureDict]) -> GeoJSONDict:

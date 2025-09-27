@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from dataclasses import dataclass
 from enum import IntEnum
 from functools import cache
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, TypeAlias, TypedDict, cast, overload
+from typing import TYPE_CHECKING, Literal, TypeAlias, TypedDict, cast, overload
 
 import numpy as np
 import pandas as pd
 import shapely
+from numpy.typing import NDArray
 
 if TYPE_CHECKING:
     import geopandas as gpd
@@ -22,6 +24,7 @@ from frykit.utils import deprecator, format_type_error
 __all__ = [
     "AdminLevel",
     "CityProperties",
+    "DataProperties",
     "DistrictProperties",
     "LineEnum",
     "LineName",
@@ -111,147 +114,203 @@ def get_cn_district_table(data_source: DataSource | None = None) -> pd.DataFrame
     return _get_cn_district_table(data_source).copy()
 
 
-def _get_index_locs(index: pd.Index, key: Any) -> list[int]:
-    """保证返回 list[int] 类型的 Index.get_loc"""
-    loc = index.get_loc(key)
-    match loc:
-        case slice():
-            return list(range(len(index))[loc])
-        case np.ndarray():
-            return np.nonzero(loc)[0].tolist()
-        case _:
-            return [loc]
-
-
-NameOrAdcode: TypeAlias = int | str
-
-
-def _get_cn_locs(
-    names: pd.Index, adcodes: pd.Index, key: NameOrAdcode | Iterable[NameOrAdcode]
-) -> list[int]:
+def _get_cn_indices(
+    name_to_indices: dict[str, NDArray[np.int64]],
+    adcode_to_indices: dict[int, NDArray[np.int64]],
+    key: NameOrAdcode | Iterable[NameOrAdcode],
+) -> NDArray[np.int64]:
     if isinstance(key, str) or not isinstance(key, Iterable):
         keys = [key]
     else:
         keys = key
 
-    locs: list[int] = []
+    arrs: list[NDArray[np.int64]] = []
     for k in keys:
         match k:
             case str():
-                locs.extend(_get_index_locs(names, k))
+                arrs.append(name_to_indices[k])
             case int():
-                locs.extend(_get_index_locs(adcodes, k))
+                arrs.append(adcode_to_indices[k])
             case _:
                 raise TypeError(format_type_error("key", k, [str, int]))
 
-    return locs
+    return np.concatenate(arrs)
 
 
-def _get_cn_province_locs(
+NameOrAdcode: TypeAlias = int | str
+
+
+@dataclass
+class Lookup:
+    index: NDArray[np.int64]
+
+
+@dataclass
+class ProvinceLookup(Lookup):
+    province_name: dict[str, NDArray[np.int64]]
+    province_adcode: dict[int, NDArray[np.int64]]
+
+
+@dataclass
+class CityLookup(Lookup):
+    province_name: dict[str, NDArray[np.int64]]
+    province_adcode: dict[int, NDArray[np.int64]]
+    city_name: dict[str, NDArray[np.int64]]
+    city_adcode: dict[int, NDArray[np.int64]]
+
+
+@dataclass
+class DistrictLookup(Lookup):
+    province_name: dict[str, NDArray[np.int64]]
+    province_adcode: dict[int, NDArray[np.int64]]
+    city_name: dict[str, NDArray[np.int64]]
+    city_adcode: dict[int, NDArray[np.int64]]
+    district_name: dict[str, NDArray[np.int64]]
+    district_adcode: dict[int, NDArray[np.int64]]
+
+
+@overload
+def _get_cn_lookup(
+    admin_level: Literal["province"], data_source: DataSource
+) -> ProvinceLookup: ...
+
+
+@overload
+def _get_cn_lookup(
+    admin_level: Literal["city"], data_source: DataSource
+) -> CityLookup: ...
+
+
+@overload
+def _get_cn_lookup(
+    admin_level: Literal["district"], data_source: DataSource
+) -> DistrictLookup: ...
+
+
+@cache
+def _get_cn_lookup(
+    admin_level: AdminLevel, data_source: DataSource
+) -> ProvinceLookup | CityLookup | DistrictLookup:
+    df = _get_cn_table(admin_level, data_source)
+    index = df.index.to_numpy()
+    match admin_level:
+        case "province":
+            cls = ProvinceLookup
+            cols = df.columns[:2]
+        case "city":
+            cls = CityLookup
+            cols = df.columns[:4]
+        case "district":
+            cls = DistrictLookup
+            cols = df.columns[:6]
+
+    # 其实第一次运行 groupby 还是有些慢的
+    return cls(index, *[df.groupby(col).indices for col in cols])  # type: ignore
+
+
+def _get_cn_province_lookup(data_source: DataSource | None = None) -> ProvinceLookup:
+    data_source = _resolve_data_source(data_source)
+    return _get_cn_lookup("province", data_source)
+
+
+def _get_cn_city_lookup(data_source: DataSource | None = None) -> CityLookup:
+    data_source = _resolve_data_source(data_source)
+    return _get_cn_lookup("city", data_source)
+
+
+def _get_cn_district_lookup(data_source: DataSource | None = None) -> DistrictLookup:
+    data_source = _resolve_data_source(data_source)
+    return _get_cn_lookup("district", data_source)
+
+
+def _get_cn_province_indices(
     province: NameOrAdcode | Iterable[NameOrAdcode] | None,
     data_source: DataSource | None = None,
-) -> list[int]:
-    df = _get_cn_province_table(data_source)
-    if province is None:
-        return list(range(len(df)))
-
-    names = pd.Index(df.province_name)
-    adcodes = pd.Index(df.province_adcode)
-    locs = _get_cn_locs(names, adcodes, province)
-
-    return locs
+) -> NDArray[np.int64]:
+    lookup = _get_cn_province_lookup(data_source)
+    if province is not None:
+        return _get_cn_indices(lookup.province_name, lookup.province_adcode, province)
+    else:
+        return lookup.index
 
 
-def _get_cn_city_locs(
+def _get_cn_city_indices(
     city: NameOrAdcode | Iterable[NameOrAdcode] | None,
     province: NameOrAdcode | Iterable[NameOrAdcode] | None,
     data_source: DataSource | None = None,
-) -> list[int]:
-    df = _get_cn_city_table(data_source)
+) -> NDArray[np.int64]:
+    lookup = _get_cn_city_lookup(data_source)
     if city is None and province is None:
-        return list(range(len(df)))
+        return lookup.index
     if city is not None and province is not None:
         raise ValueError("不能同时指定 city 和 province")
 
     if city is not None:
-        names = pd.Index(df.city_name)
-        adcodes = pd.Index(df.city_adcode)
-        key = city
-
-    if province is not None:
-        names = pd.Index(df.province_name)
-        adcodes = pd.Index(df.province_adcode)
-        key = province
-
-    locs = _get_cn_locs(names, adcodes, key)  # type: ignore
-
-    return locs
+        return _get_cn_indices(lookup.city_name, lookup.city_adcode, city)
+    else:
+        assert province is not None
+        return _get_cn_indices(lookup.province_name, lookup.province_adcode, province)
 
 
-def _get_cn_district_locs(
+def _get_cn_district_indices(
     district: NameOrAdcode | Iterable[NameOrAdcode] | None,
     city: NameOrAdcode | Iterable[NameOrAdcode] | None,
     province: NameOrAdcode | Iterable[NameOrAdcode] | None,
     data_source: DataSource | None = None,
-) -> list[int]:
-    df = _get_cn_district_table(data_source)
+) -> NDArray[np.int64]:
+    lookup = _get_cn_district_lookup(data_source)
     num_keys = sum(key is not None for key in [district, city, province])
     if num_keys == 0:
-        return list(range(len(df)))
+        return lookup.index
     if num_keys >= 2:
         raise ValueError("district、city 和 province 三个参数中只能指定一个")
 
     if district is not None:
-        names = pd.Index(df.district_name)
-        adcodes = pd.Index(df.district_adcode)
-        key = district
+        indices = _get_cn_indices(
+            lookup.district_name, lookup.district_adcode, district
+        )
+    elif city is not None:
+        indices = _get_cn_indices(lookup.city_name, lookup.city_adcode, city)
+    else:
+        assert province is not None
+        indices = _get_cn_indices(
+            lookup.province_name, lookup.province_adcode, province
+        )
 
-    if city is not None:
-        names = pd.Index(df.city_name)
-        adcodes = pd.Index(df.city_adcode)
-        key = city
-
-    if province is not None:
-        names = pd.Index(df.province_name)
-        adcodes = pd.Index(df.province_adcode)
-        key = province
-
-    locs = _get_cn_locs(names, adcodes, key)  # type: ignore
-    if isinstance(district, str) and len(locs) > 1:
-        df_str = df.iloc[locs, :6].to_string(index=False)
+    if isinstance(district, str) and len(indices) > 1:
+        df = _get_cn_district_table(data_source)
+        df_str = df.iloc[indices, :6].to_string(index=False)
         raise ValueError(f"存在复数个同名的县，请用 adcode 指定\n{df_str}")
 
-    return locs
+    return indices
 
 
-class ProvinceProperties(TypedDict):
-    province_name: str
-    province_adcode: int
+# TypedDict 子类不需要多重继承
+class DataProperties(TypedDict):
     short_name: str
     lon: float
     lat: float
 
 
-class CityProperties(TypedDict):
+class ProvinceProperties(DataProperties):
+    province_name: str
+    province_adcode: int
+
+
+class CityProperties(DataProperties):
     province_name: str
     province_adcode: int
     city_name: str
     city_adcode: int
-    short_name: str
-    lon: float
-    lat: float
 
 
-class DistrictProperties(TypedDict):
+class DistrictProperties(DataProperties):
     province_name: str
     province_adcode: int
     city_name: str
     city_adcode: int
     district_name: str
     district_adcode: int
-    short_name: str
-    lon: float
-    lat: float
 
 
 @overload
@@ -288,8 +347,8 @@ def get_cn_province_properties(
         元数据字典
     """
     df = _get_cn_province_table(data_source)
-    locs = _get_cn_province_locs(province, data_source)
-    result = df.iloc[locs].to_dict(orient="records")
+    indices = _get_cn_province_indices(province, data_source)
+    result = df.iloc[indices].to_dict(orient="records")
     result = cast(list[ProvinceProperties], result)
 
     if isinstance(province, (str, int)):
@@ -340,8 +399,8 @@ def get_cn_city_properties(
         元数据字典
     """
     df = _get_cn_city_table(data_source)
-    locs = _get_cn_city_locs(city, province, data_source)
-    result = df.iloc[locs].to_dict(orient="records")
+    indices = _get_cn_city_indices(city, province, data_source)
+    result = df.iloc[indices].to_dict(orient="records")
     result = cast(list[CityProperties], result)
 
     if isinstance(city, (str, int)):
@@ -399,8 +458,8 @@ def get_cn_district_properties(
         元数据字典
     """
     df = _get_cn_district_table(data_source)
-    locs = _get_cn_district_locs(district, city, province, data_source)
-    result = df.iloc[locs].to_dict(orient="records")
+    indices = _get_cn_district_indices(district, city, province, data_source)
+    result = df.iloc[indices].to_dict(orient="records")
     result = cast(list[DistrictProperties], result)
 
     if isinstance(district, (str, int)):
@@ -496,10 +555,12 @@ def get_cn_province(
     Polygon or MultiPolygon or list of Polygon and MultiPolygon
         多边形对象
     """
-    locs = _get_cn_province_locs(province, data_source)
+    indices = _get_cn_province_indices(province, data_source)
     polygons = _get_cn_province_polygons(data_source)
-    polygons = [polygons[loc] for loc in locs]
+    if len(indices) == len(polygons):
+        return polygons
 
+    polygons = [polygons[i] for i in indices]
     if isinstance(province, (str, int)):
         return polygons[0]
     else:
@@ -547,10 +608,12 @@ def get_cn_city(
     Polygon or MultiPolygon or list of Polygon and MultiPolygon
         多边形对象
     """
-    locs = _get_cn_city_locs(city, province, data_source)
+    indices = _get_cn_city_indices(city, province, data_source)
     polygons = _get_cn_city_polygons(data_source)
-    polygons = [polygons[loc] for loc in locs]
+    if len(indices) == len(polygons):
+        return polygons
 
+    polygons = [polygons[i] for i in indices]
     if isinstance(city, (str, int)):
         return polygons[0]
     else:
@@ -605,10 +668,12 @@ def get_cn_district(
     Polygon or MultiPolygon or list of Polygon and MultiPolygon
         多边形对象
     """
-    locs = _get_cn_district_locs(district, city, province, data_source)
+    indices = _get_cn_district_indices(district, city, province, data_source)
     polygons = _get_cn_district_polygons(data_source)
-    polygons = [polygons[loc] for loc in locs]
+    if len(indices) == len(polygons):
+        return polygons
 
+    polygons = [polygons[i] for i in indices]
     if isinstance(district, (str, int)):
         return polygons[0]
     else:
@@ -762,6 +827,7 @@ def get_cn_district_geodataframe(
 def clear_data_cache() -> None:
     """清除数据缓存"""
     _get_cn_table.cache_clear()
+    _get_cn_lookup.cache_clear()  # type: ignore
     _get_cn_polygons.cache_clear()
     _get_cn_border.cache_clear()
     _get_cn_line_strings.cache_clear()

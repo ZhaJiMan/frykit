@@ -60,11 +60,11 @@ from frykit.plot.utils import (
 from frykit.shp.data import (
     LineName,
     NameOrAdcode,
-    _get_cn_city_locs,
+    _get_cn_city_indices,
     _get_cn_city_table,
-    _get_cn_district_locs,
+    _get_cn_district_indices,
     _get_cn_district_table,
-    _get_cn_province_locs,
+    _get_cn_province_indices,
     _get_cn_province_table,
     get_cn_border,
     get_cn_city,
@@ -709,9 +709,9 @@ def label_cn_province(
         表示 Text 的集合对象
     """
     df = _get_cn_province_table(data_source)
-    locs = _get_cn_province_locs(province, data_source)
+    indices = _get_cn_province_indices(province, data_source)
     key = "short_name" if short_name else "province_name"
-    df = df.iloc[locs]
+    df = df.iloc[indices]
 
     return _add_cn_texts(
         ax=ax,
@@ -765,9 +765,9 @@ def label_cn_city(
         表示 Text 的集合对象
     """
     df = _get_cn_city_table(data_source)
-    locs = _get_cn_city_locs(city, province, data_source)
+    indices = _get_cn_city_indices(city, province, data_source)
     key = "short_name" if short_name else "city_name"
-    df = df.iloc[locs]
+    df = df.iloc[indices]
 
     return _add_cn_texts(
         ax=ax,
@@ -826,9 +826,9 @@ def label_cn_district(
         表示 Text 的集合对象
     """
     df = _get_cn_district_table(data_source)
-    locs = _get_cn_district_locs(district, city, province, data_source)
+    indices = _get_cn_district_indices(district, city, province, data_source)
     key = "short_name" if short_name else "district_name"
-    df = df.iloc[locs]
+    df = df.iloc[indices]
 
     return _add_cn_texts(
         ax=ax,

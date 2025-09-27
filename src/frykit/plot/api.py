@@ -710,8 +710,12 @@ def label_cn_province(
     """
     df = _get_cn_province_table(data_source)
     indices = _get_cn_province_indices(province, data_source)
-    key = "short_name" if short_name else "province_name"
-    df = df.iloc[indices]
+    if len(indices) != len(df):
+        df = df.iloc[indices]
+    if short_name:
+        key = "short_name"
+    else:
+        key = "province_name"
 
     return _add_cn_texts(
         ax=ax,
@@ -766,8 +770,12 @@ def label_cn_city(
     """
     df = _get_cn_city_table(data_source)
     indices = _get_cn_city_indices(city, province, data_source)
-    key = "short_name" if short_name else "city_name"
-    df = df.iloc[indices]
+    if len(indices) != len(df):
+        df = df.iloc[indices]
+    if short_name:
+        key = "short_name"
+    else:
+        key = "city_name"
 
     return _add_cn_texts(
         ax=ax,
@@ -827,8 +835,12 @@ def label_cn_district(
     """
     df = _get_cn_district_table(data_source)
     indices = _get_cn_district_indices(district, city, province, data_source)
-    key = "short_name" if short_name else "district_name"
-    df = df.iloc[indices]
+    if len(indices) != len(df):
+        df = df.iloc[indices]
+    if short_name:
+        key = "short_name"
+    else:
+        key = "district_name"
 
     return _add_cn_texts(
         ax=ax,

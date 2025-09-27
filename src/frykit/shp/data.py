@@ -24,11 +24,11 @@ from frykit.utils import deprecator, format_type_error
 __all__ = [
     "AdminLevel",
     "CityProperties",
-    "DataProperties",
     "DistrictProperties",
     "LineEnum",
     "LineName",
     "NameOrAdcode",
+    "Properties",
     "ProvinceProperties",
     "clear_data_cache",
     "clear_data_cache",
@@ -148,25 +148,25 @@ class Lookup:
 @dataclass
 class ProvinceLookup(Lookup):
     province_name: dict[str, NDArray[np.int64]]
-    province_adcode: dict[int, NDArray[np.int64]]
+    province_adcode: dict[np.int64, NDArray[np.int64]]
 
 
 @dataclass
 class CityLookup(Lookup):
     province_name: dict[str, NDArray[np.int64]]
-    province_adcode: dict[int, NDArray[np.int64]]
+    province_adcode: dict[np.int64, NDArray[np.int64]]
     city_name: dict[str, NDArray[np.int64]]
-    city_adcode: dict[int, NDArray[np.int64]]
+    city_adcode: dict[np.int64, NDArray[np.int64]]
 
 
 @dataclass
 class DistrictLookup(Lookup):
     province_name: dict[str, NDArray[np.int64]]
-    province_adcode: dict[int, NDArray[np.int64]]
+    province_adcode: dict[np.int64, NDArray[np.int64]]
     city_name: dict[str, NDArray[np.int64]]
-    city_adcode: dict[int, NDArray[np.int64]]
+    city_adcode: dict[np.int64, NDArray[np.int64]]
     district_name: dict[str, NDArray[np.int64]]
-    district_adcode: dict[int, NDArray[np.int64]]
+    district_adcode: dict[np.int64, NDArray[np.int64]]
 
 
 @overload
@@ -204,7 +204,7 @@ def _get_cn_lookup(
             cls = DistrictLookup
             cols = df.columns[:6]
 
-    # 其实第一次运行 groupby 还是有些慢的
+    # 第一次运行 groupby 略慢
     return cls(index, *[df.groupby(col).indices for col in cols])  # type: ignore
 
 
@@ -286,25 +286,25 @@ def _get_cn_district_indices(
 
 
 # TypedDict 子类不需要多重继承
-class DataProperties(TypedDict):
+class Properties(TypedDict):
     short_name: str
     lon: float
     lat: float
 
 
-class ProvinceProperties(DataProperties):
+class ProvinceProperties(Properties):
     province_name: str
     province_adcode: int
 
 
-class CityProperties(DataProperties):
+class CityProperties(Properties):
     province_name: str
     province_adcode: int
     city_name: str
     city_adcode: int
 
 
-class DistrictProperties(DataProperties):
+class DistrictProperties(Properties):
     province_name: str
     province_adcode: int
     city_name: str
@@ -348,7 +348,9 @@ def get_cn_province_properties(
     """
     df = _get_cn_province_table(data_source)
     indices = _get_cn_province_indices(province, data_source)
-    result = df.iloc[indices].to_dict(orient="records")
+    if len(indices) != len(df):
+        df = df.iloc[indices]
+    result = df.to_dict(orient="records")
     result = cast(list[ProvinceProperties], result)
 
     if isinstance(province, (str, int)):
@@ -400,7 +402,9 @@ def get_cn_city_properties(
     """
     df = _get_cn_city_table(data_source)
     indices = _get_cn_city_indices(city, province, data_source)
-    result = df.iloc[indices].to_dict(orient="records")
+    if len(indices) != len(df):
+        df = df.iloc[indices]
+    result = df.to_dict(orient="records")
     result = cast(list[CityProperties], result)
 
     if isinstance(city, (str, int)):
@@ -459,7 +463,9 @@ def get_cn_district_properties(
     """
     df = _get_cn_district_table(data_source)
     indices = _get_cn_district_indices(district, city, province, data_source)
-    result = df.iloc[indices].to_dict(orient="records")
+    if len(indices) != len(df):
+        df = df.iloc[indices]
+    result = df.to_dict(orient="records")
     result = cast(list[DistrictProperties], result)
 
     if isinstance(district, (str, int)):

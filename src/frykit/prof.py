@@ -11,7 +11,7 @@ from frykit.typing import P, PathType, T
 __all__ = ["cprofiler", "lprofiler"]
 
 
-def cprofiler(file_path: PathType) -> Callable[[Callable[P, T]], Callable[P, T]]:
+def cprofiler(filepath: PathType) -> Callable[[Callable[P, T]], Callable[P, T]]:
     """cProfile 的装饰器。保存结果到指定路径。"""
 
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
@@ -19,7 +19,7 @@ def cprofiler(file_path: PathType) -> Callable[[Callable[P, T]], Callable[P, T]]
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             with cProfile.Profile() as profile:
                 result = func(*args, **kwargs)
-            profile.dump_stats(str(file_path))
+            profile.dump_stats(str(filepath))
             return result
 
         return wrapper
@@ -27,7 +27,7 @@ def cprofiler(file_path: PathType) -> Callable[[Callable[P, T]], Callable[P, T]]
     return decorator
 
 
-def lprofiler(file_path: PathType) -> Callable[[Callable[P, T]], Callable[P, T]]:
+def lprofiler(filepath: PathType) -> Callable[[Callable[P, T]], Callable[P, T]]:
     """line_profiler 的装饰器。保存结果到指定路径。"""
 
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
@@ -35,7 +35,7 @@ def lprofiler(file_path: PathType) -> Callable[[Callable[P, T]], Callable[P, T]]
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             profile = LineProfiler(func)
             result = profile.runcall(func, *args, **kwargs)
-            profile.dump_stats(str(file_path))
+            profile.dump_stats(str(filepath))
             return result
 
         return wrapper

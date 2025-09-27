@@ -29,34 +29,34 @@ __all__ = [
 ]
 
 
-def new_dir(dir_path: PathType) -> Path:
+def new_dir(dirpath: PathType) -> Path:
     """新建目录"""
-    dir_path = Path(dir_path)
-    dir_path.mkdir(parents=True, exist_ok=True)
+    dirpath = Path(dirpath)
+    dirpath.mkdir(parents=True, exist_ok=True)
 
-    return dir_path
+    return dirpath
 
 
-def del_dir(dir_path: PathType) -> Path:
+def del_dir(dirpath: PathType) -> Path:
     """删除目录"""
-    dir_path = Path(dir_path)
-    if dir_path.exists():
-        shutil.rmtree(dir_path)
+    dirpath = Path(dirpath)
+    if dirpath.exists():
+        shutil.rmtree(dirpath)
 
-    return dir_path
+    return dirpath
 
 
-def renew_dir(dir_path: PathType) -> Path:
+def renew_dir(dirpath: PathType) -> Path:
     """重建目录"""
-    return new_dir(del_dir(dir_path))
+    return new_dir(del_dir(dirpath))
 
 
 @contextmanager
-def chdir_context(dir_path: PathType) -> Generator[None]:
+def chdir_context(dirpath: PathType) -> Generator[None]:
     """临时切换工作目录的上下文管理器"""
     cwd = Path.cwd()
     try:
-        os.chdir(dir_path)
+        os.chdir(dirpath)
         yield
     finally:
         os.chdir(cwd)

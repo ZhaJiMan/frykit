@@ -13,13 +13,13 @@ class TestExample(TestCase):
     @chdir_context("example")
     def test_run(self) -> None:
         """运行所有示例脚本"""
-        for file_path in Path(".").glob("*.py"):
-            file_stem = file_path.stem
+        for filepath in Path(".").glob("*.py"):
+            file_stem = filepath.stem
             if file_stem in {"clabel", "river", "nerv_style"}:
                 continue
             try:
                 subprocess.run(
-                    args=["python", str(file_path)],
+                    args=["python", str(filepath)],
                     check=True,
                     capture_output=True,
                     text=True,

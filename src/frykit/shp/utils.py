@@ -304,16 +304,16 @@ def get_geojson_geometries(geojson_dict: GeoJSONDict) -> list[BaseGeometry]:
     ]
 
 
-def get_shapefile_properties(file_path: PathType) -> pd.DataFrame:
+def get_shapefile_properties(filepath: PathType) -> pd.DataFrame:
     """提取 shapefile 文件里的所有属性为 DataFrame"""
-    with shapefile.Reader(file_path) as reader:
+    with shapefile.Reader(filepath) as reader:
         records = [record.as_dict() for record in reader.iterRecords()]
     return pd.DataFrame.from_records(records)
 
 
-def get_shapefile_geometries(file_path: PathType) -> list[BaseGeometry]:
+def get_shapefile_geometries(filepath: PathType) -> list[BaseGeometry]:
     """提取 shapefile 文件里的所有几何对象"""
-    with shapefile.Reader(file_path) as reader:
+    with shapefile.Reader(filepath) as reader:
         return list(map(sgeom.shape, reader.iterShapes()))
 
 

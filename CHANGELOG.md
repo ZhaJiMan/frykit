@@ -10,6 +10,7 @@
 - 修正 `interp_nearest_xx` 函数输入字符串类型 `fill_value` 的报错。
 - 修正 `binning2d` 函数输入多通道 `values` 的报错。
 - 移除 `to_list` 函数。
+- 参数名 `file_path` 和 `dir_path` 改回 `filepath` 和 `dirpath`，因为发现标准库里 `os.walk` 里就是这样的命名习惯。应该用户影响很小吧大概……
 
 ## 0.7.5 (2025-07-25)
 

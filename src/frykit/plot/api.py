@@ -659,8 +659,8 @@ def _add_cn_texts(
         and mpl.rcParams["font.family"][0] == "sans-serif"
         and mpl.rcParams["font.sans-serif"][0] == "DejaVu Sans"
     ):
-        file_path = get_data_dir() / "zh_font.otf"
-        kwargs.setdefault("fontproperties", file_path)
+        filepath = get_data_dir() / "zh_font.otf"
+        kwargs.setdefault("fontproperties", filepath)
 
     return add_texts(
         ax=ax,
@@ -2149,8 +2149,8 @@ def make_qualitative_palette(
 
 def get_aod_cmap() -> ListedColormap:
     """返回适用于 AOD 的 cmap"""
-    file_path = get_data_dir() / "NEO_modis_aer_od.csv"
-    colors = np.loadtxt(str(file_path), delimiter=",") / 256
+    filepath = get_data_dir() / "NEO_modis_aer_od.csv"
+    colors = np.loadtxt(str(filepath), delimiter=",") / 256
     cmap = ListedColormap(colors)
 
     return cmap
@@ -2270,8 +2270,8 @@ class TestData:
 
 def load_test_data() -> TestData:
     """读取测试用的数据。包含地表 2m 气温（K）和水平 10m 风速。"""
-    file_path = get_data_dir() / "test.npz"
-    with np.load(file_path) as f:
+    filepath = get_data_dir() / "test.npz"
+    with np.load(filepath) as f:
         return TestData(
             lon=f["longitude"],
             lat=f["latitude"],

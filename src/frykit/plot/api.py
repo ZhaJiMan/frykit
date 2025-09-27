@@ -82,7 +82,6 @@ from frykit.utils import (
     format_literal_error,
     format_type_error,
     get_package_version,
-    to_list,
 )
 
 __all__ = [
@@ -184,9 +183,14 @@ def add_geometries(
     - cartopy.mpl.geoaxes.GeoAxes.add_geometries
     - geopandas.GeoDataFrame.plot
     """
+    if isinstance(geometries, Iterable):
+        geometries = list(geometries)
+    else:
+        geometries = [geometries]
+
     return GeometryPathCollection(
         ax=ax,
-        geometries=to_list(geometries),
+        geometries=geometries,
         crs=crs,
         fast_transform=fast_transform,
         skip_outside=skip_outside,
@@ -903,32 +907,41 @@ def clip_by_polygon(
     fast_transform = _resolve_fast_transform(fast_transform)
     strict_clip = _resolve_strict_clip(strict_clip)
 
-    artists: list[Artist] = []
-    for a in to_list(artist):
+    if isinstance(artist, Iterable):
+        artists = artist
+    else:
+        artists = [artist]
+
+    all_artists: list[Artist] = []
+    for a in artists:
         match a:
             case ContourSet() if not _MPL_3_8:
-                artists.extend(a.collections)  # type: ignore
+                all_artists.extend(a.collections)  # type: ignore
             case Artist():
-                artists.append(a)
+                all_artists.append(a)
             case _:
                 raise TypeError(format_type_error("artist", a, Artist))
 
-    if len(artists) == 0:
+    if len(all_artists) == 0:
         return
 
     if ax is None:
-        for a in artists:
+        for a in all_artists:
             if a.axes is not None:
                 ax = cast(Axes, a.axes)
                 break
         else:
             raise ValueError("artist 需要设置 axes")
 
-    for a in artists:
+    for a in all_artists:
         if not (a.axes is None or a.axes is ax):
             raise ValueError("多个 artist 的 axes 必须相同")
 
-    polygons = to_list(polygon)
+    if isinstance(polygon, Iterable):
+        polygons = list(polygon)
+    else:
+        polygons = [polygon]
+
     for p in polygons:
         if not isinstance(p, (shapely.Polygon, shapely.MultiPolygon)):
             raise TypeError(
@@ -971,7 +984,7 @@ def clip_by_polygon(
     polygon = cast(PolygonType, polygon)
     shapely.prepare(polygon)
 
-    for a in artists:
+    for a in all_artists:
         a.set_clip_on(True)
         a.set_clip_box(ax.bbox)
         if isinstance(a, Text):

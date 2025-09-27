@@ -17,7 +17,7 @@ from frykit import get_data_dir
 from frykit.conf import DataSource, config
 from frykit.shp.binary import BinaryReader
 from frykit.shp.typing import LineStringType, PolygonType
-from frykit.utils import deprecator, format_type_error, to_list
+from frykit.utils import deprecator, format_type_error
 
 __all__ = [
     "AdminLevel",
@@ -129,8 +129,13 @@ NameOrAdcode: TypeAlias = int | str
 def _get_cn_locs(
     names: pd.Index, adcodes: pd.Index, key: NameOrAdcode | Iterable[NameOrAdcode]
 ) -> list[int]:
+    if isinstance(key, str) or not isinstance(key, Iterable):
+        keys = [key]
+    else:
+        keys = key
+
     locs: list[int] = []
-    for k in to_list(key):
+    for k in keys:
         match k:
             case str():
                 locs.extend(_get_index_locs(names, k))

@@ -26,7 +26,6 @@ __all__ = [
     "renew_dir",
     "simple_deprecator",
     "split_list",
-    "to_list",
 ]
 
 
@@ -79,18 +78,6 @@ def split_list(lst: list[T], n: int) -> Iterator[list[T]]:
         start = stop
 
 
-def to_list(obj: Any) -> list[Any]:
-    """可迭代对象转为列表，非可迭代对象和字符串用 list 包装。"""
-    if isinstance(obj, str):
-        return [obj]
-
-    try:
-        iter(obj)
-        return list(obj)
-    except TypeError:
-        return [obj]
-
-
 def compare_sets(
     old_values: Iterable[HashableT], new_values: Iterable[HashableT]
 ) -> tuple[set[HashableT], set[HashableT]]:
@@ -140,8 +127,13 @@ def format_type_error(
     msg : str
         消息字符串
     """
+    if isinstance(expected_type, str) or not isinstance(expected_type, Iterable):
+        expected_types = [expected_type]
+    else:
+        expected_types = expected_type
+
     names: list[str] = []
-    for typ in to_list(expected_type):
+    for typ in expected_types:
         match typ:
             case str():
                 names.append(typ)
@@ -182,11 +174,14 @@ def format_literal_error(
     msg : str
         消息字符串
     """
-    literal_values = to_list(literal_value)
-    if len(literal_values) == 0:
-        raise ValueError("literal_value 不能为空")
-    if len(literal_values) != len(set(literal_values)):
-        raise ValueError("literal_value 不能包含重复的元素")
+    if isinstance(literal_value, str) or not isinstance(literal_value, Iterable):
+        literal_values = [literal_value]
+    else:
+        literal_values = list(literal_value)
+        if len(literal_values) == 0:
+            raise ValueError("literal_value 不能为空")
+        if len(literal_values) != len(set(literal_values)):
+            raise ValueError("literal_value 不能包含重复的元素")
 
     param_value_str = repr(param_value)
     literal_value_str = "{" + ", ".join(map(repr, literal_values)) + "}"
@@ -264,9 +259,15 @@ def deprecator(
         return decorator
 
     msg = f"{_get_full_name(deprecated)} 已弃用"
+
     if alternative is not None:
+        if isinstance(alternative, str) or not isinstance(alternative, Iterable):
+            alternatives = [alternative]
+        else:
+            alternatives = alternative
+
         names: list[str] = []
-        for func in to_list(alternative):
+        for func in alternatives:
             if isinstance(func, str):
                 names.append(func)
             elif callable(func):
@@ -278,7 +279,8 @@ def deprecator(
 
         if len(names) == 0:
             raise ValueError("alternative 不能为空")
-        msg += f"，建议换用 {join_with_cn_comma(names)}"
+        alternative_str = join_with_cn_comma(names)
+        msg += f"，建议换用 {alternative_str}"
 
     @wraps(deprecated)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:

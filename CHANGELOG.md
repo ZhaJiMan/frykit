@@ -8,6 +8,7 @@
 - `interp_nearest_xx`、和 `binning2d` 函数移除 `in_channels_last` 和 `out_channels_last` 参数，强制保证 channels first 的输入输出。
 - 修正 `interp_nearest_xx` 函数输入字符串类型 `fill_value` 的报错。
 - 修正 `binning2d` 函数输入多通道 `values` 的报错。
+- 移除 `to_list` 函数。
 
 ## 0.7.5 (2025-07-25)
 

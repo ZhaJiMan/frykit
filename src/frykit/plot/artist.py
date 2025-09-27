@@ -23,7 +23,7 @@ from matplotlib.quiver import Quiver, QuiverKey
 from matplotlib.text import Text
 from matplotlib.transforms import Affine2D, Bbox, ScaledTranslation, offset_copy
 from numpy import ma
-from numpy.typing import ArrayLike
+from numpy.typing import ArrayLike, NDArray
 from shapely.geometry.base import BaseGeometry
 
 from frykit.calc import get_values_between, t_to_az
@@ -157,13 +157,13 @@ class GeometryPathCollection(PathCollection):
     def __init__(
         self,
         ax: Axes,
-        geometries: Sequence[BaseGeometry],
+        geometries: Sequence[BaseGeometry] | NDArray[np.object_],
         crs: CRS | None,
         fast_transform: bool | None = None,
         skip_outside: bool | None = None,
         **kwargs: Any,
     ) -> None:
-        self.geometries = np.array(geometries, dtype=np.object_)
+        self.geometries = np.asarray(geometries, dtype=np.object_)
         self.fast_transform = _resolve_fast_transform(fast_transform)
         self.skip_outside = _resolve_skip_outside(skip_outside)
 

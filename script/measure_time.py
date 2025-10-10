@@ -4,10 +4,12 @@ import timeit
 from functools import partial
 from io import BytesIO
 from itertools import product
+from typing import cast
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from cartopy.mpl.geoaxes import GeoAxes
 
 import frykit.plot as fplt
 import frykit.shp as fshp
@@ -45,6 +47,7 @@ def plot_map(small_map=False, level="border", lib="cartopy"):
 
     fig = plt.figure()
     ax = plt.axes(projection=fplt.CN_AZIMUTHAL_EQUIDISTANT)
+    ax = cast(GeoAxes, ax)
     ax.set_extent(extents, crs=fplt.PLATE_CARREE)
     plot_func(ax)
 

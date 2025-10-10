@@ -120,7 +120,7 @@ import frykit.shp as fshp
 - 高德数据存在飞地，例如内蒙古境内有黑龙江的飞地加格达奇区（[issue#5](https://github.com/ZhaJiMan/frykit/issues/5)）。
 - 高德数据的直辖市在市级的名称从 XX 市变为 XX 城区，adcode 也不同。
 
-默认使用高德数据。切换数据源的方法有：
+推荐使用天地图数据，因为画图更快、没有飞地问题，且官网带一个审图号。但因为旧版本只有高德数据，所以为了兼容性而默认使用高德数据。切换数据源的方法有：
 
 ```python
 # 通过函数参数指定
@@ -129,15 +129,16 @@ tianditu_cities = fshp.get_cn_city(data_source='tianditu')
 
 # 在脚本开头设置全局数据源
 import frykit
-frykit.set_option({'data_source': 'tianditu'})
+frykit.config.data_source = 'tianditu'
 
 # 用上下文管理器临时设置数据源
-with frykit.option_context({'data_source': 'tianditu'}):
-    cities = fshp.get_cn_city()
-    some_function(cities)
+with frykit.config.context(data_source='amap'):
+    amap_cities = fshp.get_cn_city()
+with frykit.config.context(data_source='tianditu'):
+    tianditu_cities = fshp.get_cn_city()
 ```
 
-> 0.7.5 开始可以直接修改 `frykit.config.data_source` 属性来设置数据源
+> 0.7.5 版本开始用 `frykit.config` 进行配置，之前用 `frykit.option`
 
 具体数据说明见 [frykit_data](https://github.com/ZhaJiMan/frykit_data) 仓库。
 
@@ -243,16 +244,25 @@ import json
 import shapely.geometry as sgeom
 
 with open('天地图_行政区划可视化/中国_省.geojson') as f:
-    geometries = [
-        sgeom.shape(feature["geometry"]) for feature in json.load(f)["features"]
-    ]
+    geojson_dict = json.load(f)
 
+features = geojson_dict['features']
+geometries = sgeom.shape(feature['geometry']) for feature in features
 fplt.add_geometries(ax, geometries, fc='none', ec='k', lw=0.25)
 ```
 
 通过 `array`、 `cmap` 和 `norm` 参数还能实现类似分省填色的效果（详见 [fill.py](example/fill.py)）。
 
-`add_geometries` 默认直接用 pyproj 做地图投影变换，速度更快但也更容易出现错误的效果。可以指定参数 `fast_transform=False`，切换成更正确但速度更慢的模式。或者改用 `GeoAxes.add_geometries`。
+`add_geometries` 默认直接用 pyproj 做地图投影变换，速度更快但也更容易出现错误的效果。可以指定参数 `fast_transform=False`，切换成更正确但速度更慢的模式；或者改用 `GeoAxes.add_geometries`。例如：
+
+```python
+# 通过函数参数指定
+fplt.add_geometries(ax, geometries, fast_transform=False)
+fplt.add_cn_province(ax, fast_transform=False)
+
+# 在脚本开头设置全局
+frykit.config.fast_transform = False
+```
 
 ### 裁剪 Artist
 
@@ -442,13 +452,13 @@ cbar.set_ticks(boundaries)
 
 Cartopy 和 frykit 绘制行政区划的耗时如下表所示：
 
-<table><thead><tr><th rowspan="2">范围</th><th rowspan="2">区划</th><th colspan="3">cartopy</th><th colspan="3">frykit</th></tr><tr><th>1</th><th>2</th><th>3</th><th>1</th><th>2</th><th>3</th></tr></thead><tbody><tr><td rowspan="4">全国</td><td>国</td><td>4.75</td><td>0.15</td><td>0.18</td><td>0.65</td><td>0.16</td><td>0.15</td></tr><tr><td>省</td><td>15.23</td><td>0.20</td><td>0.21</td><td>0.96</td><td>0.21</td><td>0.28</td></tr><tr><td>市</td><td>41.31</td><td>0.43</td><td>0.45</td><td>1.92</td><td>0.40</td><td>0.44</td></tr><tr><td>县</td><td>96.16</td><td>0.83</td><td>0.83</td><td>4.09</td><td>0.86</td><td>0.83</td></tr><tr><td rowspan="4">南方</td><td>国</td><td>3.97</td><td>0.11</td><td>0.11</td><td>0.51</td><td>0.11</td><td>0.09</td></tr><tr><td>省</td><td>16.02</td><td>0.12</td><td>0.14</td><td>0.42</td><td>0.11</td><td>0.11</td></tr><tr><td>市</td><td>40.03</td><td>0.14</td><td>0.14</td><td>0.53</td><td>0.15</td><td>0.18</td></tr><tr><td>县</td><td>92.76</td><td>0.26</td><td>0.26</td><td>0.83</td><td>0.20</td><td>0.20</td></tr></tbody></table>
+<table><thead><tr><th rowspan="2">范围</th><th rowspan="2">区划</th><th colspan="3">cartopy</th><th colspan="3">frykit</th></tr><tr><th>1</th><th>2</th><th>3</th><th>1</th><th>2</th><th>3</th></tr></thead><tbody><tr><td rowspan="4">全国</td><td>国</td><td>3.48</td><td>0.16</td><td>0.18</td><td>0.4</td><td>0.2</td><td>0.16</td></tr><tr><td>省</td><td>12.43</td><td>0.32</td><td>0.28</td><td>0.75</td><td>0.26</td><td>0.25</td></tr><tr><td>市</td><td>31.54</td><td>0.48</td><td>0.48</td><td>1.61</td><td>0.5</td><td>0.48</td></tr><tr><td>县</td><td>73.05</td><td>1.0</td><td>0.93</td><td>3.71</td><td>1.03</td><td>0.95</td></tr><tr><td rowspan="4">南方</td><td>国</td><td>3.16</td><td>0.14</td><td>0.15</td><td>0.33</td><td>0.14</td><td>0.2</td></tr><tr><td>省</td><td>11.85</td><td>0.17</td><td>0.16</td><td>0.29</td><td>0.14</td><td>0.15</td></tr><tr><td>市</td><td>31.35</td><td>0.2</td><td>0.22</td><td>0.46</td><td>0.16</td><td>0.16</td></tr><tr><td>县</td><td>76.59</td><td>0.34</td><td>0.33</td><td>0.77</td><td>0.24</td><td>0.24</td></tr></tbody></table>
 
 ```
 # 环境版本
-python==3.11.9
-cartopy==0.24.0
-frykit==0.7.2.post1
+python==3.13.5
+cartopy==0.25.0
+frykit==0.7.6
 ```
 
 - 使用高德数据

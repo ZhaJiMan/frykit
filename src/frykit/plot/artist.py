@@ -4,7 +4,7 @@ import math
 from collections.abc import Callable, Sequence
 from functools import partial, wraps
 from threading import Lock
-from typing import Any, Literal, cast
+from typing import Any, Iterable, Literal, cast
 from weakref import WeakKeyDictionary, WeakValueDictionary
 
 import numpy as np
@@ -95,43 +95,77 @@ def clear_path_cache() -> None:
 
 @_with_lock
 def _cached_geometry_to_path(geometry: BaseGeometry) -> Path:
-    key = GeometryKey(geometry)
-    _key_to_geometry.setdefault(key, geometry)
-    crs_to_path = _key_to_crs_to_path.setdefault(key, {})
-    path = crs_to_path.get(None)
-    if path is not None:
-        return path
-
-    path = geometry_to_path(geometry)
-    crs_to_path[None] = path
+    key1 = GeometryKey(geometry)
+    key2 = None
+    _key_to_geometry.setdefault(key1, geometry)
+    crs_to_path = _key_to_crs_to_path.setdefault(key1, {})
+    path = crs_to_path.get(key2)
+    if path is None:
+        path = geometry_to_path(geometry)
+        crs_to_path[key2] = path
 
     return path
 
 
+def _cached_geometries_to_paths(
+    geometries: Iterable[BaseGeometry] | NDArray[np.object_],
+) -> list[Path]:
+    return list(map(_cached_geometry_to_path, geometries))
+
+
 @_with_lock
+def _cached_project_geometries_to_paths(
+    geometries: Sequence[BaseGeometry] | NDArray[np.object_],
+    crs_from: CRS,
+    crs_to: Projection,
+    fast_transform: bool = True,
+) -> list[Path]:
+    geometries = np.asarray(geometries, dtype=np.object_)
+    paths = np.empty_like(geometries)
+    miss_mask = np.ones_like(geometries, dtype=bool)
+    miss_maps: list[dict[tuple[CRS, bool] | None, Path]] = []
+
+    key2 = (crs_to, fast_transform)
+    for i, geometry in enumerate(geometries):
+        key1 = GeometryKey(geometry)
+        _key_to_geometry.setdefault(key1, geometry)
+        crs_to_path = _key_to_crs_to_path.setdefault(key1, {})
+        path = crs_to_path.get(key2)
+        if path is not None:
+            paths[i] = path
+            miss_mask[i] = False
+        else:
+            miss_maps.append(crs_to_path)
+
+    if not miss_maps:
+        return paths.tolist()
+
+    if fast_transform:
+        # 批量投影效率略高一些
+        miss_geometries = project_geometry(geometries[miss_mask], crs_from, crs_to)
+    else:
+        miss_geometries = [
+            crs_to.project_geometry(geometry, crs_from)
+            for geometry in geometries[miss_mask]
+        ]
+
+    miss_paths = list(map(geometry_to_path, miss_geometries))
+    paths[miss_mask] = miss_paths
+    for crs_to_path, path in zip(miss_maps, miss_paths):
+        crs_to_path[key2] = path
+
+    return paths.tolist()
+
+
 def _cached_project_geometry_to_path(
     geometry: BaseGeometry,
     crs_from: CRS,
     crs_to: Projection,
     fast_transform: bool = True,
 ) -> Path:
-    """对几何对象做投影，再转为 Matplotlib 的 Path 对象。"""
-    key1 = GeometryKey(geometry)
-    key2 = (crs_to, fast_transform)
-    _key_to_geometry.setdefault(key1, geometry)
-    crs_to_path = _key_to_crs_to_path.setdefault(key1, {})
-    path = crs_to_path.get(key2)
-    if path is not None:
-        return path
-
-    if fast_transform:
-        geometry = project_geometry(geometry, crs_from, crs_to)
-    else:
-        geometry = crs_to.project_geometry(geometry, crs_from)
-    path = geometry_to_path(geometry)
-    crs_to_path[key2] = path
-
-    return path
+    return _cached_project_geometries_to_paths(
+        [geometry], crs_from, crs_to, fast_transform
+    )[0]
 
 
 def _resolve_fast_transform(fast_transform: bool | None) -> bool:
@@ -170,8 +204,8 @@ class GeometryPathCollection(PathCollection):
         match ax:
             case GeoAxes():
                 self.crs = PLATE_CARREE if crs is None else crs
-                self._geometry_to_path = partial(
-                    _cached_project_geometry_to_path,
+                self._geometries_to_paths = partial(
+                    _cached_project_geometries_to_paths,
                     crs_from=self.crs,
                     crs_to=ax.projection,
                     fast_transform=self.fast_transform,
@@ -180,7 +214,7 @@ class GeometryPathCollection(PathCollection):
                 if crs is not None:
                     raise ValueError("ax 不是 GeoAxes 时 crs 只能为 None")
                 self.crs = None
-                self._geometry_to_path = _cached_geometry_to_path
+                self._geometries_to_paths = _cached_geometries_to_paths
             case _:
                 raise TypeError(format_type_error("ax", ax, Axes))
 
@@ -194,7 +228,7 @@ class GeometryPathCollection(PathCollection):
             if all(x is not ma.masked for x in [x0, y0, x1, y1]):
                 path = box_path(x0, x1, y0, y1).interpolated(100)
                 polygon = shapely.Polygon(path.vertices)  # type: ignore
-                paths = [self._geometry_to_path(polygon)]
+                paths = self._geometries_to_paths([polygon])
 
         super().__init__(paths, **kwargs)
         ax.add_collection(self)
@@ -202,7 +236,7 @@ class GeometryPathCollection(PathCollection):
 
     def _init(self) -> None:
         if not self.skip_outside:
-            paths = list(map(self._geometry_to_path, self.geometries))
+            paths = self._geometries_to_paths(self.geometries)
             self.set_paths(paths)
             return
 
@@ -215,8 +249,8 @@ class GeometryPathCollection(PathCollection):
         box = shapely.box(x0, y0, x1, y1)
         shapely.prepare(box)
         mask = box.intersects(self.geometries)
-        paths = np.full(len(self.geometries), EMPTY_PATH)
-        paths[mask] = list(map(self._geometry_to_path, self.geometries[mask]))
+        paths = np.full_like(self.geometries, EMPTY_PATH)
+        paths[mask] = self._geometries_to_paths(self.geometries[mask])
         self.set_paths(paths.tolist())
 
     @allow_rasterization

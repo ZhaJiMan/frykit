@@ -2,7 +2,11 @@
 
 - 依赖版本提高：
   - `pandas>=2.0.0`
-- 用缓存提高 `shp` 模块用省市县多次查询数据的速度。
+- 利用缓存提高 `shp` 模块用省市县多次查询数据的速度。
+- 提高 `fast_transform=True` 时画省市县的速度：
+  - 投影直接用 `shapely.transform` 函数一次性变换所有坐标。
+  - 提高 `geometry_to_path` 函数的效率。
+- 取消 `project_geometry` 和 `path_to_polygon` 函数当几何对象坐标坐标含 NaN 或 Inf 时，返回空几何对象的行为。
 - `plot` 模块新增 `clear_path_cache` 函数。
 - `shp` 模块新增 `get_cn_xxx_dataframe` 和 `get_cn_xxx_geodataframe` 系列函数，将中国行政区划的元数据和多边形打包成 `DataFrame` 或 `GeoDataFrame`，方便过滤使用。
 - `make_feature` 函数当 `properties` 参数是 `None` 时也会往返回的字典里插入空的 `properties` 字典。
@@ -10,7 +14,6 @@
 - `interp_nearest_xx`、和 `binning2d` 函数移除 `in_channels_last` 和 `out_channels_last` 参数，强制保证 channels first 的输入输出。
 - 修正 `interp_nearest_xx` 函数输入字符串类型 `fill_value` 的报错。
 - 修正 `binning2d` 函数输入多通道 `values` 的报错。
-- 移除 `to_list` 函数。
 - 参数名 `file_path` 和 `dir_path` 改回 `filepath` 和 `dirpath`，因为发现标准库里 `os.walk` 里就是这样的命名习惯。应该用户影响很小吧大概……
 
 ## 0.7.5 (2025-07-25)

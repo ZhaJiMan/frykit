@@ -982,6 +982,7 @@ def clip_by_polygon(
         )
         polygon = path_to_polygon(path)
         if strict_clip:
+            # invalid 的多边形可能抛出 TopologyException
             polygon &= _get_geoaxes_boundary(ax)  # type: ignore
             path = geometry_to_path(polygon)  # type: ignore
     else:

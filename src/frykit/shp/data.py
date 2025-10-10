@@ -119,7 +119,7 @@ NameOrAdcode: TypeAlias = int | str
 
 def _get_cn_indices(
     name_to_indices: dict[str, NDArray[np.int64]],
-    adcode_to_indices: dict[int, NDArray[np.int64]],
+    adcode_to_indices: dict[np.int64, NDArray[np.int64]],
     key: NameOrAdcode | Iterable[NameOrAdcode],
 ) -> NDArray[np.int64]:
     if isinstance(key, str) or not isinstance(key, Iterable):
@@ -132,8 +132,8 @@ def _get_cn_indices(
         match k:
             case str():
                 arrs.append(name_to_indices[k])
-            case int():
-                arrs.append(adcode_to_indices[k])
+            case int() | np.integer():
+                arrs.append(adcode_to_indices[cast(np.int64, k)])
             case _:
                 raise TypeError(format_type_error("key", k, [str, int]))
 

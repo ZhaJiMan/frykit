@@ -26,6 +26,7 @@ __all__ = [
     "renew_dir",
     "simple_deprecator",
     "split_list",
+    "to_list",
 ]
 
 
@@ -76,6 +77,18 @@ def split_list(lst: list[T], n: int) -> Iterator[list[T]]:
         stop = start + step
         yield lst[start:stop]
         start = stop
+
+
+def to_list(obj: Any) -> list[Any]:
+    """可迭代对象转为列表，非可迭代对象和字符串用 list 包装。"""
+    if isinstance(obj, str):
+        return [obj]
+
+    try:
+        iter(obj)
+        return list(obj)
+    except TypeError:
+        return [obj]
 
 
 def compare_sets(

@@ -33,12 +33,7 @@ from frykit.shp.typing import (
     PolygonType,
 )
 from frykit.typing import PathType
-from frykit.utils import (
-    deprecator,
-    format_type_error,
-    get_package_version,
-    simple_deprecator,
-)
+from frykit.utils import deprecator, format_type_error, simple_deprecator
 
 __all__ = [
     "GeometryTransformer",
@@ -75,9 +70,6 @@ def _orient(polygon: shapely.Polygon, ccw: bool = True) -> shapely.Polygon:
     return polygon
 
 
-_SHAPELY_2_1 = get_package_version("shapely") >= (2, 1, 0)
-
-
 @overload
 def orient_polygon(polygon: shapely.Polygon, ccw: bool = True) -> shapely.Polygon: ...
 
@@ -97,7 +89,7 @@ def orient_polygon(polygon: PolygonType, ccw: bool = True) -> PolygonType:
             )
         )
 
-    if _SHAPELY_2_1:
+    if hasattr(shapely, "orient_polygons"):
         return shapely.orient_polygons(polygon, exterior_cw=not ccw)  # type: ignore
 
     if isinstance(polygon, shapely.Polygon):

@@ -12,13 +12,11 @@ if TYPE_CHECKING:
     import pandas as pd
 
 from frykit.typing import RealNumber, RealNumberT
-from frykit.utils import deprecator
 
 __all__ = [
     "arange2",
     "asarrays",
     "az_to_t",
-    "binned_average_2d",
     "binning2d",
     "count_consecutive_trues",
     "dd_to_dm",
@@ -29,8 +27,6 @@ __all__ = [
     "get_values_between",
     "hav",
     "haversine",
-    "hms_to_degrees",
-    "hms_to_degrees2",
     "interp_nearest_2d",
     "interp_nearest_dd",
     "is_finite",
@@ -41,11 +37,9 @@ __all__ = [
     "make_ellipse",
     "make_evenly_bins",
     "month_to_season",
-    "region_ind",
     "region_mask",
     "rt_to_xy",
     "split_consecutive_trues",
-    "split_coords",
     "t_to_az",
     "uv_to_wswd",
     "wswd_to_uv",
@@ -686,34 +680,3 @@ def get_values_between(
     """获取 vmin <= values <= vmax 的元素"""
     values = np.asarray(values)
     return values[(values >= vmin) & (values <= vmax)].copy()
-
-
-@deprecator(alternative=region_mask, raise_error=True)
-def region_ind(*args, **kwargs): ...
-
-
-@deprecator(raise_error=True)
-def split_coords(*args, **kwargs): ...
-
-
-@deprecator(alternative=dms_to_dd)
-def hms_to_degrees(
-    hour: ArrayLike, minute: ArrayLike, second: ArrayLike
-) -> NDArray[np.floating]:
-    return dms_to_dd(hour, minute, second)
-
-
-@deprecator(raise_error=True)
-def hms_to_degrees2(*args, **kwargs): ...
-
-
-@deprecator(alternative=binning2d)
-def binned_average_2d(
-    x: ArrayLike, y: ArrayLike, values: ArrayLike, xbins: ArrayLike, ybins: ArrayLike
-) -> tuple[NDArray[np.floating], NDArray[np.floating], NDArray[np.floating]]:
-    xbins, ybins = asarrays(xbins, ybins)
-    xlabels = (xbins[1:] + xbins[:-1]) / 2
-    ylabels = (ybins[1:] + ybins[:-1]) / 2
-    result = binning2d(x, y, values, xbins, ybins)
-
-    return xlabels, ylabels, result

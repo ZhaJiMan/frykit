@@ -77,12 +77,7 @@ from frykit.shp.data import (
 )
 from frykit.shp.typing import PolygonType
 from frykit.typing import RealNumber
-from frykit.utils import (
-    deprecator,
-    format_literal_error,
-    format_type_error,
-    get_package_version,
-)
+from frykit.utils import format_literal_error, format_type_error, get_package_version
 
 __all__ = [
     "CenteredBoundaryNorm",
@@ -97,10 +92,8 @@ __all__ = [
     "add_countries",
     "add_frame",
     "add_geometries",
-    "add_geoms",
     "add_land",
     "add_mini_axes",
-    "add_nine_line",
     "add_ocean",
     "add_quiver_legend",
     "add_scale_bar",
@@ -117,7 +110,6 @@ __all__ = [
     "get_aod_cmap",
     "get_cross_section_xticks",
     "get_font_names",
-    "get_qualitative_palette",
     "label_cn_city",
     "label_cn_district",
     "label_cn_province",
@@ -2309,38 +2301,3 @@ def get_font_names(sub: str | None = None) -> list[str]:
     if sub is not None:
         return [name for name in names if sub.lower() in name.lower()]
     return names
-
-
-@deprecator(alternative=add_geometries)
-def add_geoms(
-    ax: Axes,
-    geoms: BaseGeometry | Iterable[BaseGeometry],
-    crs: CRS | None = None,
-    fast_transform: bool = True,
-    skip_outside: bool = True,
-    **kwargs: Any,
-) -> GeometryPathCollection:
-    return add_geometries(
-        ax=ax,
-        geometries=geoms,
-        crs=crs,
-        fast_transform=fast_transform,
-        skip_outside=skip_outside,
-        **kwargs,
-    )
-
-
-@deprecator(alternative=add_cn_line)
-def add_nine_line(
-    ax: Axes, fast_transform: bool = True, skip_outside: bool = True, **kwargs: Any
-) -> GeometryPathCollection:
-    return add_cn_line(
-        ax=ax, fast_transform=fast_transform, skip_outside=skip_outside, **kwargs
-    )
-
-
-@deprecator(alternative=make_qualitative_palette)
-def get_qualitative_palette(
-    colors: list[Any] | NDArray[np.floating],
-) -> tuple[ListedColormap, Normalize, NDArray[np.int64]]:
-    return make_qualitative_palette(colors)

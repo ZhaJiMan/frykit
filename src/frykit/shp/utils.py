@@ -1,16 +1,13 @@
 from __future__ import annotations
 
 from itertools import chain
-from typing import TYPE_CHECKING, Any, cast, overload
+from typing import Any, cast, overload
 
 import pandas as pd
 import shapefile
 import shapely
 import shapely.geometry as sgeom
 from shapely.geometry.base import BaseGeometry
-
-if TYPE_CHECKING:
-    from matplotlib.path import Path
 
 from frykit.shp.typing import (
     FeatureDict,
@@ -33,13 +30,10 @@ from frykit.shp.typing import (
     PolygonType,
 )
 from frykit.typing import PathType
-from frykit.utils import deprecator, format_type_error, simple_deprecator
+from frykit.utils import format_type_error
 
 __all__ = [
-    "GeometryTransformer",
-    "box_path",
     "dict_to_geometry",
-    "geom_to_path",
     "geometry_to_dict",
     "geometry_to_shape",
     "get_geojson_geometries",
@@ -50,8 +44,6 @@ __all__ = [
     "make_feature",
     "make_geojson",
     "orient_polygon",
-    "path_to_polygon",
-    "polygon_to_polys",
 ]
 
 
@@ -329,37 +321,3 @@ def make_feature(
 def make_geojson(features: list[FeatureDict]) -> GeoJSONDict:
     """用一组 feature 字典构造 GeoJSON 字典"""
     return {"type": "FeatureCollection", "features": features}
-
-
-@deprecator(alternative=geometry_to_shape)
-def polygon_to_polys(polygon: PolygonType) -> PolygonCoordinates:
-    return geometry_to_shape(polygon)
-
-
-@deprecator(alternative="frykit.plot.utils.geometry_to_path")
-def geom_to_path(geom: BaseGeometry):
-    from frykit.plot.utils import geometry_to_path
-
-    return geometry_to_path(geom)
-
-
-@deprecator(alternative="frykit.plot.utils.path_to_polygon")
-def path_to_polygon(path: Path) -> PolygonType:
-    from frykit.plot.utils import path_to_polygon
-
-    return path_to_polygon(path)
-
-
-@deprecator(alternative="frykit.plot.utils.box_path")
-def box_path(x0: float, x1: float, y0: float, y1: float):
-    from frykit.plot.utils import box_path
-
-    return box_path(x0, x1, y0, y1)
-
-
-class GeometryTransformer:
-    @simple_deprecator(
-        "frykit.shp.utils.GeometryTransformer 已弃用，建议换用 frykit.plot.utils.project_geometry",
-        raise_error=True,
-    )
-    def __init__(self, *args, **kwargs): ...

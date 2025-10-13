@@ -19,7 +19,7 @@ from frykit import get_data_dir
 from frykit.conf import DataSource, config
 from frykit.shp.binary import BinaryReader
 from frykit.shp.typing import LineStringType, PolygonType
-from frykit.utils import deprecator, format_type_error
+from frykit.utils import format_type_error
 
 __all__ = [
     "AdminLevel",
@@ -54,7 +54,6 @@ __all__ = [
     "get_cn_province_table",
     "get_countries",
     "get_land",
-    "get_nine_line",
     "get_ocean",
 ]
 
@@ -842,8 +841,3 @@ def clear_data_cache() -> None:
     get_countries.cache_clear()
     get_land.cache_clear()
     get_ocean.cache_clear()
-
-
-@deprecator(alternative=get_cn_line)
-def get_nine_line() -> shapely.MultiLineString:
-    return cast(shapely.MultiLineString, get_cn_line())

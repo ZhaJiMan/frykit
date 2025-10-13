@@ -4,27 +4,11 @@ from functools import cache
 from pathlib import Path
 
 from frykit.conf import config
-from frykit.option import (
-    get_option,
-    get_options,
-    option_context,
-    set_option,
-    validate_option,
-)
 from frykit.utils import deprecator
 
-__version__ = "0.7.6"
+__version__ = "0.8.0"
 
-__all__ = [
-    "config",
-    "get_data_dir",
-    "get_data_dirpath",
-    "get_option",
-    "get_options",
-    "option_context",
-    "set_option",
-    "validate_option",
-]
+__all__ = ["config", "get_data_dir", "get_data_dirpath"]
 
 
 @cache

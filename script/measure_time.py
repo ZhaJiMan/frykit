@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 from cartopy.mpl.geoaxes import GeoAxes
 
+import frykit
 import frykit.plot as fplt
 import frykit.shp as fshp
 
@@ -67,19 +68,22 @@ def main():
         [small_map_values, levels], names=["small_map", "level"]
     )
     columns = pd.MultiIndex.from_product([libs, numbers], names=["lib", "number"])
-    df = pd.DataFrame(
-        np.zeros((len(index), len(columns))), index=index, columns=columns
-    )
 
-    for small_map, level, lib in product(small_map_values, levels, libs):
-        fshp.clear_data_cache()
-        task = partial(plot_map, small_map, level, lib)
-        times = timeit.repeat(task, number=1, repeat=len(numbers))
-        for i, time in enumerate(times):
-            df.loc[(small_map, level), (lib, i + 1)] = time
-        print(f"{small_map=}, {level=}, {lib=}")
+    for data_source in ("amap", "tianditu"):
+        frykit.config.data_source = data_source
+        df = pd.DataFrame(
+            np.zeros((len(index), len(columns))), index=index, columns=columns
+        )
 
-    df.round(2).to_csv("time.csv")
+        for small_map, level, lib in product(small_map_values, levels, libs):
+            fshp.clear_data_cache()
+            task = partial(plot_map, small_map, level, lib)
+            times = timeit.repeat(task, number=1, repeat=len(numbers))
+            for i, time in enumerate(times):
+                df.loc[(small_map, level), (lib, i + 1)] = time
+            print(f"{data_source=}, {small_map=}, {level=}, {lib=}")
+
+        df.round(2).to_csv(f"time_{data_source}.csv")
 
 
 if __name__ == "__main__":

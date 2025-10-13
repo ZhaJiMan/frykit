@@ -452,7 +452,13 @@ cbar.set_ticks(boundaries)
 
 Cartopy 和 frykit 绘制行政区划的耗时如下表所示：
 
+**高德数据**
+
 <table><thead><tr><th rowspan="2">范围</th><th rowspan="2">区划</th><th colspan="3">cartopy</th><th colspan="3">frykit</th></tr><tr><th>1</th><th>2</th><th>3</th><th>1</th><th>2</th><th>3</th></tr></thead><tbody><tr><td rowspan="4">全国</td><td>国</td><td>3.48</td><td>0.16</td><td>0.18</td><td>0.4</td><td>0.2</td><td>0.16</td></tr><tr><td>省</td><td>12.43</td><td>0.32</td><td>0.28</td><td>0.75</td><td>0.26</td><td>0.25</td></tr><tr><td>市</td><td>31.54</td><td>0.48</td><td>0.48</td><td>1.61</td><td>0.5</td><td>0.48</td></tr><tr><td>县</td><td>73.05</td><td>1.0</td><td>0.93</td><td>3.71</td><td>1.03</td><td>0.95</td></tr><tr><td rowspan="4">南方</td><td>国</td><td>3.16</td><td>0.14</td><td>0.15</td><td>0.33</td><td>0.14</td><td>0.2</td></tr><tr><td>省</td><td>11.85</td><td>0.17</td><td>0.16</td><td>0.29</td><td>0.14</td><td>0.15</td></tr><tr><td>市</td><td>31.35</td><td>0.2</td><td>0.22</td><td>0.46</td><td>0.16</td><td>0.16</td></tr><tr><td>县</td><td>76.59</td><td>0.34</td><td>0.33</td><td>0.77</td><td>0.24</td><td>0.24</td></tr></tbody></table>
+
+**天地图数据**
+
+<table><thead><tr><th rowspan="2">范围</th><th rowspan="2">区划</th><th colspan="3">cartopy</th><th colspan="3">frykit</th></tr><tr><th>1</th><th>2</th><th>3</th><th>1</th><th>2</th><th>3</th></tr></thead><tbody><tr><td rowspan="4">全国</td><td>国</td><td>1.74</td><td>0.17</td><td>0.2</td><td>0.26</td><td>0.17</td><td>0.2</td></tr><tr><td>省</td><td>2.58</td><td>0.17</td><td>0.16</td><td>0.33</td><td>0.17</td><td>0.18</td></tr><tr><td>市</td><td>5.99</td><td>0.21</td><td>0.24</td><td>0.51</td><td>0.21</td><td>0.26</td></tr><tr><td>县</td><td>14.02</td><td>0.32</td><td>0.33</td><td>0.99</td><td>0.38</td><td>0.33</td></tr><tr><td rowspan="4">南方</td><td>国</td><td>1.45</td><td>0.13</td><td>0.17</td><td>0.27</td><td>0.14</td><td>0.14</td></tr><tr><td>省</td><td>2.5</td><td>0.18</td><td>0.14</td><td>0.23</td><td>0.15</td><td>0.16</td></tr><tr><td>市</td><td>6.01</td><td>0.17</td><td>0.3</td><td>0.36</td><td>0.18</td><td>0.17</td></tr><tr><td>县</td><td>15.72</td><td>0.22</td><td>0.19</td><td>0.42</td><td>0.17</td><td>0.17</td></tr></tbody></table>
 
 ```
 # 环境版本
@@ -461,7 +467,6 @@ cartopy==0.25.0
 frykit==0.7.6
 ```
 
-- 使用高德数据
 - 使用等距方位投影，以体现直接用 pyproj 和用 Cartopoy 做投影的时间差异。
 - `cartopy>=0.23` 时即便 `GeoAxes` 的范围很小，仍需要对范围外的所有多边形做投影，导致速度很慢。而 frykit 对此有优化。因此这里设置两种地图范围：全国 `(70, 140, 0, 60)` 和南方 `(115, 120, 24, 28)`。
 - 比较连续画三张图的结果，缓存机制会使第一次耗时最长，后续耗时大幅缩短。

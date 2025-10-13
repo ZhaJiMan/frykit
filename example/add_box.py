@@ -1,7 +1,10 @@
 """在 PlateCarree 和 AzimuthalEquidistant 投影的地图上画方块格子"""
 
+from typing import cast
+
 import matplotlib.pyplot as plt
 import numpy as np
+from cartopy.mpl.geoaxes import GeoAxes
 
 import frykit.plot as fplt
 
@@ -25,6 +28,9 @@ fig = plt.figure(figsize=(10, 5))
 fig.subplots_adjust(wspace=0.1)
 ax1 = fig.add_subplot(121, projection=map_crs1)
 ax2 = fig.add_subplot(122, projection=map_crs2)
+ax1 = cast(GeoAxes, ax1)
+ax2 = cast(GeoAxes, ax2)
+
 ax1.set_extent(extents1, crs=data_crs)
 ax2.set_extent(extents2, crs=data_crs)
 fplt.add_cn_province(ax1, lw=0.3, fc="floralwhite")

@@ -4,8 +4,11 @@
 需要安装 scipy
 """
 
+from typing import cast
+
 import matplotlib.pyplot as plt
 import numpy as np
+from cartopy.mpl.geoaxes import GeoAxes
 from scipy.ndimage import gaussian_filter
 
 import frykit.plot as fplt
@@ -24,6 +27,7 @@ data_crs = fplt.PLATE_CARREE
 # 准备地图
 fig = plt.figure(figsize=(8, 5))
 ax = fig.add_subplot(projection=map_crs)
+ax = cast(GeoAxes, ax)
 ax.set_extent((78, 128, 15, 55), crs=data_crs)
 fplt.add_cn_province(ax, lw=0.4)
 

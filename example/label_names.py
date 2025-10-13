@@ -1,6 +1,9 @@
 """绘制省市县三个级别的地图并标注地名"""
 
+from typing import cast
+
 import matplotlib.pyplot as plt
+from cartopy.mpl.geoaxes import GeoAxes
 
 import frykit.plot as fplt
 
@@ -13,6 +16,7 @@ def plot_province_map():
     """绘制省界地图"""
     fig = plt.figure(figsize=(8, 8))
     ax = fig.add_subplot(projection=map_crs)
+    ax = cast(GeoAxes, ax)
     ax.set_extent((80, 126, 15, 54), crs=data_crs)
     fplt.add_cn_province(ax, lw=0.2, fc=plt.cm.Set3.colors)
     fplt.add_cn_line(ax, lw=0.5)
@@ -25,6 +29,7 @@ def plot_city_map():
     """绘制市界地图"""
     fig = plt.figure(figsize=(15, 15))
     ax = fig.add_subplot(projection=map_crs)
+    ax = cast(GeoAxes, ax)
     ax.set_extent((80, 126, 15, 54), crs=data_crs)
     fplt.add_cn_city(ax, lw=0.2, fc=plt.cm.Set3.colors)
     fplt.add_cn_line(ax, lw=0.5)
@@ -37,6 +42,7 @@ def plot_district_map():
     """绘制县界地图"""
     fig = plt.figure(figsize=(15, 15))
     ax = fig.add_subplot(projection=map_crs)
+    ax = cast(GeoAxes, ax)
     ax.set_extent((80, 126, 15, 54), crs=data_crs)
     fplt.add_cn_district(ax, lw=0.2, fc=plt.cm.Set3.colors)
     fplt.add_cn_line(ax, lw=0.5)

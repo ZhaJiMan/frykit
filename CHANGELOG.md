@@ -1,5 +1,6 @@
 ## 0.8.0 (ongoing)
 
+- 新增 `typing_extensions` 依赖，为 `python==3.10` 提供类型提示。
 - 彻底弃用 `option` 模块。
 
 ## 0.7.6 (2025-10-10)

@@ -5,6 +5,8 @@ from contextlib import contextmanager
 from dataclasses import asdict, dataclass, fields
 from typing import Any, Literal, TypeAlias, TypedDict, cast
 
+from typing_extensions import Unpack
+
 from frykit.utils import format_literal_error, format_type_error
 
 __all__ = ["Config", "ConfigDict", "DataSource", "config"]
@@ -74,7 +76,7 @@ class Config:
         """将配置转换为字典"""
         return cast(ConfigDict, asdict(self))
 
-    def update(self, **kwargs: Any) -> None:
+    def update(self, **kwargs: Unpack[ConfigDict]) -> None:
         """更新配置"""
         # 校验完再更新，避免校验失败导致部分更新
         for name, value in kwargs.items():
@@ -83,7 +85,7 @@ class Config:
             super().__setattr__(name, value)
 
     @contextmanager
-    def context(self, **kwargs: Any) -> Generator[None]:
+    def context(self, **kwargs: Unpack[ConfigDict]) -> Generator[None]:
         """创建可以临时修改配置的上下文"""
         config_dict = self.to_dict()
         try:

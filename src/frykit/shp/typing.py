@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Literal, TypeAlias, TypedDict, TypeVar, Union
 
+from typing_extensions import NotRequired
+
 if TYPE_CHECKING:
     import shapely
     from shapely.geometry.base import BaseGeometry
@@ -90,13 +92,13 @@ class FeatureDict(TypedDict):
     type: Literal["Feature"]
     geometry: GeometryDict
     properties: dict[str, Any]
-    # bbox: NotRequired[Sequence[float]]
+    bbox: NotRequired[Sequence[float]]
 
 
 class GeoJSONDict(TypedDict):
     type: Literal["FeatureCollection"]
     features: Sequence[FeatureDict]
-    # bbox: NotRequired[Sequence[float]]
+    bbox: NotRequired[Sequence[float]]
 
 
 # 这里的前向引用必须用字符串

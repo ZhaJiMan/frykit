@@ -33,6 +33,14 @@ class ConfigDict(TypedDict):
     strict_clip: bool
 
 
+# TODO: 如何减少重复定义
+class PartialConfigDict(TypedDict, total=False):
+    data_source: DataSource
+    fast_transform: bool
+    skip_outside: bool
+    strict_clip: bool
+
+
 # TODO: 线程安全
 @dataclass(kw_only=True)
 class Config:
@@ -76,7 +84,7 @@ class Config:
         """将配置转换为字典"""
         return cast(ConfigDict, asdict(self))
 
-    def update(self, **kwargs: Unpack[ConfigDict]) -> None:
+    def update(self, **kwargs: Unpack[PartialConfigDict]) -> None:
         """更新配置"""
         # 校验完再更新，避免校验失败导致部分更新
         for name, value in kwargs.items():
@@ -85,7 +93,7 @@ class Config:
             super().__setattr__(name, value)
 
     @contextmanager
-    def context(self, **kwargs: Unpack[ConfigDict]) -> Generator[None]:
+    def context(self, **kwargs: Unpack[PartialConfigDict]) -> Generator[None]:
         """创建可以临时修改配置的上下文"""
         config_dict = self.to_dict()
         try:

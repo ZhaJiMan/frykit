@@ -7,7 +7,7 @@ import frykit.plot as fplt
 
 fig, axes = plt.subplots(2, 2, figsize=(10, 10), subplot_kw={"aspect": 1})
 
-colors = plt.cm.Set3.colors
+colors = plt.cm.Set3.colors  # type: ignore
 
 for ax in axes[0, :]:
     fplt.set_map_ticks(ax, extents=(115, 130, 40, 55), dx=5, dy=5)

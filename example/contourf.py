@@ -75,7 +75,7 @@ for ax in [main_ax, mini_ax]:
 
 # 绘制 colorbar
 cbar = plt.colorbar(
-    cf,
+    cf,  # type: ignore
     ax=main_ax,
     ticks=np.linspace(0, 32, 9),
     shrink=0.6,

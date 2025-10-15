@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, TypeAlias, cast
+from typing import Any, Literal, TypeAlias, TypedDict, cast
 
 import numpy as np
 from numpy.typing import NDArray
 from PIL import Image
+from PIL.ImagePalette import ImagePalette
+from typing_extensions import Unpack
 
 from frykit.typing import PathType
 
@@ -24,8 +26,25 @@ def _read_image(image: ImageInput) -> Image.Image:
         return im
 
 
+Disposal: TypeAlias = Literal[0, 1, 2, 3]
+
+
+class SaveGifKwargs(TypedDict, total=False):
+    include_color_table: bool
+    interalce: bool
+    disposal: Disposal | list[Disposal] | tuple[Disposal, ...]
+    palette: bytes | bytearray | ImagePalette
+    optimize: bool
+    transparency: int
+    duration: int | list[int] | tuple[int, ...]
+    loop: int | None
+    comment: str | bytes
+
+
 # TODO: alpha
-def make_gif(images: Sequence[ImageInput], filepath: PathType, **kwargs: Any) -> None:
+def make_gif(
+    images: Sequence[ImageInput], filepath: PathType, **kwargs: Unpack[SaveGifKwargs]
+) -> None:
     """
     制作 gif 图。结果的 mode 和尺寸由第一张图决定。
 

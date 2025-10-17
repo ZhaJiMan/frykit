@@ -501,28 +501,27 @@ def get_cn_district_names(
 
 
 @cache
-def _get_cn_polygons(level: AdminLevel, data_source: DataSource) -> list[PolygonType]:
+def _get_cn_polygons(level: AdminLevel, data_source: DataSource) -> NDArray[np.object_]:
     filepath = _get_china_dir() / data_source / f"cn_{level}.bin"
     with BinaryReader(filepath) as reader:
-        polygons = reader.geometries()
-        return cast(list[PolygonType], polygons)
+        return np.array(reader.geometries())
 
 
 def _get_cn_province_polygons(
     data_source: DataSource | None = None,
-) -> list[PolygonType]:
+) -> NDArray[np.object_]:
     data_source = _resolve_data_source(data_source)
     return _get_cn_polygons("province", data_source)
 
 
-def _get_cn_city_polygons(data_source: DataSource | None = None) -> list[PolygonType]:
+def _get_cn_city_polygons(data_source: DataSource | None = None) -> NDArray[np.object_]:
     data_source = _resolve_data_source(data_source)
     return _get_cn_polygons("city", data_source)
 
 
 def _get_cn_district_polygons(
     data_source: DataSource | None = None,
-) -> list[PolygonType]:
+) -> NDArray[np.object_]:
     data_source = _resolve_data_source(data_source)
     return _get_cn_polygons("district", data_source)
 
@@ -563,13 +562,13 @@ def get_cn_province(
     indices = _get_cn_province_indices(province, data_source)
     polygons = _get_cn_province_polygons(data_source)
     if len(indices) == len(polygons):
-        return polygons
+        return polygons.tolist()
 
-    polygons = [polygons[i] for i in indices]
+    polygons = polygons[indices]
     if isinstance(province, (str, int)):
-        return polygons[0]
+        return polygons.item()
     else:
-        return polygons
+        return polygons.tolist()
 
 
 @overload
@@ -616,13 +615,13 @@ def get_cn_city(
     indices = _get_cn_city_indices(city, province, data_source)
     polygons = _get_cn_city_polygons(data_source)
     if len(indices) == len(polygons):
-        return polygons
+        return polygons.tolist()
 
-    polygons = [polygons[i] for i in indices]
+    polygons = polygons[indices]
     if isinstance(city, (str, int)):
-        return polygons[0]
+        return polygons.item()
     else:
-        return polygons
+        return polygons.tolist()
 
 
 @overload
@@ -676,13 +675,13 @@ def get_cn_district(
     indices = _get_cn_district_indices(district, city, province, data_source)
     polygons = _get_cn_district_polygons(data_source)
     if len(indices) == len(polygons):
-        return polygons
+        return polygons.tolist()
 
-    polygons = [polygons[i] for i in indices]
+    polygons = polygons[indices]
     if isinstance(district, (str, int)):
-        return polygons[0]
+        return polygons.item()
     else:
-        return polygons
+        return polygons.tolist()
 
 
 @cache

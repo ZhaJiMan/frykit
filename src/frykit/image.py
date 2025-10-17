@@ -29,7 +29,7 @@ def _read_image(image: ImageInput) -> Image.Image:
 Disposal: TypeAlias = Literal[0, 1, 2, 3]
 
 
-class SaveGifKwargs(TypedDict, total=False):
+class GifKwargs(TypedDict, total=False):
     include_color_table: bool
     interalce: bool
     disposal: Disposal | list[Disposal] | tuple[Disposal, ...]
@@ -43,7 +43,7 @@ class SaveGifKwargs(TypedDict, total=False):
 
 # TODO: alpha
 def make_gif(
-    images: Sequence[ImageInput], filepath: PathType, **kwargs: Unpack[SaveGifKwargs]
+    images: Sequence[ImageInput], filepath: PathType, **kwargs: Unpack[GifKwargs]
 ) -> None:
     """
     制作 gif 图。结果的 mode 和尺寸由第一张图决定。

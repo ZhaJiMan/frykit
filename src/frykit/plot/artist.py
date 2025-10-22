@@ -294,8 +294,7 @@ class TextCollection(Artist):
             raise ValueError("x、y 和 s 长度必须相同")
         self.coords = np.column_stack([self.x, self.y])
 
-        kwargs = normalize_kwargs(kwargs)  # type: ignore
-        kwargs = cast(TextCollectionKwargs, kwargs)
+        kwargs = cast(TextCollectionKwargs, normalize_kwargs(kwargs, Text))
         kwargs.setdefault("horizontalalignment", "center")
         kwargs.setdefault("verticalalignment", "center")
         kwargs.setdefault("clip_on", True)
@@ -380,8 +379,8 @@ class QuiverLegend(QuiverKey):
                     )
                 )
 
-        qk_kwargs = normalize_kwargs(qk_kwargs)  # type: ignore
-        qk_kwargs = cast(QuiverLegendQkKwargs, qk_kwargs)
+        if qk_kwargs is None:
+            qk_kwargs = {}
 
         super().__init__(
             Q=Q,
@@ -398,8 +397,11 @@ class QuiverLegend(QuiverKey):
         zorder = qk_kwargs.get("zorder", 5)
         self.set_zorder(zorder)
 
-        patch_kwargs = normalize_kwargs(patch_kwargs)  # type: ignore
-        patch_kwargs = cast(QuiverLegendPatchKwargs, patch_kwargs)
+        if patch_kwargs is None:
+            patch_kwargs = {}
+        patch_kwargs = cast(
+            QuiverLegendPatchKwargs, normalize_kwargs(patch_kwargs, Rectangle)
+        )
         patch_kwargs.setdefault("linewidth", 0.8)
         patch_kwargs.setdefault("edgecolor", "k")
         patch_kwargs.setdefault("facecolor", "w")
@@ -492,8 +494,9 @@ class Compass(PathCollection):
                     format_literal_error("style", style, ["arrow", "circle", "star"])
                 )
 
-        pc_kwargs = normalize_kwargs(pc_kwargs, PathCollection)  # type: ignore
-        pc_kwargs = cast(CompassPcKwargs, pc_kwargs)
+        if pc_kwargs is None:
+            pc_kwargs = {}
+        pc_kwargs = cast(CompassPcKwargs, normalize_kwargs(pc_kwargs, PathCollection))
         pc_kwargs.setdefault("linewidth", 1)
         pc_kwargs.setdefault("edgecolor", "k")
         pc_kwargs.setdefault("facecolor", colors)
@@ -502,8 +505,9 @@ class Compass(PathCollection):
         super().__init__(paths, transform=None, **pc_kwargs)
 
         # 文字在箭头上方
-        text_kwargs = normalize_kwargs(text_kwargs, Text)  # type: ignore
-        text_kwargs = cast(CompassTextKwargs, text_kwargs)
+        if text_kwargs is None:
+            text_kwargs = {}
+        text_kwargs = cast(CompassTextKwargs, normalize_kwargs(text_kwargs, Text))
         text_kwargs.setdefault("fontsize", size / 1.5)
         pad = head / 2.5
         self.text = Text(
@@ -668,8 +672,7 @@ class Frame(Artist):
         super().__init__()
         self.set_zorder(2.5)
 
-        kwargs = normalize_kwargs(kwargs)  # type: ignore
-        kwargs = cast(FrameKwargs, kwargs)
+        kwargs = cast(FrameKwargs, normalize_kwargs(kwargs, PathCollection))
         kwargs.setdefault("linewidth", 1)
         kwargs.setdefault("edgecolor", "k")
         kwargs.setdefault("facecolor", ["k", "w"])

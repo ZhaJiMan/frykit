@@ -207,8 +207,9 @@ def _set_pc_kwargs(
     kwargs: GeometryPathCollectionKwargs,
 ) -> GeometryPathCollectionKwargs:
     """设置 add_cn_xxx 系列函数的 kwargs"""
-    kwargs = normalize_kwargs(kwargs, PathCollection)  # type: ignore
-    kwargs = cast(GeometryPathCollectionKwargs, kwargs)
+    kwargs = cast(
+        GeometryPathCollectionKwargs, normalize_kwargs(kwargs, PathCollection)
+    )
     kwargs.setdefault("linewidth", 0.5)
     kwargs.setdefault("edgecolor", "k")
     kwargs.setdefault("facecolor", "none")
@@ -655,8 +656,7 @@ def _add_cn_texts(
     **kwargs: Unpack[TextCollectionKwargs],
 ) -> TextCollection:
     """用 add_texts 函数添加中国地名"""
-    kwargs = normalize_kwargs(kwargs, Text)  # type: ignore
-    kwargs = cast(TextCollectionKwargs, kwargs)
+    kwargs = cast(TextCollectionKwargs, normalize_kwargs(kwargs, Text))
     kwargs.setdefault("fontsize", "small")
     if isinstance(ax, GeoAxes):
         kwargs.setdefault("transform", PLATE_CARREE)
@@ -1893,8 +1893,7 @@ def add_box(
         raise TypeError(format_type_error("ax", ax, Axes))
 
     # 设置参数
-    kwargs = normalize_kwargs(kwargs, PathPatch)  # type: ignore
-    kwargs = cast(AddBoxKwargs, kwargs)
+    kwargs = cast(AddBoxKwargs, normalize_kwargs(kwargs, PathPatch))
     kwargs.setdefault("edgecolor", "r")
     kwargs.setdefault("facecolor", "none")
 

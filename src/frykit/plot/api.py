@@ -33,6 +33,7 @@ from matplotlib.transforms import Bbox
 from numpy import ma
 from numpy.typing import ArrayLike, NDArray
 from shapely.geometry.base import BaseGeometry
+from typing_extensions import Unpack
 
 from frykit import get_data_dir
 from frykit.calc import asarrays, get_values_between, lon_to_180
@@ -50,6 +51,18 @@ from frykit.plot.artist import (
     clear_path_cache,
 )
 from frykit.plot.projection import PLATE_CARREE
+from frykit.plot.typing import (
+    AddBoxKwargs,
+    CompassPcKwargs,
+    CompassTextKwargs,
+    FrameKwargs,
+    GeometryPathCollectionKwargs,
+    LetterAxesKwargs,
+    QuiverLegendPatchKwargs,
+    QuiverLegendQkKwargs,
+    SaveFigKwargs,
+    TextCollectionKwargs,
+)
 from frykit.plot.utils import (
     EMPTY_POLYGON,
     box_path,
@@ -130,7 +143,7 @@ def add_geometries(
     crs: CRS | None = None,
     fast_transform: bool | None = None,
     skip_outside: bool | None = None,
-    **kwargs: Any,
+    **kwargs: Unpack[GeometryPathCollectionKwargs],
 ) -> GeometryPathCollection:
     """
     将几何对象添加到 Axes 上
@@ -159,7 +172,7 @@ def add_geometries(
     **kwargs
         PathCollection 类的关键字参数。
         例如 edgecolor、facecolor、cmap、norm 和 array 等。
-        https://matplotlib.org/stable/api/collections_api.html
+        https://matplotlib.org/stable/api/collections_api.html#matplotlib.collections.Collection
 
     Returns
     -------
@@ -190,9 +203,12 @@ def add_geometries(
     )
 
 
-def _set_pc_kwargs(kwargs: dict[str, Any]) -> dict[str, Any]:
+def _set_pc_kwargs(
+    kwargs: GeometryPathCollectionKwargs,
+) -> GeometryPathCollectionKwargs:
     """设置 add_cn_xxx 系列函数的 kwargs"""
-    kwargs = normalize_kwargs(kwargs, PathCollection)
+    kwargs = normalize_kwargs(kwargs, PathCollection)  # type: ignore
+    kwargs = cast(GeometryPathCollectionKwargs, kwargs)
     kwargs.setdefault("linewidth", 0.5)
     kwargs.setdefault("edgecolor", "k")
     kwargs.setdefault("facecolor", "none")
@@ -207,7 +223,7 @@ def add_cn_province(
     fast_transform: bool | None = None,
     skip_outside: bool | None = None,
     data_source: DataSource | None = None,
-    **kwargs: Any,
+    **kwargs: Unpack[GeometryPathCollectionKwargs],
 ) -> GeometryPathCollection:
     """
     在 Axes 上添加中国省界
@@ -234,7 +250,7 @@ def add_cn_province(
     **kwargs
         PathCollection 类的关键字参数。
         例如 edgecolor、facecolor、cmap、norm 和 array 等。
-        https://matplotlib.org/stable/api/collections_api.html
+        https://matplotlib.org/stable/api/collections_api.html#matplotlib.collections.Collection
 
     Returns
     -------
@@ -257,7 +273,7 @@ def add_cn_city(
     fast_transform: bool | None = None,
     skip_outside: bool | None = None,
     data_source: DataSource | None = None,
-    **kwargs: Any,
+    **kwargs: Unpack[GeometryPathCollectionKwargs],
 ) -> GeometryPathCollection:
     """
     在 Axes 上添加中国市界
@@ -288,7 +304,7 @@ def add_cn_city(
     **kwargs
         PathCollection 类的关键字参数。
         例如 edgecolor、facecolor、cmap、norm 和 array 等。
-        https://matplotlib.org/stable/api/collections_api.html
+        https://matplotlib.org/stable/api/collections_api.html#matplotlib.collections.Collection
 
     Returns
     -------
@@ -312,7 +328,7 @@ def add_cn_district(
     fast_transform: bool | None = None,
     skip_outside: bool | None = None,
     data_source: DataSource | None = None,
-    **kwargs: Any,
+    **kwargs: Unpack[GeometryPathCollectionKwargs],
 ) -> GeometryPathCollection:
     """
     在 Axes 上添加中国县界
@@ -347,7 +363,7 @@ def add_cn_district(
     **kwargs
         PathCollection 类的关键字参数。
         例如 edgecolor、facecolor、cmap、norm 和 array 等。
-        https://matplotlib.org/stable/api/collections_api.html
+        https://matplotlib.org/stable/api/collections_api.html#matplotlib.collections.Collection
 
     Returns
     -------
@@ -368,7 +384,7 @@ def add_cn_border(
     fast_transform: bool | None = None,
     skip_outside: bool | None = None,
     data_source: DataSource | None = None,
-    **kwargs: Any,
+    **kwargs: Unpack[GeometryPathCollectionKwargs],
 ) -> GeometryPathCollection:
     """
     在 Axes 上添加中国国界
@@ -392,7 +408,7 @@ def add_cn_border(
     **kwargs
         PathCollection 类的关键字参数。
         例如 edgecolor、facecolor、cmap、norm 和 array 等。
-        https://matplotlib.org/stable/api/collections_api.html
+        https://matplotlib.org/stable/api/collections_api.html#matplotlib.collections.Collection
 
     Returns
     -------
@@ -413,7 +429,7 @@ def add_cn_line(
     name: LineName | Iterable[LineName] = "九段线",
     fast_transform: bool | None = None,
     skip_outside: bool | None = None,
-    **kwargs: Any,
+    **kwargs: Unpack[GeometryPathCollectionKwargs],
 ) -> GeometryPathCollection:
     """
     在 Axes 上添加中国的修饰线段
@@ -437,7 +453,7 @@ def add_cn_line(
     **kwargs
         PathCollection 类的关键字参数。
         例如 edgecolor、facecolor、cmap、norm 和 array 等。
-        https://matplotlib.org/stable/api/collections_api.html
+        https://matplotlib.org/stable/api/collections_api.html#matplotlib.collections.Collection
 
     Returns
     -------
@@ -457,7 +473,7 @@ def add_countries(
     ax: Axes,
     fast_transform: bool | None = None,
     skip_outside: bool | None = None,
-    **kwargs: Any,
+    **kwargs: Unpack[GeometryPathCollectionKwargs],
 ) -> GeometryPathCollection:
     """
     在 Axes 上添加所有国家的国界
@@ -478,7 +494,7 @@ def add_countries(
     **kwargs
         PathCollection 类的关键字参数。
         例如 edgecolor、facecolor、cmap、norm 和 array 等。
-        https://matplotlib.org/stable/api/collections_api.html
+        https://matplotlib.org/stable/api/collections_api.html#matplotlib.collections.Collection
 
     Returns
     -------
@@ -498,7 +514,7 @@ def add_land(
     ax: Axes,
     fast_transform: bool | None = None,
     skip_outside: bool | None = None,
-    **kwargs: Any,
+    **kwargs: Unpack[GeometryPathCollectionKwargs],
 ) -> GeometryPathCollection:
     """
     在 Axes 上添加陆地
@@ -521,7 +537,7 @@ def add_land(
     **kwargs
         PathCollection 类的关键字参数。
         例如 edgecolor、facecolor、cmap、norm 和 array 等。
-        https://matplotlib.org/stable/api/collections_api.html
+        https://matplotlib.org/stable/api/collections_api.html#matplotlib.collections.Collection
 
     Returns
     -------
@@ -541,7 +557,7 @@ def add_ocean(
     ax: Axes,
     fast_transform: bool | None = None,
     skip_outside: bool | None = None,
-    **kwargs: Any,
+    **kwargs: Unpack[GeometryPathCollectionKwargs],
 ) -> GeometryPathCollection:
     """
     在 Axes 上添加海洋
@@ -564,7 +580,7 @@ def add_ocean(
     **kwargs
         PathCollection 类的关键字参数。
         例如 edgecolor、facecolor、cmap、norm 和 array 等。
-        https://matplotlib.org/stable/api/collections_api.html
+        https://matplotlib.org/stable/api/collections_api.html#matplotlib.collections.Collection
 
     Returns
     -------
@@ -586,7 +602,7 @@ def add_texts(
     y: ArrayLike,
     s: ArrayLike,
     skip_outside: bool | None = None,
-    **kwargs: Any,
+    **kwargs: Unpack[TextCollectionKwargs],
 ) -> TextCollection:
     """
     在 Axes 上添加一组文本
@@ -609,7 +625,7 @@ def add_texts(
     **kwargs
         Text 类的关键字参数。
         例如 fontsize、fontfamily 和 color 等。
-        https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.text.html
+        https://matplotlib.org/stable/api/text_api.html#matplotlib.text.Text
 
     Returns
     -------
@@ -636,10 +652,11 @@ def _add_cn_texts(
     lats: ArrayLike,
     names: ArrayLike,
     skip_outside: bool | None = None,
-    **kwargs: Any,
+    **kwargs: Unpack[TextCollectionKwargs],
 ) -> TextCollection:
     """用 add_texts 函数添加中国地名"""
-    kwargs = normalize_kwargs(kwargs, Text)
+    kwargs = normalize_kwargs(kwargs, Text)  # type: ignore
+    kwargs = cast(TextCollectionKwargs, kwargs)
     kwargs.setdefault("fontsize", "small")
     if isinstance(ax, GeoAxes):
         kwargs.setdefault("transform", PLATE_CARREE)
@@ -670,7 +687,7 @@ def label_cn_province(
     short_name: bool = True,
     skip_outside: bool | None = None,
     data_source: DataSource | None = None,
-    **kwargs: Any,
+    **kwargs: Unpack[TextCollectionKwargs],
 ) -> TextCollection:
     """
     在 Axes 上标注中国省名
@@ -693,7 +710,7 @@ def label_cn_province(
     **kwargs
         Text 类的关键字参数。
         例如 fontsize、fontfamily 和 color 等。
-        https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.text.html
+        https://matplotlib.org/stable/api/text_api.html#matplotlib.text.Text
 
     Returns
     -------
@@ -726,7 +743,7 @@ def label_cn_city(
     short_name: bool = True,
     skip_outside: bool | None = None,
     data_source: DataSource | None = None,
-    **kwargs: Any,
+    **kwargs: Unpack[TextCollectionKwargs],
 ) -> TextCollection:
     """
     在 Axes 上标注中国市名
@@ -753,7 +770,7 @@ def label_cn_city(
     **kwargs
         Text 类的关键字参数。
         例如 fontsize、fontfamily 和 color 等。
-        https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.text.html
+        https://matplotlib.org/stable/api/text_api.html#matplotlib.text.Text
 
     Returns
     -------
@@ -787,7 +804,7 @@ def label_cn_district(
     short_name: bool = True,
     skip_outside: bool | None = None,
     data_source: DataSource | None = None,
-    **kwargs: Any,
+    **kwargs: Unpack[TextCollectionKwargs],
 ) -> TextCollection:
     """
     在 Axes 上标注中国县名
@@ -818,7 +835,7 @@ def label_cn_district(
     **kwargs
         Text 类的关键字参数。
         例如 fontsize、fontfamily 和 color 等。
-        https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.text.html
+        https://matplotlib.org/stable/api/text_api.html#matplotlib.text.Text
 
     Returns
     -------
@@ -1655,8 +1672,8 @@ def add_quiver_legend(
     loc: Literal[
         "lower left", "lower right", "upper left", "upper right"
     ] = "lower right",
-    qk_kwargs: dict[str, Any] | None = None,
-    patch_kwargs: dict[str, Any] | None = None,
+    qk_kwargs: QuiverLegendQkKwargs | None = None,
+    patch_kwargs: QuiverLegendPatchKwargs | None = None,
 ) -> QuiverLegend:
     """
     在 Axes 的角落添加 Quiver 的图例（带矩形背景的 QuiverKey）
@@ -1717,8 +1734,8 @@ def add_compass(
     angle: float | None = None,
     size: float = 20,
     style: Literal["arrow", "star", "circle"] = "arrow",
-    pc_kwargs: dict[str, Any] | None = None,
-    text_kwargs: dict[str, Any] | None = None,
+    pc_kwargs: CompassPcKwargs | None = None,
+    text_kwargs: CompassTextKwargs | None = None,
 ) -> Compass:
     """
     在 Axes 上添加指北针
@@ -1744,11 +1761,11 @@ def add_compass(
     pc_kwargs : dict or None, default None
         表示指北针的 PathCollection 类的关键字参数。默认为 None。
         例如 linewidth、edgecolor、facecolor 等。
-        https://matplotlib.org/stable/api/collections_api.html
+        https://matplotlib.org/stable/api/collections_api.html#matplotlib.collections.Collection
 
     text_kwargs : dict or None, default None
         表示指北针 N 字的 Text 类的关键字参数。默认为 None。
-        https://matplotlib.org/stable/api/text_api.html
+        https://matplotlib.org/stable/api/text_api.html#matplotlib.text.Text
 
     Returns
     -------
@@ -1808,7 +1825,7 @@ def add_scale_bar(
     return ScaleBar(ax, x, y, length, units)
 
 
-def add_frame(ax: Axes, width: float = 5, **kwargs: Any) -> Frame:
+def add_frame(ax: Axes, width: float = 5, **kwargs: Unpack[FrameKwargs]) -> Frame:
     """
     在 Axes 上添加 GMT 风格的边框
 
@@ -1826,7 +1843,7 @@ def add_frame(ax: Axes, width: float = 5, **kwargs: Any) -> Frame:
     **kwargs
         表示边框的 PathCollection 类的关键字参数。
         例如 linewidth、edgecolor、facecolor 等。
-        https://matplotlib.org/stable/api/collections_api.html
+        https://matplotlib.org/stable/api/collections_api.html#matplotlib.collections.Collection
 
     Returns
     -------
@@ -1845,7 +1862,7 @@ def add_frame(ax: Axes, width: float = 5, **kwargs: Any) -> Frame:
 
 
 def add_box(
-    ax: Axes, extents: Sequence[float], steps: int = 100, **kwargs: Any
+    ax: Axes, extents: Sequence[float], steps: int = 100, **kwargs: Unpack[AddBoxKwargs]
 ) -> PathPatch:
     """
     在 Axes 上添加一个方框
@@ -1876,7 +1893,8 @@ def add_box(
         raise TypeError(format_type_error("ax", ax, Axes))
 
     # 设置参数
-    kwargs = normalize_kwargs(kwargs, PathPatch)
+    kwargs = normalize_kwargs(kwargs, PathPatch)  # type: ignore
+    kwargs = cast(AddBoxKwargs, kwargs)
     kwargs.setdefault("edgecolor", "r")
     kwargs.setdefault("facecolor", "none")
 
@@ -2211,7 +2229,7 @@ def plot_colormap(
 
 
 def letter_axes(
-    axes: ArrayLike, x: ArrayLike, y: ArrayLike, **kwargs: Any
+    axes: ArrayLike, x: ArrayLike, y: ArrayLike, **kwargs: Unpack[LetterAxesKwargs]
 ) -> list[Text]:
     """
     给一组 Axes 按顺序标注字母
@@ -2286,7 +2304,9 @@ def load_test_data() -> TestData:
         )
 
 
-def savefig(fname: Any, fig: Figure | None = None, **kwargs: Any) -> None:
+def savefig(
+    fname: Any, fig: Figure | None = None, **kwargs: Unpack[SaveFigKwargs]
+) -> None:
     """保存 Figure 为图片"""
     if fig is None:
         fig = plt.gcf()

@@ -48,7 +48,7 @@ pip install -U frykit
 具体依赖为：
 
 ```
-typing-extensions>=4.12.0
+typing-extensions>=4.13.0
 python>=3.10.0
 pandas>=2.0.0
 shapely>=2.0.0

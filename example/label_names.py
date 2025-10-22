@@ -3,10 +3,8 @@
 from functools import cache
 from typing import cast
 
-import numpy as np
 import matplotlib.pyplot as plt
 from cartopy.mpl.geoaxes import GeoAxes
-from numpy.typing import NDArray
 
 import frykit.plot as fplt
 
@@ -16,9 +14,9 @@ data_crs = fplt.PLATE_CARREE
 
 
 @cache
-def get_colors() -> NDArray[np.float64]:
+def get_colors() -> list[tuple[float, float, float]]:
     """获取填充行政区划的颜色数组"""
-    return np.array(plt.cm.Set3.colors)  # type: ignore
+    return list(plt.cm.Set3.colors)  # type: ignore
 
 
 def plot_province_map() -> None:

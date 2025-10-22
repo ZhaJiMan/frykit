@@ -29,7 +29,7 @@ def _read_image(image: ImageInput) -> Image.Image:
 Disposal: TypeAlias = Literal[0, 1, 2, 3]
 
 
-class GifKwargs(TypedDict, total=False):
+class MakeGifKwargs(TypedDict, total=False):
     include_color_table: bool
     interalce: bool
     disposal: Disposal | list[Disposal] | tuple[Disposal, ...]
@@ -43,7 +43,7 @@ class GifKwargs(TypedDict, total=False):
 
 # TODO: alpha
 def make_gif(
-    images: Sequence[ImageInput], filepath: PathType, **kwargs: Unpack[GifKwargs]
+    images: Sequence[ImageInput], filepath: PathType, **kwargs: Unpack[MakeGifKwargs]
 ) -> None:
     """
     制作 gif 图。结果的 mode 和尺寸由第一张图决定。
@@ -59,7 +59,7 @@ def make_gif(
     **kwargs
         用 pillow 保存 gif 时的参数。
         例如 duration、loop、disposal、transparency 等。
-        https://pillow.readthedocs.io/en/stable/handbook/image-file-formats.html
+        https://pillow.readthedocs.io/en/stable/handbook/image-file-formats.html#gif-saving
     """
     if len(images) == 0:
         raise ValueError("至少需要一张图片")
@@ -98,7 +98,11 @@ def _images_to_array2d(images: Any) -> NDArray[np.object_]:
 def merge_images(
     images: Any,
     mode: str | None = None,
-    bgcolor: float | tuple[float, ...] | str | None = "white",
+    bgcolor: float
+    | tuple[float, float, float]
+    | tuple[float, float, float, float]
+    | str
+    | None = "white",
 ) -> Image.Image:
     """
     合并一组图片

@@ -118,11 +118,11 @@ def path_to_polygon(path: Path) -> PolygonType:
     - cartopy.mpl.patch.path_to_geos
     - cartopy.mpl.path.path_to_shapely
     """
-    if len(path.vertices) == 0:  # type: ignore
+    if len(path.vertices) == 0:  # pyright: ignore[reportArgumentType]
         return EMPTY_POLYGON
 
     collection: list[tuple[shapely.LinearRing, list[shapely.LinearRing]]] = []
-    indices = np.nonzero(path.codes == Path.MOVETO)[0][1:]  # type: ignore
+    indices = np.nonzero(path.codes == Path.MOVETO)[0][1:]  # pyright: ignore[reportArgumentType]
     for coords in np.vsplit(path.vertices, indices):
         linear_ring = shapely.LinearRing(coords)
         if linear_ring.is_ccw:

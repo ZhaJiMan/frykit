@@ -82,7 +82,7 @@ def orient_polygon(polygon: PolygonType, ccw: bool = True) -> PolygonType:
         )
 
     if hasattr(shapely, "orient_polygons"):
-        return shapely.orient_polygons(polygon, exterior_cw=not ccw)  # type: ignore
+        return cast(PolygonType, shapely.orient_polygons(polygon, exterior_cw=not ccw))
 
     if isinstance(polygon, shapely.Polygon):
         return _orient(polygon, ccw)
@@ -272,7 +272,7 @@ def dict_to_geometry(
 
 def dict_to_geometry(geometry_dict: GeometryDict) -> BaseGeometry:
     """GeoJSON 的 geometry 字典转为几何对象"""
-    return sgeom.shape(geometry_dict)  # type: ignore
+    return sgeom.shape(geometry_dict)  # pyright: ignore[reportArgumentType]
 
 
 def get_geojson_properties(geojson_dict: GeoJSONDict) -> pd.DataFrame:

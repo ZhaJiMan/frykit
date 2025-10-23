@@ -16,7 +16,7 @@ data_crs = fplt.PLATE_CARREE
 @cache
 def get_colors() -> list[tuple[float, float, float]]:
     """获取填充行政区划的颜色数组"""
-    return list(plt.cm.Set3.colors)  # type: ignore
+    return list(plt.cm.Set3.colors)  # pyright: ignore[reportAttributeAccessIssue]
 
 
 def plot_province_map() -> None:

@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import shapely
 from cartopy.crs import CRS, Mercator, PlateCarree
-from cartopy.mpl.geoaxes import GeoAxes
+from cartopy.mpl.geoaxes import GeoAxes, _ViewClippedPathPatch
 from cartopy.mpl.ticker import LatitudeFormatter, LongitudeFormatter
 from matplotlib import font_manager
 from matplotlib.artist import Artist
@@ -871,11 +871,11 @@ def _resolve_strict_clip(strict_clip: bool | None) -> bool:
 
 def _get_geoaxes_boundary(ax: GeoAxes) -> shapely.Polygon:
     """获取 data 坐标系里的 GeoAxes.patch 对应的多边形"""
-    patch = ax.patch
-    patch._adjust_location()  # type: ignore
+    patch = cast(_ViewClippedPathPatch, ax.patch)
+    patch._adjust_location()
     trans = patch.get_transform() - ax.transData
     path = patch.get_path().transformed(trans)
-    boundary = shapely.Polygon(path.vertices)  # type: ignore
+    boundary = shapely.Polygon(path.vertices)  # pyright: ignore[reportArgumentType]
 
     return boundary
 
@@ -937,7 +937,7 @@ def clip_by_polygon(
     for a in artists:
         match a:
             case ContourSet() if not _MPL_3_8:
-                all_artists.extend(a.collections)  # type: ignore
+                all_artists.extend(a.collections)  # pyright: ignore[reportAttributeAccessIssue]
             case Artist():
                 all_artists.append(a)
             case _:
@@ -976,9 +976,7 @@ def clip_by_polygon(
             polygon = polygons[0]
         case _:
             # 合并的多边形无法利用缓存
-            polygon = shapely.unary_union(polygons)  # type: ignore
-
-    polygon = cast(PolygonType, polygon)
+            polygon = cast(PolygonType, shapely.unary_union(polygons))
 
     if isinstance(ax, GeoAxes):
         if crs is None:
@@ -992,8 +990,8 @@ def clip_by_polygon(
         polygon = path_to_polygon(path)
         if strict_clip:
             # invalid 的多边形可能抛出 TopologyException
-            polygon &= _get_geoaxes_boundary(ax)  # type: ignore
-            path = geometry_to_path(polygon)  # type: ignore
+            polygon = cast(PolygonType, polygon & _get_geoaxes_boundary(ax))
+            path = geometry_to_path(polygon)
     else:
         if crs is not None:
             raise ValueError("ax 不是 GeoAxes 时 crs 只能为 None")
@@ -1898,7 +1896,7 @@ def add_box(
     kwargs.setdefault("facecolor", "none")
 
     # 添加 Patch
-    path = box_path(*extents).interpolated(steps)  # type: ignore
+    path = box_path(*extents, ccw=True).interpolated(steps)
     patch = PathPatch(path, **kwargs)
     ax.add_patch(patch)
 
@@ -2033,8 +2031,8 @@ def add_side_axes(
         新的 Axes。注意 projection=None。
     """
     # 获取一组 Axes 的位置
-    axs = np.atleast_1d(ax).ravel()  # type: ignore
-    bbox = Bbox.union([ax.get_position() for ax in axs])
+    axes = np.atleast_1d(np.array(ax, dtype=np.object_)).ravel()
+    bbox = Bbox.union([ax.get_position() for ax in axes])
 
     # 可选四个方向
     match loc:
@@ -2064,7 +2062,7 @@ def add_side_axes(
             )
 
     new_bbox = Bbox.from_extents(x0, y0, x1, y1)
-    new_ax = axs[0].figure.add_axes(new_bbox)
+    new_ax = axes[0].figure.add_axes(new_bbox)
 
     return new_ax
 
@@ -2191,7 +2189,7 @@ class CenteredBoundaryNorm(BoundaryNorm):
         if self.N1 < 1 or self.N2 < 1:
             raise ValueError("vcenter 两侧至少各有一条边界")
 
-    def __call__(self, value: Any, clip: bool | None = None) -> ma.MaskedArray:  # type: ignore
+    def __call__(self, value: Any, clip: bool | None = None) -> ma.MaskedArray:  # pyright: ignore[reportIncompatibleMethodOverride]
         # 将 BoundaryNorm 的 [0, N-1] 映射到 [0.0, 1.0] 内
         result = super().__call__(value, clip)
         if self.N1 + self.N2 == self.N - 1:

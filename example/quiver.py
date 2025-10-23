@@ -37,7 +37,7 @@ cf = ax.contourf(
     Y,
     t2m,
     levels=np.linspace(-10, 35, 10),
-    cmap=plt.cm.plasma,  # type: ignore
+    cmap=plt.cm.plasma,  # pyright: ignore[reportAttributeAccessIssue]
     extend="both",
     transform=data_crs,
     transform_first=True,

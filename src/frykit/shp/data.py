@@ -132,7 +132,7 @@ def _get_cn_indices(
             case str():
                 arrs.append(name_to_indices[k])
             case int() | np.integer():
-                arrs.append(adcode_to_indices[k])  # type: ignore
+                arrs.append(adcode_to_indices[k])  # pyright: ignore[reportArgumentType]
             case _:
                 raise TypeError(format_type_error("key", k, [str, int]))
 
@@ -204,7 +204,7 @@ def _get_cn_lookup(
             cols = df.columns[:6]
 
     # 第一次运行 groupby 略慢
-    return cls(index, *[df.groupby(col).indices for col in cols])  # type: ignore
+    return cls(index, *[df.groupby(col).indices for col in cols])  # pyright: ignore[reportArgumentType]
 
 
 def _get_cn_province_lookup(data_source: DataSource | None = None) -> ProvinceLookup:
@@ -831,7 +831,7 @@ def get_cn_district_geodataframe(
 def clear_data_cache() -> None:
     """清除数据缓存"""
     _get_cn_table.cache_clear()
-    _get_cn_lookup.cache_clear()  # type: ignore
+    _get_cn_lookup.cache_clear()  # pyright: ignore[reportFunctionMemberAccess]
     _get_cn_polygons.cache_clear()
     _get_cn_border.cache_clear()
     _get_cn_line_strings.cache_clear()

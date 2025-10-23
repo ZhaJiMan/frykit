@@ -237,12 +237,12 @@ class GeometryPathCollection(PathCollection):
             x1, y1 = bounds[:, 2:].max(axis=0)
             if all(x is not ma.masked for x in [x0, y0, x1, y1]):
                 path = box_path(x0, x1, y0, y1).interpolated(100)
-                polygon = shapely.Polygon(path.vertices)  # type: ignore
+                polygon = shapely.Polygon(path.vertices)  # pyright: ignore[reportArgumentType]
                 paths = self._geometries_to_paths([polygon])
 
         super().__init__(paths, **kwargs)
         ax.add_collection(self)
-        ax._request_autoscale_view()  # type: ignore
+        ax._request_autoscale_view()  # pyright: ignore[reportAttributeAccessIssue]
 
     def _init(self) -> None:
         if not self.skip_outside:
@@ -299,7 +299,7 @@ class TextCollection(Artist):
         kwargs.setdefault("verticalalignment", "center")
         kwargs.setdefault("clip_on", True)
         self.texts = [
-            Text(xi, yi, si, **kwargs)  # type: ignore
+            Text(xi, yi, si, **kwargs)  # pyright: ignore[reportArgumentType]
             for xi, yi, si in zip(self.x, self.y, self.s)
         ]
 
@@ -425,7 +425,7 @@ class QuiverLegend(QuiverKey):
         self._labelsep_inches: float
         fontsize = cast(int, self.text.get_fontsize()) / 72
         dy = (self._labelsep_inches + fontsize) / 2
-        trans = offset_copy(ax.transAxes, fig, 0, dy)  # type: ignore
+        trans = offset_copy(ax.transAxes, fig, 0, dy)  # pyright: ignore[reportArgumentType]
         self.set_transform(trans)
 
         self.patch.axes = ax
@@ -518,7 +518,7 @@ class Compass(PathCollection):
             va="center",
             rotation=0,
             transform=None,
-            **text_kwargs,  # type: ignore
+            **text_kwargs,  # pyright: ignore[reportArgumentType]
         )
 
     @staticmethod
@@ -551,12 +551,12 @@ class Compass(PathCollection):
                 lon1, lat1 = lon0, min(lat0 + 0.01, 90)
                 x1, y1 = ax.projection.transform_point(lon1, lat1, PLATE_CARREE)
                 theta = math.degrees(math.atan2(y1 - y0, x1 - x0))
-                azimuth = cast(float, t_to_az(theta, degrees=True))
+                azimuth = float(t_to_az(theta, degrees=True))
             else:
                 azimuth = 0
 
         rotation = Affine2D().rotate_deg(-azimuth)
-        translation = ScaledTranslation(self.x, self.y, ax.transAxes)  # type: ignore
+        translation = ScaledTranslation(self.x, self.y, ax.transAxes)  # pyright: ignore[reportArgumentType]
         trans = fig.dpi_scale_trans + rotation + translation
         self.text.set_transform(trans)
         self.text.set_rotation(-azimuth)
@@ -603,7 +603,7 @@ class ScaleBar(Axes):
 
         if ax.figure is None:
             raise ValueError("必须设置 ax.figure")
-        super().__init__(ax.figure, (0, 0, 1, 1), zorder=5)  # type: ignore
+        super().__init__(ax.figure, (0, 0, 1, 1), zorder=5)  # pyright: ignore[reportArgumentType]
         ax.add_child_axes(self)
 
         # 只显示上边框的刻度
@@ -765,7 +765,7 @@ class Frame(Artist):
         ]
         self.pc_dict["corner"].set_paths(corner_paths)
         fc = self.pc_dict["top"].get_facecolor()[-1]
-        self.pc_dict["corner"].set_facecolor(fc)  # type: ignore
+        self.pc_dict["corner"].set_facecolor(fc)  # pyright: ignore[reportArgumentType]
 
     def set_figure(self, fig: Figure | SubFigure) -> None:
         super().set_figure(fig)

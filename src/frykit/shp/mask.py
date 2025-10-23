@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import cast
-
 import numpy as np
 import shapely
 from numpy.typing import ArrayLike, NDArray
@@ -105,10 +103,8 @@ def polygon_mask(
     valid = np.isfinite(x) & np.isfinite(y)
     mask = np.zeros_like(x, dtype=np.bool_)
     mask[valid] = do_recursion(x[valid], y[valid])
-    if mask.ndim == 0:
-        mask = np.bool_(mask)
 
-    return cast(NDArray[np.bool_], mask)
+    return mask
 
 
 # https://gist.github.com/perrette/a78f99b76aed54b6babf3597e0b331f8

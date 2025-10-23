@@ -132,7 +132,7 @@ def merge_images(
     for index in np.ndindex(arr.shape):
         if arr[index] is None:
             continue
-        image = _read_image(arr[index])  # type: ignore
+        image = _read_image(arr[index])
         arr[index] = image
         if first_image is None:
             first_image = image

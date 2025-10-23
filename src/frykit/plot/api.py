@@ -1062,7 +1062,7 @@ def clip_by_cn_province(
     """
     clip_by_polygon(
         artist=artist,
-        polygon=get_cn_province(province, data_source=data_source),  # type: ignore
+        polygon=get_cn_province(province, data_source=data_source),
         ax=ax,
         fast_transform=fast_transform,
         strict_clip=strict_clip,
@@ -1111,7 +1111,7 @@ def clip_by_cn_city(
     """
     return clip_by_polygon(
         artist=artist,
-        polygon=get_cn_city(city, data_source=data_source),  # type: ignore
+        polygon=get_cn_city(city, data_source=data_source),
         ax=ax,
         fast_transform=fast_transform,
         strict_clip=strict_clip,
@@ -1160,7 +1160,7 @@ def clip_by_cn_district(
     """
     return clip_by_polygon(
         artist=artist,
-        polygon=get_cn_district(district, data_source=data_source),  # type: ignore
+        polygon=get_cn_district(district, data_source=data_source),
         ax=ax,
         fast_transform=fast_transform,
         strict_clip=strict_clip,

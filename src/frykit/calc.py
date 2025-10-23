@@ -654,7 +654,7 @@ def binning2d(
 
     result = (
         df.groupby(["y", "x"], observed=True)
-        .agg(func)  # type: ignore
+        .agg(func)
         .reindex(index, fill_value=fill_value)
         .to_numpy()
     )

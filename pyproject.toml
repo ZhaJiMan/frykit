@@ -49,3 +49,4 @@ NEO_modis_aer_od = "NEO_modis_aer_od"
 [tool.basedpyright]
 typeCheckingMode = "standard"
 reportMissingTypeStubs = false
+reportUnnecessaryTypeIgnoreComment = true

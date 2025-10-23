@@ -101,7 +101,7 @@ class GeoJSONDict(TypedDict):
     bbox: NotRequired[Sequence[float]]
 
 
-# 这里的前向引用必须用字符串
+# 赋值操作需要前向引用
 PointType: TypeAlias = "shapely.Point | shapely.MultiPoint"
 LineStringType: TypeAlias = "shapely.LineString | shapely.MultiLineString"
 PolygonType: TypeAlias = "shapely.Polygon | shapely.MultiPolygon"

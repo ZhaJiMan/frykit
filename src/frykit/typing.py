@@ -16,5 +16,6 @@ HashableT = TypeVar("HashableT", bound=Hashable)
 
 PathType: TypeAlias = str | Path
 
+# 赋值操作需要用前向引用
 RealNumber: TypeAlias = "np.integer | np.floating"
 RealNumberT = TypeVar("RealNumberT", bound=RealNumber)

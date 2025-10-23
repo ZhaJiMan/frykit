@@ -5,7 +5,7 @@ import warnings
 from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass
 from functools import wraps
-from typing import Any, Literal, cast
+from typing import IO, Any, Literal, cast
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -89,7 +89,7 @@ from frykit.shp.data import (
     get_ocean,
 )
 from frykit.shp.typing import PolygonType
-from frykit.typing import RealNumber
+from frykit.typing import RealNumber, StrOrBytesPath
 from frykit.utils import format_literal_error, format_type_error, get_package_version
 
 __all__ = [
@@ -2302,14 +2302,16 @@ def load_test_data() -> TestData:
 
 
 def savefig(
-    fname: Any, fig: Figure | None = None, **kwargs: Unpack[SaveFigKwargs]
+    fname: StrOrBytesPath | IO[bytes],
+    fig: Figure | None = None,
+    **kwargs: Unpack[SaveFigKwargs],
 ) -> None:
     """保存 Figure 为图片"""
     if fig is None:
         fig = plt.gcf()
     kwargs.setdefault("dpi", 300)
     kwargs.setdefault("bbox_inches", "tight")
-    fig.savefig(fname, **kwargs)
+    fig.savefig(fname, **kwargs)  # pyright: ignore[reportArgumentType]
 
 
 def get_font_names(sub: str | None = None) -> list[str]:

@@ -10,7 +10,7 @@ from importlib.metadata import version
 from pathlib import Path
 from typing import Any, overload
 
-from frykit.typing import HashableT, P, PathType, T
+from frykit.typing import HashableT, P, StrPath, T
 
 __all__ = [
     "DeprecationError",
@@ -30,7 +30,7 @@ __all__ = [
 ]
 
 
-def new_dir(dirpath: PathType) -> Path:
+def new_dir(dirpath: StrPath) -> Path:
     """新建目录"""
     dirpath = Path(dirpath)
     dirpath.mkdir(parents=True, exist_ok=True)
@@ -38,7 +38,7 @@ def new_dir(dirpath: PathType) -> Path:
     return dirpath
 
 
-def del_dir(dirpath: PathType) -> Path:
+def del_dir(dirpath: StrPath) -> Path:
     """删除目录"""
     dirpath = Path(dirpath)
     if dirpath.exists():
@@ -47,13 +47,13 @@ def del_dir(dirpath: PathType) -> Path:
     return dirpath
 
 
-def renew_dir(dirpath: PathType) -> Path:
+def renew_dir(dirpath: StrPath) -> Path:
     """重建目录"""
     return new_dir(del_dir(dirpath))
 
 
 @contextmanager
-def chdir_context(dirpath: PathType) -> Generator[None]:
+def chdir_context(dirpath: StrPath) -> Generator[None]:
     """临时切换工作目录的上下文管理器"""
     cwd = Path.cwd()
     try:

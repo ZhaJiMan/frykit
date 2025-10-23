@@ -24,7 +24,7 @@ from frykit.shp.utils import (
     get_shapefile_geometries,
     orient_polygon,
 )
-from frykit.typing import PathType
+from frykit.typing import StrOrBytesPath, StrPath
 
 __all__ = [
     "BinaryReader",
@@ -265,7 +265,7 @@ def dump_geojson(geojson_dict: GeoJSONDict) -> bytes:
     return dump_geometries(get_geojson_geometries(geojson_dict))
 
 
-def dump_shapefile(filepath: PathType) -> bytes:
+def dump_shapefile(filepath: StrPath) -> bytes:
     """将 shapefile 文件里的几何对象编码成二进制"""
     return dump_geometries(get_shapefile_geometries(filepath))
 
@@ -278,7 +278,7 @@ def load_binary(binary: bytes) -> list[BaseGeometry]:
 class BinaryReader:
     """读取二进制文件的类"""
 
-    def __init__(self, filepath: PathType) -> None:
+    def __init__(self, filepath: StrOrBytesPath) -> None:
         self.file = open(filepath, "rb")
         self.num_geometries = struct.unpack(UINT32, self.file.read(UINT32_SIZE))[0]
         self.binary_sizes = np.frombuffer(

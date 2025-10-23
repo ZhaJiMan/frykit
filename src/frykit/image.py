@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Literal, TypeAlias, TypedDict, cast
+from typing import IO, Any, Literal, TypeAlias, TypedDict, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -10,11 +10,11 @@ from PIL import Image
 from PIL.ImagePalette import ImagePalette
 from typing_extensions import Unpack
 
-from frykit.typing import PathType
+from frykit.typing import StrOrBytesPath
 
 __all__ = ["ImageInput", "compare_images", "make_gif", "merge_images", "split_image"]
 
-ImageInput: TypeAlias = PathType | Image.Image
+ImageInput: TypeAlias = StrOrBytesPath | IO[bytes] | Image.Image
 
 
 def _read_image(image: ImageInput) -> Image.Image:
@@ -43,7 +43,9 @@ class MakeGifKwargs(TypedDict, total=False):
 
 # TODO: alpha
 def make_gif(
-    images: Sequence[ImageInput], filepath: PathType, **kwargs: Unpack[MakeGifKwargs]
+    images: Sequence[ImageInput],
+    filepath: StrOrBytesPath | IO[bytes],
+    **kwargs: Unpack[MakeGifKwargs],
 ) -> None:
     """
     制作 gif 图。结果的 mode 和尺寸由第一张图决定。
@@ -53,7 +55,7 @@ def make_gif(
     images : sequence of ImageInput
         输入的一组图片
 
-    filepath : PathType
+    filepath : StrOrBytesPath or IO[bytes]
         输出 gif 图片的路径
 
     **kwargs

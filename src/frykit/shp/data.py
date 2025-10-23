@@ -117,22 +117,22 @@ NameOrAdcode: TypeAlias = int | str
 
 
 def _get_cn_indices(
-    name_to_indices: dict[str, NDArray[np.int64]],
-    adcode_to_indices: dict[np.int64, NDArray[np.int64]],
+    name_to_indices: dict[str, NDArray[np.intp]],
+    adcode_to_indices: dict[np.int64, NDArray[np.intp]],
     key: NameOrAdcode | Iterable[NameOrAdcode],
-) -> NDArray[np.int64]:
+) -> NDArray[np.intp]:
     if isinstance(key, str) or not isinstance(key, Iterable):
         keys = [key]
     else:
         keys = key
 
-    arrs: list[NDArray[np.int64]] = []
+    arrs: list[NDArray[np.intp]] = []
     for k in keys:
         match k:
             case str():
                 arrs.append(name_to_indices[k])
             case int() | np.integer():
-                arrs.append(adcode_to_indices[cast(np.int64, k)])
+                arrs.append(adcode_to_indices[k])  # type: ignore
             case _:
                 raise TypeError(format_type_error("key", k, [str, int]))
 
@@ -141,31 +141,31 @@ def _get_cn_indices(
 
 @dataclass
 class Lookup:
-    index: NDArray[np.int64]
+    index: NDArray[np.intp]
 
 
 @dataclass
 class ProvinceLookup(Lookup):
-    province_name: dict[str, NDArray[np.int64]]
-    province_adcode: dict[np.int64, NDArray[np.int64]]
+    province_name: dict[str, NDArray[np.intp]]
+    province_adcode: dict[np.int64, NDArray[np.intp]]
 
 
 @dataclass
 class CityLookup(Lookup):
-    province_name: dict[str, NDArray[np.int64]]
-    province_adcode: dict[np.int64, NDArray[np.int64]]
-    city_name: dict[str, NDArray[np.int64]]
-    city_adcode: dict[np.int64, NDArray[np.int64]]
+    province_name: dict[str, NDArray[np.intp]]
+    province_adcode: dict[np.int64, NDArray[np.intp]]
+    city_name: dict[str, NDArray[np.intp]]
+    city_adcode: dict[np.int64, NDArray[np.intp]]
 
 
 @dataclass
 class DistrictLookup(Lookup):
-    province_name: dict[str, NDArray[np.int64]]
-    province_adcode: dict[np.int64, NDArray[np.int64]]
-    city_name: dict[str, NDArray[np.int64]]
-    city_adcode: dict[np.int64, NDArray[np.int64]]
-    district_name: dict[str, NDArray[np.int64]]
-    district_adcode: dict[np.int64, NDArray[np.int64]]
+    province_name: dict[str, NDArray[np.intp]]
+    province_adcode: dict[np.int64, NDArray[np.intp]]
+    city_name: dict[str, NDArray[np.intp]]
+    city_adcode: dict[np.int64, NDArray[np.intp]]
+    district_name: dict[str, NDArray[np.intp]]
+    district_adcode: dict[np.int64, NDArray[np.intp]]
 
 
 @overload
@@ -191,7 +191,7 @@ def _get_cn_lookup(
     admin_level: AdminLevel, data_source: DataSource
 ) -> ProvinceLookup | CityLookup | DistrictLookup:
     df = _get_cn_table(admin_level, data_source)
-    index = df.index.to_numpy()
+    index = df.index.to_numpy().astype(np.intp)
     match admin_level:
         case "province":
             cls = ProvinceLookup
@@ -225,7 +225,7 @@ def _get_cn_district_lookup(data_source: DataSource | None = None) -> DistrictLo
 def _get_cn_province_indices(
     province: NameOrAdcode | Iterable[NameOrAdcode] | None,
     data_source: DataSource | None = None,
-) -> NDArray[np.int64]:
+) -> NDArray[np.intp]:
     lookup = _get_cn_province_lookup(data_source)
     if province is not None:
         return _get_cn_indices(lookup.province_name, lookup.province_adcode, province)
@@ -237,7 +237,7 @@ def _get_cn_city_indices(
     city: NameOrAdcode | Iterable[NameOrAdcode] | None,
     province: NameOrAdcode | Iterable[NameOrAdcode] | None,
     data_source: DataSource | None = None,
-) -> NDArray[np.int64]:
+) -> NDArray[np.intp]:
     lookup = _get_cn_city_lookup(data_source)
     if city is None and province is None:
         return lookup.index
@@ -256,7 +256,7 @@ def _get_cn_district_indices(
     city: NameOrAdcode | Iterable[NameOrAdcode] | None,
     province: NameOrAdcode | Iterable[NameOrAdcode] | None,
     data_source: DataSource | None = None,
-) -> NDArray[np.int64]:
+) -> NDArray[np.intp]:
     lookup = _get_cn_district_lookup(data_source)
     num_keys = sum(key is not None for key in [district, city, province])
     if num_keys == 0:

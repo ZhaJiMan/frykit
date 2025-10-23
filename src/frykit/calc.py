@@ -364,14 +364,13 @@ def count_consecutive_trues(mask: ArrayLike) -> NDArray[np.int64]:
     return value_counts
 
 
-def split_consecutive_trues(mask: ArrayLike) -> list[NDArray[np.int64]]:
+def split_consecutive_trues(mask: ArrayLike) -> list[NDArray[np.intp]]:
     """分段返回布尔序列里连续真值段落的索引"""
     mask = np.asarray(mask, dtype=bool)
     if mask.ndim != 1:
         raise ValueError("mask 必须是一维数组")
 
     ii = np.nonzero(mask)[0]
-    ii = ii.astype(np.int64)
     if len(ii) == 0:
         return []
     elif len(ii) == 1:

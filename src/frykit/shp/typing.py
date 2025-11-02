@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Literal, TypeAlias, TypedDict, TypeVar, Union
 
 from typing_extensions import NotRequired
@@ -32,12 +31,12 @@ __all__ = [
     "PolygonType",
 ]
 
-PointCoordinates: TypeAlias = Sequence[float]
-MultiPointCoordinates: TypeAlias = Sequence[PointCoordinates]
-LineStringCoordinates: TypeAlias = Sequence[PointCoordinates]
-MultiLineStringCoordinates: TypeAlias = Sequence[LineStringCoordinates]
-PolygonCoordinates: TypeAlias = Sequence[LineStringCoordinates]
-MultiPolygonCoordinates: TypeAlias = Sequence[PolygonCoordinates]
+PointCoordinates: TypeAlias = list[float]
+MultiPointCoordinates: TypeAlias = list[PointCoordinates]
+LineStringCoordinates: TypeAlias = list[PointCoordinates]
+MultiLineStringCoordinates: TypeAlias = list[LineStringCoordinates]
+PolygonCoordinates: TypeAlias = list[LineStringCoordinates]
+MultiPolygonCoordinates: TypeAlias = list[PolygonCoordinates]
 
 
 class PointDict(TypedDict):
@@ -85,20 +84,20 @@ GeometryDict: TypeAlias = Union[
 
 class GeometryCollectionDict(TypedDict):
     type: Literal["GeometryCollection"]
-    geometries: Sequence[GeometryDict]
+    geometries: list[GeometryDict]
 
 
 class FeatureDict(TypedDict):
     type: Literal["Feature"]
     geometry: GeometryDict
     properties: dict[str, Any]
-    bbox: NotRequired[Sequence[float]]
+    bbox: NotRequired[list[float]]
 
 
 class GeoJSONDict(TypedDict):
     type: Literal["FeatureCollection"]
-    features: Sequence[FeatureDict]
-    bbox: NotRequired[Sequence[float]]
+    features: list[FeatureDict]
+    bbox: NotRequired[list[float]]
 
 
 # 赋值操作需要前向引用

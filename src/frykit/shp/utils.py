@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from itertools import chain
 from typing import Any, cast, overload
 
@@ -308,16 +309,19 @@ def get_representative_xy(geometry: BaseGeometry) -> tuple[float, float]:
 
 
 def make_feature(
-    geometry_dict: GeometryDict, properties: dict[str, Any] | None = None
+    geometry_dict: GeometryDict, properties: Mapping[str, Any] | None = None
 ) -> FeatureDict:
     """用 geometry 和 properties 字典构造 GeoJSON 的 feature 字典"""
-    return {
-        "type": "Feature",
-        "geometry": geometry_dict,
-        "properties": {} if properties is None else properties,
-    }
+    if properties is None:
+        properties = {}
+    elif not isinstance(properties, dict):
+        properties = dict(properties)
+
+    return {"type": "Feature", "geometry": geometry_dict, "properties": properties}
 
 
-def make_geojson(features: list[FeatureDict]) -> GeoJSONDict:
+def make_geojson(features: Sequence[FeatureDict]) -> GeoJSONDict:
     """用一组 feature 字典构造 GeoJSON 字典"""
+    if not isinstance(features, list):
+        features = list(features)
     return {"type": "FeatureCollection", "features": features}

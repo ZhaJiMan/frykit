@@ -67,8 +67,6 @@ class Config:
                 _validate_data_source(value)
             case "fast_transform" | "skip_outside" | "strict_clip":
                 _validate_bool(name, value)
-            case _:
-                pass
 
     def validate(self, name: str, value: Any) -> None:
         """校验一条配置"""

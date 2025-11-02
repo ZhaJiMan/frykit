@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Callable
 from functools import lru_cache
 from typing import Sequence, overload
 
@@ -146,17 +145,6 @@ def make_transformer(crs_from: CRS, crs_to: CRS) -> Transformer:
     return Transformer.from_crs(crs_from, crs_to, always_xy=True)
 
 
-def _make_transformation(
-    crs_from: CRS, crs_to: CRS
-) -> Callable[[NDArray[np.float64]], NDArray[np.float64]]:
-    # shapely>=2.1.0 且 interleaved=False 时就不需要这个辅助函数了
-    def transformation(coords: NDArray[np.float64]) -> NDArray[np.float64]:
-        transformer = make_transformer(crs_from, crs_to)
-        return np.column_stack(transformer.transform(coords[:, 0], coords[:, 1]))
-
-    return transformation
-
-
 @overload
 def project_geometry(geometry: GeometryT, crs_from: CRS, crs_to: CRS) -> GeometryT: ...
 
@@ -183,8 +171,10 @@ def project_geometry(
 
     # 尽管 pyproj.Transformer 也能处理 crs 相等的情况，但还是有明显的性能损失
     if crs_from != crs_to:
-        transformation = _make_transformation(crs_from, crs_to)
-        geometries = shapely.transform(geometries, transformation)
+        transformer = make_transformer(crs_from, crs_to)
+        coords = shapely.get_coordinates(geometries)
+        coords = np.column_stack(transformer.transform(coords[:, 0], coords[:, 1]))
+        shapely.set_coordinates(geometries, coords)  # inplace
 
     # 要模仿 shapely 对数组的处理吗？
     if geometries.ndim == 0 and not isinstance(geometry, np.ndarray):

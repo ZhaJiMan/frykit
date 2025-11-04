@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping
 from itertools import chain
 from typing import Any, cast, overload
 
@@ -320,7 +320,7 @@ def make_feature(
     return {"type": "Feature", "geometry": geometry_dict, "properties": properties}
 
 
-def make_geojson(features: Sequence[FeatureDict]) -> GeoJSONDict:
+def make_geojson(features: Iterable[FeatureDict]) -> GeoJSONDict:
     """用一组 feature 字典构造 GeoJSON 字典"""
     if not isinstance(features, list):
         features = list(features)

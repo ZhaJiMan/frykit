@@ -140,7 +140,7 @@ def _split_binary(binary: bytes) -> list[bytes]:
     with BytesIO(binary) as f:
         num_binaries = struct.unpack(UINT32, f.read(UINT32_SIZE))[0]
         binary_sizes = np.frombuffer(f.read(num_binaries * UINT32_SIZE), dtype=UINT32)
-        binaries = [f.read(size) for size in binary_sizes]
+        binaries = [f.read(size) for size in binary_sizes.tolist()]
         return binaries
 
 
@@ -306,4 +306,7 @@ class BinaryReader:
     def geometries(self) -> list[BaseGeometry]:
         """读取所有几何对象"""
         self.file.seek(self.binary_offsets[0])
-        return [_decode_geometry(self.file.read(size)) for size in self.binary_sizes]
+        return [
+            _decode_geometry(self.file.read(size))
+            for size in self.binary_sizes.tolist()
+        ]

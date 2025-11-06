@@ -479,7 +479,7 @@ def get_cn_province_names(
     """获取中国所有省的名字"""
     df = _get_cn_province_table(data_source)
     key = "short_name" if short_name else "province_name"
-    return df[key].tolist()
+    return df[key].to_list()
 
 
 def get_cn_city_names(
@@ -488,7 +488,7 @@ def get_cn_city_names(
     """获取中国所有市的名字"""
     df = _get_cn_city_table(data_source)
     key = "short_name" if short_name else "city_name"
-    return df[key].tolist()
+    return df[key].to_list()
 
 
 def get_cn_district_names(
@@ -497,7 +497,7 @@ def get_cn_district_names(
     """获取中国所有县的名字"""
     df = _get_cn_district_table(data_source)
     key = "short_name" if short_name else "district_name"
-    return df[key].tolist()
+    return df[key].to_list()
 
 
 @cache

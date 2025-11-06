@@ -300,7 +300,7 @@ class TextCollection(Artist):
         kwargs.setdefault("clip_on", True)
         self.texts = [
             Text(xi, yi, si, **kwargs)  # pyright: ignore[reportArgumentType]
-            for xi, yi, si in zip(self.x, self.y, self.s)
+            for xi, yi, si in zip(*map(np.ndarray.tolist, [self.x, self.y, self.s]))
         ]
 
     def set_figure(self, fig: Figure | SubFigure) -> None:

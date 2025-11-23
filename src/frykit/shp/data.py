@@ -31,23 +31,19 @@ __all__ = [
     "Properties",
     "ProvinceProperties",
     "clear_data_cache",
-    "clear_data_cache",
     "get_cn_border",
     "get_cn_city",
-    "get_cn_city_dataframe",
     "get_cn_city_geodataframe",
     "get_cn_city_names",
     "get_cn_city_properties",
     "get_cn_city_table",
     "get_cn_district",
-    "get_cn_district_dataframe",
     "get_cn_district_geodataframe",
     "get_cn_district_names",
     "get_cn_district_properties",
     "get_cn_district_table",
     "get_cn_line",
     "get_cn_province",
-    "get_cn_province_dataframe",
     "get_cn_province_geodataframe",
     "get_cn_province_names",
     "get_cn_province_properties",
@@ -79,6 +75,7 @@ AdminLevel: TypeAlias = Literal["province", "city", "district"]
 
 @cache
 def _get_cn_table(level: AdminLevel, data_source: DataSource) -> pd.DataFrame:
+    # 注意不要缓存 data_source=None
     filepath = _get_china_dir() / data_source / f"cn_{level}.csv"
     return pd.read_csv(filepath)
 
@@ -771,31 +768,6 @@ def get_ocean() -> shapely.MultiPolygon:
 
 
 @cache
-def _get_cn_dataframe(level: AdminLevel, data_source: DataSource) -> pd.DataFrame:
-    df = _get_cn_table(level, data_source)
-    polygons = _get_cn_polygons(level, data_source)
-    return df.assign(geometry=polygons)
-
-
-def get_cn_province_dataframe(data_source: DataSource | None = None) -> pd.DataFrame:
-    """获取中国省界的多边形和元数据的 DataFrame"""
-    data_source = _resolve_data_source(data_source)
-    return _get_cn_dataframe("province", data_source).copy()
-
-
-def get_cn_city_dataframe(data_source: DataSource | None = None) -> pd.DataFrame:
-    """获取中国市界的多边形和元数据的 DataFrame"""
-    data_source = _resolve_data_source(data_source)
-    return _get_cn_dataframe("city", data_source).copy()
-
-
-def get_cn_district_dataframe(data_source: DataSource | None = None) -> pd.DataFrame:
-    """获取中国县界的多边形和元数据的 DataFrame"""
-    data_source = _resolve_data_source(data_source)
-    return _get_cn_dataframe("district", data_source).copy()
-
-
-@cache
 def _get_cn_geodataframe(
     level: AdminLevel, data_source: DataSource
 ) -> gpd.GeoDataFrame:
@@ -803,29 +775,29 @@ def _get_cn_geodataframe(
 
     df = _get_cn_table(level, data_source)
     polygons = _get_cn_polygons(level, data_source)
-    return gpd.GeoDataFrame(df, geometry=polygons, crs="EPSG:4326", copy=True)
+    return gpd.GeoDataFrame(df, geometry=polygons, crs="EPSG:4326", copy=False)
 
 
 def get_cn_province_geodataframe(
     data_source: DataSource | None = None,
 ) -> gpd.GeoDataFrame:
-    """获取中国省界的多边形和元数据的 GeoDataFrame"""
+    """获取中国省界的 GeoDataFrame"""
     data_source = _resolve_data_source(data_source)
-    return _get_cn_geodataframe("province", data_source)
+    return _get_cn_geodataframe("province", data_source).copy()
 
 
 def get_cn_city_geodataframe(data_source: DataSource | None = None) -> gpd.GeoDataFrame:
-    """获取中国市界的多边形和元数据的 GeoDataFrame"""
+    """获取中国市界的 GeoDataFrame"""
     data_source = _resolve_data_source(data_source)
-    return _get_cn_geodataframe("city", data_source)
+    return _get_cn_geodataframe("city", data_source).copy()
 
 
 def get_cn_district_geodataframe(
     data_source: DataSource | None = None,
 ) -> gpd.GeoDataFrame:
-    """获取中国县界的多边形和元数据的 GeoDataFrame"""
+    """获取中国县界的 GeoDataFrame"""
     data_source = _resolve_data_source(data_source)
-    return _get_cn_geodataframe("district", data_source)
+    return _get_cn_geodataframe("district", data_source).copy()
 
 
 def clear_data_cache() -> None:
@@ -835,7 +807,6 @@ def clear_data_cache() -> None:
     _get_cn_polygons.cache_clear()
     _get_cn_border.cache_clear()
     _get_cn_line_strings.cache_clear()
-    _get_cn_dataframe.cache_clear()
     _get_cn_geodataframe.cache_clear()
     get_countries.cache_clear()
     get_land.cache_clear()

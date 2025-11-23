@@ -324,6 +324,10 @@ def simple_deprecator(
     -------
     callable
         以被弃用函数为参数的装饰器
+
+    See Also
+    --------
+    warnings.deprecated
     """
 
     def decorator(func: Callable[P, T]) -> Callable[P, T]:

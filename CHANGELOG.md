@@ -1,8 +1,9 @@
 ## 0.8.0 (ongoing)
 
-- 新增 `typing_extensions>=4.13.0` 依赖，为 `python==3.10` 提供类型提示，并提供 PEP 728 的支持。
+- 新增 `typing_extensions>=4.13.0` 依赖。
 - 通过 `TypedDict` 和 `Unpack` 帮传给 matplotlib 的 `**kwargs` 参数提供类型提示。
-- `shp.utils` 模块移除 `get_xxx_geometries` 和 `get_xxx_properties` 系列函数，推荐直接用 `geopandas.read_file` 实现相同功能。
+- `shp` 模块移除 `get_xxx_geometries` 和 `get_xxx_properties` 系列函数，推荐直接用 `geopandas.read_file` 实现相同功能。
+- `shp` 模块移除 `get_cn_xxx_dataframe` 系列函数，推荐使用 `get_cn_xxx_geodataframe` 系列函数。
 - 彻底弃用 `option` 模块。
 
 ## 0.7.6 (2025-10-10)

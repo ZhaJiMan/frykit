@@ -4,8 +4,6 @@ from collections.abc import Iterable, Mapping
 from itertools import chain
 from typing import Any, cast, overload
 
-import pandas as pd
-import shapefile
 import shapely
 import shapely.geometry as sgeom
 from shapely.geometry.base import BaseGeometry
@@ -30,18 +28,12 @@ from frykit.shp.typing import (
     PolygonDict,
     PolygonType,
 )
-from frykit.typing import StrPath
 from frykit.utils import format_type_error
 
 __all__ = [
     "dict_to_geometry",
     "geometry_to_dict",
     "geometry_to_shape",
-    "get_geojson_geometries",
-    "get_geojson_properties",
-    "get_representative_xy",
-    "get_shapefile_geometries",
-    "get_shapefile_properties",
     "make_feature",
     "make_geojson",
     "orient_polygon",
@@ -74,7 +66,15 @@ def orient_polygon(
 
 
 def orient_polygon(polygon: PolygonType, ccw: bool = True) -> PolygonType:
-    """调整多边形的绕行方向。例如 ccw=True 时外环逆时针，内环顺时针。"""
+    """
+    调整多边形的绕行方向
+
+    ccw=True 时外环逆时针，内环顺时针；ccw=False 时外环顺时针，内环逆时针。
+
+    See Also
+    --------
+    shapely.orient_polygons
+    """
     if not isinstance(polygon, (shapely.Polygon, shapely.MultiPolygon)):
         raise TypeError(
             format_type_error(
@@ -211,7 +211,14 @@ def geometry_to_dict(
 
 
 def geometry_to_dict(geometry: BaseGeometry) -> GeometryDict:
-    """几何对象转为 GeoJSON 的 geometry 字典"""
+    """几何对象转为 GeoJSON 的 geometry 字典
+
+    多边形会调整至外环逆时针，内环顺时针。
+
+    See Also
+    --------
+    shapely.geometry.mapping
+    """
     match geometry:
         case shapely.Point():
             coordinates = _point_to_coordinates(geometry)
@@ -272,40 +279,14 @@ def dict_to_geometry(
 
 
 def dict_to_geometry(geometry_dict: GeometryDict) -> BaseGeometry:
-    """GeoJSON 的 geometry 字典转为几何对象"""
+    """
+    GeoJSON 的 geometry 字典转为几何对象
+
+    See Also
+    --------
+    shapely.geometry.shape
+    """
     return sgeom.shape(geometry_dict)  # pyright: ignore[reportArgumentType]
-
-
-def get_geojson_properties(geojson_dict: GeoJSONDict) -> pd.DataFrame:
-    """提取 GeoJSON 字典里的所有 properties 为 DataFrame"""
-    records = [feature["properties"] for feature in geojson_dict["features"]]
-    return pd.DataFrame.from_records(records)
-
-
-def get_geojson_geometries(geojson_dict: GeoJSONDict) -> list[BaseGeometry]:
-    """提取 GeoJSON 字典里的所有几何对象"""
-    return [
-        dict_to_geometry(feature["geometry"]) for feature in geojson_dict["features"]
-    ]
-
-
-def get_shapefile_properties(filepath: StrPath) -> pd.DataFrame:
-    """提取 shapefile 文件里的所有属性为 DataFrame"""
-    with shapefile.Reader(filepath) as reader:
-        records = [record.as_dict() for record in reader.iterRecords()]
-    return pd.DataFrame.from_records(records)
-
-
-def get_shapefile_geometries(filepath: StrPath) -> list[BaseGeometry]:
-    """提取 shapefile 文件里的所有几何对象"""
-    with shapefile.Reader(filepath) as reader:
-        return list(map(sgeom.shape, reader.iterShapes()))
-
-
-def get_representative_xy(geometry: BaseGeometry) -> tuple[float, float]:
-    """计算保证在几何对象内部的代表点"""
-    point = geometry.representative_point()
-    return point.x, point.y
 
 
 def make_feature(

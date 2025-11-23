@@ -1,7 +1,7 @@
 """
 - 用类似 NetCDF 的有损压缩方式，将 GeoJSON 的坐标数据转换成 uint32 或 uint16 的二进制。
 高德地图数据精度为 1e-6，这里也指定压缩精度为 1e-6。
-- 多边形按外环顺时针，内环逆时针的顺序保存。
+- 多边形按外环顺时针，内环逆时针的顺序保存（即 shapely 内部的顺序）
 """
 
 from __future__ import annotations
@@ -18,22 +18,15 @@ from numpy.typing import ArrayLike, NDArray
 from shapely.geometry.base import BaseGeometry
 
 from frykit.calc import is_finite
-from frykit.shp.typing import GeoJSONDict
-from frykit.shp.utils import (
-    get_geojson_geometries,
-    get_shapefile_geometries,
-    orient_polygon,
-)
-from frykit.typing import StrOrBytesPath, StrPath
+from frykit.shp.utils import orient_polygon
+from frykit.typing import StrOrBytesPath
 
 __all__ = [
     "BinaryReader",
     "CoordsCodec",
     "GeometryEnum",
-    "dump_geojson",
-    "dump_geometries",
-    "dump_shapefile",
-    "load_binary",
+    "decode_binary",
+    "encode_geometries",
 ]
 
 UINT32 = "<I"
@@ -255,22 +248,12 @@ def _decode_geometry(binary: bytes) -> BaseGeometry:
             )
 
 
-def dump_geometries(geometries: Iterable[BaseGeometry]) -> bytes:
+def encode_geometries(geometries: Iterable[BaseGeometry]) -> bytes:
     """将一组几何对象编码成二进制"""
     return _concat_binaries(list(map(_encode_geometry, geometries)))
 
 
-def dump_geojson(geojson_dict: GeoJSONDict) -> bytes:
-    """将 GeoJSON 字典里的几何对象编码成二进制"""
-    return dump_geometries(get_geojson_geometries(geojson_dict))
-
-
-def dump_shapefile(filepath: StrPath) -> bytes:
-    """将 shapefile 文件里的几何对象编码成二进制"""
-    return dump_geometries(get_shapefile_geometries(filepath))
-
-
-def load_binary(binary: bytes) -> list[BaseGeometry]:
+def decode_binary(binary: bytes) -> list[BaseGeometry]:
     """将二进制解码成一组几何对象"""
     return list(map(_decode_geometry, _split_binary(binary)))
 
@@ -279,7 +262,7 @@ class BinaryReader:
     """读取二进制文件的类"""
 
     def __init__(self, filepath: StrOrBytesPath) -> None:
-        self.file = open(filepath, "rb")
+        self.file = open(filepath, mode="rb")
         self.num_geometries = struct.unpack(UINT32, self.file.read(UINT32_SIZE))[0]
         self.binary_sizes = np.frombuffer(
             self.file.read(self.num_geometries * UINT32_SIZE), dtype=UINT32

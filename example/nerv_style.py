@@ -21,7 +21,7 @@ fontcolor = "#ffc292"
 
 # 繁体化省名
 converter = opencc.OpenCC("s2t.json")
-df = fshp.get_cn_province_table()
+df = fshp.get_cn_province_dataframe()
 names = df["short_name"].tolist()
 for i, name in enumerate(names):
     if name == "香港" or name == "澳门":

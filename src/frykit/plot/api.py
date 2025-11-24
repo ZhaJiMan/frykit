@@ -73,12 +73,12 @@ from frykit.plot.utils import (
 from frykit.shp.data import (
     LineName,
     NameOrAdcode,
+    _get_cn_city_dataframe,
     _get_cn_city_indices,
-    _get_cn_city_table,
+    _get_cn_district_dataframe,
     _get_cn_district_indices,
-    _get_cn_district_table,
+    _get_cn_province_dataframe,
     _get_cn_province_indices,
-    _get_cn_province_table,
     get_cn_border,
     get_cn_city,
     get_cn_district,
@@ -717,7 +717,7 @@ def label_cn_province(
     TextCollection
         表示 Text 的集合对象
     """
-    df = _get_cn_province_table(data_source)
+    df = _get_cn_province_dataframe(data_source)
     indices = _get_cn_province_indices(province, data_source)
     if len(indices) != len(df):
         df = df.iloc[indices]
@@ -777,7 +777,7 @@ def label_cn_city(
     TextCollection
         表示 Text 的集合对象
     """
-    df = _get_cn_city_table(data_source)
+    df = _get_cn_city_dataframe(data_source)
     indices = _get_cn_city_indices(city, province, data_source)
     if len(indices) != len(df):
         df = df.iloc[indices]
@@ -842,7 +842,7 @@ def label_cn_district(
     TextCollection
         表示 Text 的集合对象
     """
-    df = _get_cn_district_table(data_source)
+    df = _get_cn_district_dataframe(data_source)
     indices = _get_cn_district_indices(district, city, province, data_source)
     if len(indices) != len(df):
         df = df.iloc[indices]

@@ -33,17 +33,20 @@ __all__ = [
     "clear_data_cache",
     "get_cn_border",
     "get_cn_city",
+    "get_cn_city_dataframe",
     "get_cn_city_geodataframe",
     "get_cn_city_names",
     "get_cn_city_properties",
     "get_cn_city_table",
     "get_cn_district",
+    "get_cn_district_dataframe",
     "get_cn_district_geodataframe",
     "get_cn_district_names",
     "get_cn_district_properties",
     "get_cn_district_table",
     "get_cn_line",
     "get_cn_province",
+    "get_cn_province_dataframe",
     "get_cn_province_geodataframe",
     "get_cn_province_names",
     "get_cn_province_properties",
@@ -74,40 +77,45 @@ AdminLevel: TypeAlias = Literal["province", "city", "district"]
 
 
 @cache
-def _get_cn_table(level: AdminLevel, data_source: DataSource) -> pd.DataFrame:
+def _get_cn_dataframe(level: AdminLevel, data_source: DataSource) -> pd.DataFrame:
     # 注意不要缓存 data_source=None
     filepath = _get_china_dir() / data_source / f"cn_{level}.csv"
     return pd.read_csv(filepath)
 
 
-def _get_cn_province_table(data_source: DataSource | None = None) -> pd.DataFrame:
+def _get_cn_province_dataframe(data_source: DataSource | None = None) -> pd.DataFrame:
     data_source = _resolve_data_source(data_source)
-    return _get_cn_table("province", data_source)
+    return _get_cn_dataframe("province", data_source)
 
 
-def _get_cn_city_table(data_source: DataSource | None = None) -> pd.DataFrame:
+def _get_cn_city_dataframe(data_source: DataSource | None = None) -> pd.DataFrame:
     data_source = _resolve_data_source(data_source)
-    return _get_cn_table("city", data_source)
+    return _get_cn_dataframe("city", data_source)
 
 
-def _get_cn_district_table(data_source: DataSource | None = None) -> pd.DataFrame:
+def _get_cn_district_dataframe(data_source: DataSource | None = None) -> pd.DataFrame:
     data_source = _resolve_data_source(data_source)
-    return _get_cn_table("district", data_source)
+    return _get_cn_dataframe("district", data_source)
 
 
-def get_cn_province_table(data_source: DataSource | None = None) -> pd.DataFrame:
-    """获取中国省界元数据的表格"""
-    return _get_cn_province_table(data_source).copy()
+def get_cn_province_dataframe(data_source: DataSource | None = None) -> pd.DataFrame:
+    """获取中国省界元数据的 DataFrame"""
+    return _get_cn_province_dataframe(data_source).copy()
 
 
-def get_cn_city_table(data_source: DataSource | None = None) -> pd.DataFrame:
-    """获取中国市界元数据的表格"""
-    return _get_cn_city_table(data_source).copy()
+def get_cn_city_dataframe(data_source: DataSource | None = None) -> pd.DataFrame:
+    """获取中国市界元数据的 DataFrame"""
+    return _get_cn_city_dataframe(data_source).copy()
 
 
-def get_cn_district_table(data_source: DataSource | None = None) -> pd.DataFrame:
-    """获取中国县界元数据的表格"""
-    return _get_cn_district_table(data_source).copy()
+def get_cn_district_dataframe(data_source: DataSource | None = None) -> pd.DataFrame:
+    """获取中国县界元数据的 DataFrame"""
+    return _get_cn_district_dataframe(data_source).copy()
+
+
+get_cn_province_table = get_cn_province_dataframe
+get_cn_city_table = get_cn_city_dataframe
+get_cn_district_table = get_cn_district_dataframe
 
 
 NameOrAdcode: TypeAlias = int | str
@@ -187,7 +195,7 @@ def _get_cn_lookup(
 def _get_cn_lookup(
     admin_level: AdminLevel, data_source: DataSource
 ) -> ProvinceLookup | CityLookup | DistrictLookup:
-    df = _get_cn_table(admin_level, data_source)
+    df = _get_cn_dataframe(admin_level, data_source)
     index = df.index.to_numpy().astype(np.intp)
     match admin_level:
         case "province":
@@ -274,7 +282,7 @@ def _get_cn_district_indices(
         )
 
     if isinstance(district, str) and len(indices) > 1:
-        df = _get_cn_district_table(data_source)
+        df = _get_cn_district_dataframe(data_source)
         df_str = df.iloc[indices, :6].to_string(index=False)
         raise ValueError(f"存在复数个同名的县，请用 adcode 指定\n{df_str}")
 
@@ -342,7 +350,7 @@ def get_cn_province_properties(
     ProvinceProperties or list of ProvinceProperties
         元数据字典
     """
-    df = _get_cn_province_table(data_source)
+    df = _get_cn_province_dataframe(data_source)
     indices = _get_cn_province_indices(province, data_source)
     if len(indices) != len(df):
         df = df.iloc[indices]
@@ -396,7 +404,7 @@ def get_cn_city_properties(
     CityProperties or list of CityProperties
         元数据字典
     """
-    df = _get_cn_city_table(data_source)
+    df = _get_cn_city_dataframe(data_source)
     indices = _get_cn_city_indices(city, province, data_source)
     if len(indices) != len(df):
         df = df.iloc[indices]
@@ -457,7 +465,7 @@ def get_cn_district_properties(
     DistrictProperties or list of DistrictProperties
         元数据字典
     """
-    df = _get_cn_district_table(data_source)
+    df = _get_cn_district_dataframe(data_source)
     indices = _get_cn_district_indices(district, city, province, data_source)
     if len(indices) != len(df):
         df = df.iloc[indices]
@@ -474,7 +482,7 @@ def get_cn_province_names(
     short_name: bool = False, data_source: DataSource | None = None
 ) -> list[str]:
     """获取中国所有省的名字"""
-    df = _get_cn_province_table(data_source)
+    df = _get_cn_province_dataframe(data_source)
     key = "short_name" if short_name else "province_name"
     return df[key].to_list()
 
@@ -483,7 +491,7 @@ def get_cn_city_names(
     short_name: bool = False, data_source: DataSource | None = None
 ) -> list[str]:
     """获取中国所有市的名字"""
-    df = _get_cn_city_table(data_source)
+    df = _get_cn_city_dataframe(data_source)
     key = "short_name" if short_name else "city_name"
     return df[key].to_list()
 
@@ -492,7 +500,7 @@ def get_cn_district_names(
     short_name: bool = False, data_source: DataSource | None = None
 ) -> list[str]:
     """获取中国所有县的名字"""
-    df = _get_cn_district_table(data_source)
+    df = _get_cn_district_dataframe(data_source)
     key = "short_name" if short_name else "district_name"
     return df[key].to_list()
 
@@ -773,7 +781,7 @@ def _get_cn_geodataframe(
 ) -> gpd.GeoDataFrame:
     import geopandas as gpd
 
-    df = _get_cn_table(level, data_source)
+    df = _get_cn_dataframe(level, data_source)
     polygons = _get_cn_polygons(level, data_source)
     return gpd.GeoDataFrame(df, geometry=polygons, crs="EPSG:4326", copy=False)
 
@@ -781,13 +789,13 @@ def _get_cn_geodataframe(
 def get_cn_province_geodataframe(
     data_source: DataSource | None = None,
 ) -> gpd.GeoDataFrame:
-    """获取中国省界的 GeoDataFrame"""
+    """获取中国省界元数据和多边形的 GeoDataFrame"""
     data_source = _resolve_data_source(data_source)
     return _get_cn_geodataframe("province", data_source).copy()
 
 
 def get_cn_city_geodataframe(data_source: DataSource | None = None) -> gpd.GeoDataFrame:
-    """获取中国市界的 GeoDataFrame"""
+    """获取中国市界元数据和多边形的 GeoDataFrame"""
     data_source = _resolve_data_source(data_source)
     return _get_cn_geodataframe("city", data_source).copy()
 
@@ -795,14 +803,14 @@ def get_cn_city_geodataframe(data_source: DataSource | None = None) -> gpd.GeoDa
 def get_cn_district_geodataframe(
     data_source: DataSource | None = None,
 ) -> gpd.GeoDataFrame:
-    """获取中国县界的 GeoDataFrame"""
+    """获取中国县界元数据和多边形的 GeoDataFrame"""
     data_source = _resolve_data_source(data_source)
     return _get_cn_geodataframe("district", data_source).copy()
 
 
 def clear_data_cache() -> None:
     """清除数据缓存"""
-    _get_cn_table.cache_clear()
+    _get_cn_dataframe.cache_clear()
     _get_cn_lookup.cache_clear()  # pyright: ignore[reportFunctionMemberAccess]
     _get_cn_polygons.cache_clear()
     _get_cn_border.cache_clear()

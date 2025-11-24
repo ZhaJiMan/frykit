@@ -120,8 +120,7 @@ def _get_full_name(obj: Any) -> str:
 def format_type_error(
     param_name: str, param_value: Any, expected_type: str | type | Iterable[str | type]
 ) -> str:
-    """
-    构造用于 TypeError 的消息字符串
+    """构造用于 TypeError 的消息字符串
 
     Parameters
     ----------
@@ -168,8 +167,7 @@ def format_type_error(
 def format_literal_error(
     param_name: str, param_value: Any, literal_value: Any | Iterable[Any]
 ) -> str:
-    """
-    构造用于字面值 ValueError 的消息字符串
+    """构造用于字面值 ValueError 的消息字符串
 
     Parameters
     ----------
@@ -241,8 +239,7 @@ def deprecator(
     | None = None,
     raise_error: bool = False,
 ) -> Callable[P, T] | Callable[[Callable[P, T]], Callable[P, T]]:
-    """
-    提示函数弃用的装饰器
+    """提示函数弃用的装饰器
 
     Parameters
     ----------
@@ -309,8 +306,7 @@ def deprecator(
 def simple_deprecator(
     reason: str, raise_error: bool = False
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
-    """
-    提示函数弃用的装饰器
+    """提示函数弃用的装饰器
 
     Parameters
     ----------

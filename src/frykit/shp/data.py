@@ -334,8 +334,7 @@ def get_cn_province_properties(
     province: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
     data_source: DataSource | None = None,
 ) -> ProvinceProperties | list[ProvinceProperties]:
-    """
-    获取中国省界的元数据
+    """获取中国省界的元数据
 
     Parameters
     ----------
@@ -384,8 +383,7 @@ def get_cn_city_properties(
     province: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
     data_source: DataSource | None = None,
 ) -> CityProperties | list[CityProperties]:
-    """
-    获取中国市界的元数据
+    """获取中国市界的元数据
 
     Parameters
     ----------
@@ -441,8 +439,7 @@ def get_cn_district_properties(
     province: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
     data_source: DataSource | None = None,
 ) -> DistrictProperties | list[DistrictProperties]:
-    """
-    获取中国县界的元数据
+    """获取中国县界的元数据
 
     Parameters
     ----------
@@ -548,8 +545,7 @@ def get_cn_province(
     province: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
     data_source: DataSource | None = None,
 ) -> PolygonType | list[PolygonType]:
-    """
-    获取中国省界的多边形
+    """获取中国省界的多边形
 
     Parameters
     ----------
@@ -597,8 +593,7 @@ def get_cn_city(
     province: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
     data_source: DataSource | None = None,
 ) -> PolygonType | list[PolygonType]:
-    """
-    获取中国市界的多边形
+    """获取中国市界的多边形
 
     Parameters
     ----------
@@ -653,8 +648,7 @@ def get_cn_district(
     province: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
     data_source: DataSource | None = None,
 ) -> PolygonType | list[PolygonType]:
-    """
-    获取中国县界的多边形
+    """获取中国县界的多边形
 
     Parameters
     ----------
@@ -731,8 +725,7 @@ def get_cn_line(name: Iterable[LineName]) -> list[LineStringType]: ...
 def get_cn_line(
     name: LineName | Iterable[LineName] = "九段线",
 ) -> LineStringType | list[LineStringType]:
-    """
-    获取中国的修饰线段
+    """获取中国的修饰线段
 
     Parameters
     ----------

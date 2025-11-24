@@ -145,8 +145,7 @@ def add_geometries(
     skip_outside: bool | None = None,
     **kwargs: Unpack[GeometryPathCollectionKwargs],
 ) -> GeometryPathCollection:
-    """
-    将几何对象添加到 Axes 上
+    """将几何对象添加到 Axes 上
 
     Parameters
     ----------
@@ -226,8 +225,7 @@ def add_cn_province(
     data_source: DataSource | None = None,
     **kwargs: Unpack[GeometryPathCollectionKwargs],
 ) -> GeometryPathCollection:
-    """
-    在 Axes 上添加中国省界
+    """在 Axes 上添加中国省界
 
     Parameters
     ----------
@@ -276,8 +274,7 @@ def add_cn_city(
     data_source: DataSource | None = None,
     **kwargs: Unpack[GeometryPathCollectionKwargs],
 ) -> GeometryPathCollection:
-    """
-    在 Axes 上添加中国市界
+    """在 Axes 上添加中国市界
 
     Parameters
     ----------
@@ -331,8 +328,7 @@ def add_cn_district(
     data_source: DataSource | None = None,
     **kwargs: Unpack[GeometryPathCollectionKwargs],
 ) -> GeometryPathCollection:
-    """
-    在 Axes 上添加中国县界
+    """在 Axes 上添加中国县界
 
     Parameters
     ----------
@@ -387,8 +383,7 @@ def add_cn_border(
     data_source: DataSource | None = None,
     **kwargs: Unpack[GeometryPathCollectionKwargs],
 ) -> GeometryPathCollection:
-    """
-    在 Axes 上添加中国国界
+    """在 Axes 上添加中国国界
 
     Parameters
     ----------
@@ -432,8 +427,7 @@ def add_cn_line(
     skip_outside: bool | None = None,
     **kwargs: Unpack[GeometryPathCollectionKwargs],
 ) -> GeometryPathCollection:
-    """
-    在 Axes 上添加中国的修饰线段
+    """在 Axes 上添加中国的修饰线段
 
     Parameters
     ----------
@@ -476,8 +470,7 @@ def add_countries(
     skip_outside: bool | None = None,
     **kwargs: Unpack[GeometryPathCollectionKwargs],
 ) -> GeometryPathCollection:
-    """
-    在 Axes 上添加所有国家的国界
+    """在 Axes 上添加所有国家的国界
 
     Parameters
     ----------
@@ -517,8 +510,7 @@ def add_land(
     skip_outside: bool | None = None,
     **kwargs: Unpack[GeometryPathCollectionKwargs],
 ) -> GeometryPathCollection:
-    """
-    在 Axes 上添加陆地
+    """在 Axes 上添加陆地
 
     注意全球数据可能在地图边界出现错误的结果
 
@@ -560,8 +552,7 @@ def add_ocean(
     skip_outside: bool | None = None,
     **kwargs: Unpack[GeometryPathCollectionKwargs],
 ) -> GeometryPathCollection:
-    """
-    在 Axes 上添加海洋
+    """在 Axes 上添加海洋
 
     注意全球数据可能在地图边界出现错误的结果
 
@@ -605,8 +596,7 @@ def add_texts(
     skip_outside: bool | None = None,
     **kwargs: Unpack[TextCollectionKwargs],
 ) -> TextCollection:
-    """
-    在 Axes 上添加一组文本
+    """在 Axes 上添加一组文本
 
     Parameters
     ----------
@@ -689,8 +679,7 @@ def label_cn_province(
     data_source: DataSource | None = None,
     **kwargs: Unpack[TextCollectionKwargs],
 ) -> TextCollection:
-    """
-    在 Axes 上标注中国省名
+    """在 Axes 上标注中国省名
 
     Parameters
     ----------
@@ -745,8 +734,7 @@ def label_cn_city(
     data_source: DataSource | None = None,
     **kwargs: Unpack[TextCollectionKwargs],
 ) -> TextCollection:
-    """
-    在 Axes 上标注中国市名
+    """在 Axes 上标注中国市名
 
     Parameters
     ----------
@@ -806,8 +794,7 @@ def label_cn_district(
     data_source: DataSource | None = None,
     **kwargs: Unpack[TextCollectionKwargs],
 ) -> TextCollection:
-    """
-    在 Axes 上标注中国县名
+    """在 Axes 上标注中国县名
 
     Parameters
     ----------
@@ -891,8 +878,7 @@ def clip_by_polygon(
     fast_transform: bool | None = None,
     strict_clip: bool | None = None,
 ) -> None:
-    """
-    用多边形裁剪 Artist，只显示多边形内的内容。
+    """用多边形裁剪 Artist，只显示多边形内的内容。
 
     Parameters
     ----------
@@ -1027,8 +1013,7 @@ def clip_by_cn_province(
     strict_clip: bool | None = None,
     data_source: DataSource | None = None,
 ) -> None:
-    """
-    用中国省界裁剪 Artist
+    """用中国省界裁剪 Artist
 
     Parameters
     ----------
@@ -1075,8 +1060,7 @@ def clip_by_cn_city(
     strict_clip: bool | None = None,
     data_source: DataSource | None = None,
 ) -> None:
-    """
-    用中国市界裁剪 Artist
+    """用中国市界裁剪 Artist
 
     Parameters
     ----------
@@ -1124,8 +1108,7 @@ def clip_by_cn_district(
     strict_clip: bool | None = None,
     data_source: DataSource | None = None,
 ) -> None:
-    """
-    用中国县界裁剪 Artist
+    """用中国县界裁剪 Artist
 
     Parameters
     ----------
@@ -1172,8 +1155,7 @@ def clip_by_cn_border(
     strict_clip: bool | None = None,
     data_source: DataSource | None = None,
 ) -> None:
-    """
-    用中国国界裁剪 Artist
+    """用中国国界裁剪 Artist
 
     Parameters
     ----------
@@ -1216,8 +1198,7 @@ def clip_by_land(
     fast_transform: bool | None = None,
     strict_clip: bool | None = None,
 ) -> None:
-    """
-    用陆地边界裁剪 Artist
+    """用陆地边界裁剪 Artist
 
     注意全球数据可能在地图边界出现错误的结果
 
@@ -1259,8 +1240,7 @@ def clip_by_ocean(
     fast_transform: bool | None = None,
     strict_clip: bool | None = None,
 ) -> None:
-    """
-    用海洋边界裁剪 Artist
+    """用海洋边界裁剪 Artist
 
     注意全球数据可能在地图边界出现错误的结果
 
@@ -1521,8 +1501,7 @@ def set_map_ticks(
     xformatter: Formatter | None = None,
     yformatter: Formatter | None = None,
 ) -> None:
-    """
-    设置地图的范围和刻度
+    """设置地图的范围和刻度
 
     当 ax 是普通 Axes 时，认为其投影是 PlateCarree。
     当 ax 是 GeoAxes 时，如果 ax 的边框不是矩形或跨越了日界线，可能产生错误的结果。
@@ -1625,8 +1604,7 @@ def quick_cn_map(
     figsize: tuple[float, float] | None = None,
     data_source: DataSource | None = None,
 ) -> Axes:
-    """
-    快速制作带省界和九段线的中国地图
+    """快速制作带省界和九段线的中国地图
 
     Parameters
     ----------
@@ -1673,8 +1651,7 @@ def add_quiver_legend(
     qk_kwargs: QuiverLegendQkKwargs | None = None,
     patch_kwargs: QuiverLegendPatchKwargs | None = None,
 ) -> QuiverLegend:
-    """
-    在 Axes 的角落添加 Quiver 的图例（带矩形背景的 QuiverKey）
+    """在 Axes 的角落添加 Quiver 的图例（带矩形背景的 QuiverKey）
 
     箭头下方有形如 '{U} {units}' 的标签。
 
@@ -1735,8 +1712,7 @@ def add_compass(
     pc_kwargs: CompassPcKwargs | None = None,
     text_kwargs: CompassTextKwargs | None = None,
 ) -> Compass:
-    """
-    在 Axes 上添加指北针
+    """在 Axes 上添加指北针
 
     Parameters
     ----------
@@ -1795,8 +1771,7 @@ def add_scale_bar(
     length: float = 1000,
     units: Literal["m", "km"] = "km",
 ) -> ScaleBar:
-    """
-    在 Axes 上添加地图比例尺
+    """在 Axes 上添加地图比例尺
 
     当 ax 是普通 Axes 时，认为其投影是 PlateCarree。
     会根据 ax 的投影计算比例尺大小。
@@ -1824,8 +1799,7 @@ def add_scale_bar(
 
 
 def add_frame(ax: Axes, width: float = 5, **kwargs: Unpack[FrameKwargs]) -> Frame:
-    """
-    在 Axes 上添加 GMT 风格的边框
+    """在 Axes 上添加 GMT 风格的边框
 
     需要先设置好 Axes 的刻度，再调用该函数。
 
@@ -1862,8 +1836,7 @@ def add_frame(ax: Axes, width: float = 5, **kwargs: Unpack[FrameKwargs]) -> Fram
 def add_box(
     ax: Axes, extents: Sequence[float], steps: int = 100, **kwargs: Unpack[AddBoxKwargs]
 ) -> PathPatch:
-    """
-    在 Axes 上添加一个方框
+    """在 Axes 上添加一个方框
 
     Parameters
     ----------
@@ -1912,8 +1885,7 @@ def add_mini_axes(
     ] = "lower right",
     projection: CRS | Literal["same"] | None = "same",
 ) -> Axes:
-    """
-    在 Axes 的角落添加一个新的 Axes 并返回
+    """在 Axes 的角落添加一个新的 Axes 并返回
 
     Parameters
     ----------
@@ -2008,8 +1980,7 @@ def add_side_axes(
     pad: float,
     loc: Literal["left", "right", "bottom", "top"] = "right",
 ) -> Axes:
-    """
-    在 Axes 旁边新添一个等高或等宽的 Axes 并返回该对象
+    """在 Axes 旁边新添一个等高或等宽的 Axes 并返回该对象
 
     Parameters
     ----------
@@ -2074,8 +2045,7 @@ def get_cross_section_xticks(
     lon_formatter: Formatter | None = None,
     lat_formatter: Formatter | None = None,
 ) -> tuple[NDArray[np.float64], NDArray[np.float64], list[str]]:
-    """
-    返回垂直截面图所需的横坐标，刻度位置和刻度标签。
+    """返回垂直截面图所需的横坐标，刻度位置和刻度标签。
 
     用经纬度的欧式距离表示横坐标，在横坐标上取 nticks 个等距的刻度，
     利用线性插值计算每个刻度对应的经纬度值并用作刻度标签。
@@ -2140,8 +2110,7 @@ def get_cross_section_xticks(
 def make_qualitative_palette(
     colors: list[Any] | NDArray[np.floating],
 ) -> tuple[ListedColormap, Normalize, NDArray[np.int64]]:
-    """
-    创建一组定性的 colormap 和 norm，同时返回刻度位置。
+    """创建一组定性的 colormap 和 norm，同时返回刻度位置。
 
     Parameters
     ----------
@@ -2228,8 +2197,7 @@ def plot_colormap(
 def letter_axes(
     axes: ArrayLike, x: ArrayLike, y: ArrayLike, **kwargs: Unpack[LetterAxesKwargs]
 ) -> list[Text]:
-    """
-    给一组 Axes 按顺序标注字母
+    """给一组 Axes 按顺序标注字母
 
     Parameters
     ----------

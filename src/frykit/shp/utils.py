@@ -66,8 +66,7 @@ def orient_polygon(
 
 
 def orient_polygon(polygon: PolygonType, ccw: bool = True) -> PolygonType:
-    """
-    调整多边形的绕行方向
+    """调整多边形的绕行方向
 
     ccw=True 时外环逆时针，内环顺时针；ccw=False 时外环顺时针，内环逆时针。
 
@@ -286,8 +285,7 @@ def dict_to_geometry(
 
 
 def dict_to_geometry(geometry_dict: GeometryDict) -> BaseGeometry:
-    """
-    GeoJSON 的 geometry 字典转为几何对象
+    """GeoJSON 的 geometry 字典转为几何对象
 
     See Also
     --------

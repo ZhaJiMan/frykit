@@ -47,8 +47,7 @@ def make_gif(
     filepath: StrOrBytesPath | IO[bytes],
     **kwargs: Unpack[MakeGifKwargs],
 ) -> None:
-    """
-    制作 gif 图。结果的 mode 和尺寸由第一张图决定。
+    """制作 gif 图。结果的 mode 和尺寸由第一张图决定。
 
     Parameters
     ----------
@@ -106,8 +105,7 @@ def merge_images(
     | str
     | None = "white",
 ) -> Image.Image:
-    """
-    合并一组图片
+    """合并一组图片
 
     Parameters
     ----------
@@ -162,8 +160,7 @@ def merge_images(
 
 
 def split_image(image: ImageInput, shape: int | tuple[int, int]) -> NDArray[np.object_]:
-    """
-    将一张图片分割成形如 shape 的图片数组
+    """将一张图片分割成形如 shape 的图片数组
 
     Parameters
     ----------
@@ -201,8 +198,7 @@ def split_image(image: ImageInput, shape: int | tuple[int, int]) -> NDArray[np.o
 
 
 def compare_images(image1: ImageInput, image2: ImageInput) -> Image.Image:
-    """
-    通过求两张图片的绝对差值比较前后差异
+    """通过求两张图片的绝对差值比较前后差异
 
     要求两张图片大小和模式相同。
 

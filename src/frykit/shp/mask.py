@@ -15,8 +15,7 @@ __all__ = ["polygon_mask", "polygon_mask2", "polygon_to_mask"]
 def polygon_mask(
     polygon: PolygonType, x: ArrayLike, y: ArrayLike, include_boundary: bool = True
 ) -> NDArray[np.bool_]:
-    """
-    用多边形制作掩膜（mask）数组
+    """用多边形制作掩膜（mask）数组
 
     掩膜数组元素为 True 表示对应的数据点落入多边形内部，False 表示在外部。
     含 nan 或 inf 坐标的点直接返回 False。
@@ -111,8 +110,7 @@ def polygon_mask(
 def polygon_mask2(
     polygon: PolygonType, x: ArrayLike, y: ArrayLike, include_boundary: bool = True
 ) -> NDArray[np.bool_]:
-    """
-    用多边形制作掩膜（mask）数组
+    """用多边形制作掩膜（mask）数组
 
     掩膜数组元素为 True 表示对应的网格点落入多边形内部，False 表示在外部。
 

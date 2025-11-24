@@ -239,8 +239,7 @@ def make_ellipse(
     npts: int = 100,
     ccw: bool = True,
 ) -> NDArray[np.float64]:
-    """
-    生成椭圆的 xy 坐标序列
+    """生成椭圆的 xy 坐标序列
 
     Parameters
     ----------
@@ -286,8 +285,7 @@ def make_ellipse(
 def make_circle(
     x: float = 0, y: float = 0, r: float = 1, npts: int = 100, ccw: bool = True
 ) -> NDArray[np.float64]:
-    """
-    生成圆的 xy 坐标序列
+    """生成圆的 xy 坐标序列
 
     Parameters
     ----------
@@ -314,8 +312,7 @@ def make_circle(
 def region_mask(
     x: ArrayLike, y: ArrayLike, extents: Sequence[float]
 ) -> tuple[NDArray[np.bool_], NDArray[np.bool_]]:
-    """
-    返回表示坐标点是否落入方框的布尔数组
+    """返回表示坐标点是否落入方框的布尔数组
 
     Parameters
     ----------
@@ -387,8 +384,7 @@ def interp_nearest_dd(
     radius: float = float("inf"),
     fill_value: Any = float("nan"),
 ) -> NDArray[Any]:
-    """
-    可以限制搜索半径的多维最近邻插值
+    """可以限制搜索半径的多维最近邻插值
 
     Parameters
     ----------
@@ -448,8 +444,7 @@ def interp_nearest_2d(
     radius: float = float("inf"),
     fill_value: Any = float("nan"),
 ) -> NDArray[Any]:
-    """
-    可以限制搜索半径的二维最近邻插值
+    """可以限制搜索半径的二维最近邻插值
 
     相比 interp_nearest_dd，输入的形状更灵活，方便处理卫星的非规则网格数据。
 
@@ -555,8 +550,7 @@ def binning2d(
     right: bool = True,
     include_lowest: bool = False,
 ) -> NDArray[Any]:
-    """
-    对散点数据做二维分箱
+    """对散点数据做二维分箱
 
     内部通过 pd.cut 实现。当 bins 单调递减时，会先排成升序再调用 pd.cut，最后倒转结果顺序。
 

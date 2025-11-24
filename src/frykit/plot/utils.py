@@ -56,8 +56,7 @@ def _linear_ring_codes(n: int) -> NDArray[np.uint8]:
 
 
 def geometry_to_path(geometry: BaseGeometry) -> Path:
-    """
-    将几何对象转为 Matplotlib 的 Path 对象
+    """将几何对象转为 Matplotlib 的 Path 对象
 
     - 空多边形对应空 Path
     - Polygon 会先调整为外环顺时针，内环逆时针，再转为 Path。
@@ -106,8 +105,7 @@ def geometry_to_path(geometry: BaseGeometry) -> Path:
 
 
 def path_to_polygon(path: Path) -> PolygonType:
-    """
-    将 Matplotlib 的 Path 对象转为多边形对象
+    """将 Matplotlib 的 Path 对象转为多边形对象
 
     - 空 Path 对应空多边形
     - 要求输入是 geometry_to_path(polygon) 的结果，其它输入可能产生错误。

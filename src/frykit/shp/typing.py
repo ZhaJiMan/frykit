@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, TypeAlias, TypedDict, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias, TypeVar, Union
 
-from typing_extensions import NotRequired
+from typing_extensions import NotRequired, TypedDict
 
 if TYPE_CHECKING:
     import shapely
@@ -39,34 +39,40 @@ PolygonCoordinates: TypeAlias = list[LineStringCoordinates]
 MultiPolygonCoordinates: TypeAlias = list[PolygonCoordinates]
 
 
-class PointDict(TypedDict):
+class PointDict(TypedDict, extra_items=Any):
     type: Literal["Point"]
     coordinates: PointCoordinates
+    bbox: NotRequired[list[float]]
 
 
-class MultiPointDict(TypedDict):
+class MultiPointDict(TypedDict, extra_items=Any):
     type: Literal["MultiPoint"]
     coordinates: MultiPointCoordinates
+    bbox: NotRequired[list[float]]
 
 
-class LineStringDict(TypedDict):
+class LineStringDict(TypedDict, extra_items=Any):
     type: Literal["LineString"]
     coordinates: LineStringCoordinates
+    bbox: NotRequired[list[float]]
 
 
-class MultiLineStringDict(TypedDict):
+class MultiLineStringDict(TypedDict, extra_items=Any):
     type: Literal["MultiLineString"]
     coordinates: MultiLineStringCoordinates
+    bbox: NotRequired[list[float]]
 
 
-class PolygonDict(TypedDict):
+class PolygonDict(TypedDict, extra_items=Any):
     type: Literal["Polygon"]
     coordinates: PolygonCoordinates
+    bbox: NotRequired[list[float]]
 
 
-class MultiPolygonDict(TypedDict):
+class MultiPolygonDict(TypedDict, extra_items=Any):
     type: Literal["MultiPolygon"]
     coordinates: MultiPolygonCoordinates
+    bbox: NotRequired[list[float]]
 
 
 # X | Y 不支持部分前向引用
@@ -82,19 +88,20 @@ GeometryDict: TypeAlias = Union[
 ]
 
 
-class GeometryCollectionDict(TypedDict):
+class GeometryCollectionDict(TypedDict, extra_items=Any):
     type: Literal["GeometryCollection"]
     geometries: list[GeometryDict]
+    bbox: NotRequired[list[float]]
 
 
-class FeatureDict(TypedDict):
+class FeatureDict(TypedDict, extra_items=Any):
     type: Literal["Feature"]
     geometry: GeometryDict
     properties: dict[str, Any]
     bbox: NotRequired[list[float]]
 
 
-class GeoJSONDict(TypedDict):
+class GeoJSONDict(TypedDict, extra_items=Any):
     type: Literal["FeatureCollection"]
     features: list[FeatureDict]
     bbox: NotRequired[list[float]]

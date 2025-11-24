@@ -210,10 +210,12 @@ def geometry_to_dict(
 ) -> GeometryCollectionDict: ...
 
 
-def geometry_to_dict(geometry: BaseGeometry) -> GeometryDict:
+def geometry_to_dict(geometry: BaseGeometry, **kwargs: Any) -> GeometryDict:
     """几何对象转为 GeoJSON 的 geometry 字典
 
     多边形会调整至外环逆时针，内环顺时针。
+
+    可以通过 **kwargs 添加 foreign members
 
     See Also
     --------
@@ -245,7 +247,12 @@ def geometry_to_dict(geometry: BaseGeometry) -> GeometryDict:
         case _:
             raise TypeError(format_type_error("geometry", geometry, BaseGeometry))
 
-    return cast(GeometryDict, {"type": geometry.geom_type, "coordinates": coordinates})
+    # 用 dict 构造时不允许键重复
+    geometry_dict = dict(
+        **{"type": geometry.geom_type, "coordinates": coordinates}, **kwargs
+    )
+
+    return cast(GeometryDict, geometry_dict)
 
 
 @overload
@@ -290,19 +297,33 @@ def dict_to_geometry(geometry_dict: GeometryDict) -> BaseGeometry:
 
 
 def make_feature(
-    geometry_dict: GeometryDict, properties: Mapping[str, Any] | None = None
+    geometry_dict: GeometryDict,
+    properties: Mapping[str, Any] | None = None,
+    **kwargs: Any,
 ) -> FeatureDict:
-    """用 geometry 和 properties 字典构造 GeoJSON 的 feature 字典"""
+    """用 geometry 和 properties 字典构造 GeoJSON 的 feature 字典
+
+    可以通过 **kwargs 添加 foreign members
+    """
     if properties is None:
         properties = {}
     elif not isinstance(properties, dict):
         properties = dict(properties)
+    feature = dict(
+        **{"type": "Feature", "geometry": geometry_dict, "properties": properties},
+        **kwargs,
+    )
 
-    return {"type": "Feature", "geometry": geometry_dict, "properties": properties}
+    return cast(FeatureDict, feature)
 
 
-def make_geojson(features: Iterable[FeatureDict]) -> GeoJSONDict:
-    """用一组 feature 字典构造 GeoJSON 字典"""
+def make_geojson(features: Iterable[FeatureDict], **kwargs: Any) -> GeoJSONDict:
+    """用一组 feature 字典构造 GeoJSON 字典
+
+    可以通过 **kwargs 添加 foreign members
+    """
     if not isinstance(features, list):
         features = list(features)
-    return {"type": "FeatureCollection", "features": features}
+    data = dict(**{"type": "FeatureCollection", "features": features}, **kwargs)
+
+    return cast(GeoJSONDict, data)

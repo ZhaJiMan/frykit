@@ -97,6 +97,7 @@ _key_to_crs_to_path: WeakKeyDictionary[
 ] = WeakKeyDictionary()
 
 
+@_with_lock
 def clear_path_cache() -> None:
     """清理几何对象到 Path 的缓存"""
     _key_to_geometry.clear()

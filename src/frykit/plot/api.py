@@ -1933,6 +1933,11 @@ def add_mini_axes(
     -------
     Axes
         新的 Axes
+
+    See Also
+    --------
+    - matplotlib.figure.Figure.add_axes
+    - matplotlib.axes.Axes.inset_axes
     """
     if not isinstance(ax, Axes):
         raise TypeError(format_type_error("ax", ax, Axes))

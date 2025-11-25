@@ -776,7 +776,7 @@ def _get_cn_geodataframe(
 
     df = _get_cn_dataframe(level, data_source)
     polygons = _get_cn_polygons(level, data_source)
-    return gpd.GeoDataFrame(df, geometry=polygons, crs="EPSG:4326", copy=False)
+    return gpd.GeoDataFrame(df, geometry=polygons, crs=4326)
 
 
 def get_cn_province_geodataframe(

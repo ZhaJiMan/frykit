@@ -105,6 +105,7 @@ class GeoJSONDict(TypedDict, extra_items=Any):
     type: Literal["FeatureCollection"]
     features: list[FeatureDict]
     bbox: NotRequired[list[float]]
+    id: NotRequired[str | float]
 
 
 # 赋值操作需要前向引用

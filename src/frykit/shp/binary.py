@@ -2,6 +2,7 @@
 - 用类似 NetCDF 的有损压缩方式，将 GeoJSON 的坐标数据转换成 uint32 或 uint16 的二进制。
 高德地图数据精度为 1e-6，这里也指定压缩精度为 1e-6。
 - 多边形按外环顺时针，内环逆时针的顺序保存（即 shapely 内部的顺序）
+- 使用前建议检查解压后的几何对象是否合法
 """
 
 from __future__ import annotations
@@ -39,6 +40,7 @@ INT16_MIN = np.iinfo(INT16).min
 INT16_MAX = np.iinfo(INT16).max
 
 
+# TODO: google polyline format
 class CoordsCodec:
     """用有损压缩对坐标做编码解码的类"""
 
@@ -103,6 +105,10 @@ class CoordsCodec:
                 )
 
         coords = coords * self.scale_factors + self.add_offsets
+
+        # precision << 1 时用 scale 更精确
+        scale = 1 / self.precision
+        coords = (coords * scale).round() / scale
 
         return coords
 

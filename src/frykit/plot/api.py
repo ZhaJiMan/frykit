@@ -875,6 +875,7 @@ def clip_by_polygon(
     polygon: PolygonType | Iterable[PolygonType],
     crs: CRS | None = None,
     ax: Axes | None = None,
+    union_method: Literal["unary", "coverage", "disjoint_subset"] = "unary",
     fast_transform: bool | None = None,
     strict_clip: bool | None = None,
 ) -> None:
@@ -896,6 +897,10 @@ def clip_by_polygon(
     ax : Axes or None, default None
         手动指定 artist 所在的 Axes，保证 artist 没有设置 axes 属性时也能裁剪。
         默认为 None，表示采用 artist.axes。
+
+    union_method: {'unary', 'coverage', 'disjoint_subset'}, default 'unary'
+        传入多个多边形时采用什么合并方法。默认为通用的 'unary'；对于只有邻边重合的行政区划
+        推荐使用 'coverage'；完全不相交的多边形则推荐 'disjoint_subset'。
 
     fast_transform : bool or None, default None
         是否直接用 pyproj 做坐标变换，速度更快但也更容易出错。
@@ -955,6 +960,22 @@ def clip_by_polygon(
                 format_type_error("polygon", p, [shapely.Polygon, shapely.MultiPolygon])
             )
 
+    match union_method:
+        case "unary":
+            union_func = shapely.union_all
+        case "coverage":
+            union_func = shapely.coverage_union_all
+        case "disjoint_subset":
+            union_func = shapely.disjoint_subset_union_all
+        case _:
+            raise ValueError(
+                format_literal_error(
+                    "union_method",
+                    union_method,
+                    ["unary", "coverage", "disjoint_subset"],
+                )
+            )
+
     match len(polygons):
         case 0:
             polygon = EMPTY_POLYGON
@@ -962,7 +983,7 @@ def clip_by_polygon(
             polygon = polygons[0]
         case _:
             # 合并的多边形无法利用缓存
-            polygon = cast(PolygonType, shapely.unary_union(polygons))
+            polygon = cast(PolygonType, union_func(polygons))
 
     if isinstance(ax, GeoAxes):
         if crs is None:
@@ -1047,6 +1068,7 @@ def clip_by_cn_province(
         artist=artist,
         polygon=get_cn_province(province, data_source=data_source),
         ax=ax,
+        union_method="coverage",
         fast_transform=fast_transform,
         strict_clip=strict_clip,
     )
@@ -1091,10 +1113,11 @@ def clip_by_cn_city(
     - strict_clip=True
     - 非 data 或投影坐标系的 Text 和 TextCollection
     """
-    return clip_by_polygon(
+    clip_by_polygon(
         artist=artist,
         polygon=get_cn_city(city, data_source=data_source),
         ax=ax,
+        union_method="coverage",
         fast_transform=fast_transform,
         strict_clip=strict_clip,
     )
@@ -1139,10 +1162,11 @@ def clip_by_cn_district(
     - strict_clip=True
     - 非 data 或投影坐标系的 Text 和 TextCollection
     """
-    return clip_by_polygon(
+    clip_by_polygon(
         artist=artist,
         polygon=get_cn_district(district, data_source=data_source),
         ax=ax,
+        union_method="coverage",
         fast_transform=fast_transform,
         strict_clip=strict_clip,
     )
@@ -1183,7 +1207,7 @@ def clip_by_cn_border(
     - strict_clip=True
     - 非 data 或投影坐标系的 Text 和 TextCollection
     """
-    return clip_by_polygon(
+    clip_by_polygon(
         artist=artist,
         polygon=get_cn_border(data_source),
         ax=ax,
@@ -1225,7 +1249,7 @@ def clip_by_land(
     - strict_clip=True
     - 非 data 或投影坐标系的 Text 和 TextCollection
     """
-    return clip_by_polygon(
+    clip_by_polygon(
         artist=artist,
         polygon=get_land(),
         ax=ax,
@@ -1267,7 +1291,7 @@ def clip_by_ocean(
     - strict_clip=True
     - 非 data 或投影坐标系的 Text 和 TextCollection
     """
-    return clip_by_polygon(
+    clip_by_polygon(
         artist=artist,
         polygon=get_ocean(),
         ax=ax,

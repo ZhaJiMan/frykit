@@ -39,6 +39,7 @@ PolygonCoordinates: TypeAlias = list[LineStringCoordinates]
 MultiPolygonCoordinates: TypeAlias = list[PolygonCoordinates]
 
 
+# extra_items for foreign members
 class PointDict(TypedDict, extra_items=Any):
     type: Literal["Point"]
     coordinates: PointCoordinates

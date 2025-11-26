@@ -34,6 +34,7 @@ __all__ = [
     "dict_to_geometry",
     "geometry_to_dict",
     "geometry_to_shape",
+    "get_bbox",
     "make_feature",
     "make_geojson",
     "orient_polygon",
@@ -150,7 +151,7 @@ def geometry_to_shape(
     | MultiLineStringCoordinates
     | PolygonCoordinates
 ):
-    """几何对象转为 shapeifle 适用的坐标序列"""
+    """几何对象转为 shapeifle 适用的坐标序列。会忽略 z 轴坐标。"""
     match geometry:
         case shapely.Point():
             return _point_to_coordinates(geometry)
@@ -212,9 +213,10 @@ def geometry_to_dict(
 def geometry_to_dict(geometry: BaseGeometry, **kwargs: Any) -> GeometryDict:
     """几何对象转为 GeoJSON 的 geometry 字典
 
-    多边形会调整至外环逆时针，内环顺时针。
+    与 shapely.geometry.mapping 的区别是会忽略 z 轴坐标，并且要求多边形外环逆时针、
+    内环顺时针方向绕行。
 
-    可以通过 **kwargs 添加 foreign members
+    默认只含 'type' 和 'coordinates'，可以通过 **kwargs 添加其它键值对。
 
     See Also
     --------
@@ -287,11 +289,17 @@ def dict_to_geometry(
 def dict_to_geometry(geometry_dict: GeometryDict) -> BaseGeometry:
     """GeoJSON 的 geometry 字典转为几何对象
 
+    与 shapely.geometry.shape 的区别是会忽略 z 轴坐标
+
     See Also
     --------
     shapely.geometry.shape
     """
-    return sgeom.shape(geometry_dict)  # pyright: ignore[reportArgumentType]
+    geometry = sgeom.shape(geometry_dict)  # pyright: ignore[reportArgumentType]
+    if geometry.has_z:
+        return shapely.force_2d(geometry)
+    else:
+        return geometry
 
 
 def make_feature(
@@ -301,7 +309,7 @@ def make_feature(
 ) -> FeatureDict:
     """用 geometry 和 properties 字典构造 GeoJSON 的 feature 字典
 
-    可以通过 **kwargs 添加 foreign members
+    默认只含 'type'、'geometry' 和 'properties'，可以通过 **kwargs 添加其它键值对。
     """
     if properties is None:
         properties = {}
@@ -318,10 +326,31 @@ def make_feature(
 def make_geojson(features: Iterable[FeatureDict], **kwargs: Any) -> GeoJSONDict:
     """用一组 feature 字典构造 GeoJSON 字典
 
-    可以通过 **kwargs 添加 foreign members
+    默认只含 'type' 和 'features'，可以通过 **kwargs 添加其它键值对。
     """
     if not isinstance(features, list):
         features = list(features)
     data = dict(**{"type": "FeatureCollection", "features": features}, **kwargs)
 
     return cast(GeoJSONDict, data)
+
+
+def get_bbox(obj: GeometryDict | FeatureDict | GeoJSONDict) -> list[float]:
+    """计算 GeoJSON 对象字典的 bbox [lon0, lat0, lon1, lat1]
+
+    当坐标含无效值时，bbox 也会含 NaN 或 Inf。
+    """
+    match obj["type"]:
+        case "FeatureCollection":
+            geometries = [
+                dict_to_geometry(feature["geometry"]) for feature in obj["features"]
+            ]
+            bounds = shapely.bounds(geometries)
+            lon0, lat0 = bounds[:, :2].min(axis=0).tolist()
+            lon1, lat1 = bounds[:, 2:].max(axis=0).tolist()
+            return [lon0, lat0, lon1, lat1]
+        case "Feature":
+            return get_bbox(obj["geometry"])
+        case _:
+            geometry = dict_to_geometry(obj)
+            return list(geometry.bounds)

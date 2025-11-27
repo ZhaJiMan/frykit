@@ -54,7 +54,12 @@ def renew_dir(dirpath: StrPath) -> Path:
 
 @contextmanager
 def chdir_context(dirpath: StrPath) -> Generator[None]:
-    """临时切换工作目录的上下文管理器"""
+    """临时切换工作目录的上下文管理器
+
+    See Also
+    --------
+    contextlib.chdir
+    """
     cwd = Path.cwd()
     try:
         os.chdir(dirpath)

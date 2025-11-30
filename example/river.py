@@ -25,5 +25,5 @@ fplt.add_cn_province(ax, fc=plt.cm.Pastel2.colors)  # pyright: ignore[reportAttr
 fplt.add_cn_line(ax)
 fplt.add_geometries(ax, line_strings, fc="none", ec="#188ebf", zorder=2)
 
-fplt.savefig("../image/river.png")
+fplt.savefig("river.png")
 plt.close(fig)

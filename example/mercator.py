@@ -74,5 +74,5 @@ ax.legend(framealpha=1, fontsize="large")
 ax.set_title("Different Lines in Web Mercator Map", fontsize="x-large")
 
 # 保存图片
-fplt.savefig("../image/mercator.png")
+fplt.savefig("mercator.png")
 plt.close(fig)

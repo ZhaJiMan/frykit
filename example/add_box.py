@@ -60,5 +60,5 @@ for i in range(len(xlocs - 1)):
                 )
 
 # 保存图片
-fplt.savefig("../image/add_box.png")
+fplt.savefig("add_box.png")
 plt.close(fig)

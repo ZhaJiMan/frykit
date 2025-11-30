@@ -33,5 +33,5 @@ with frykit.config.context(data_source="tianditu"):
     fplt.add_cn_district(axes[1, 1], fc=colors)
     fplt.label_cn_district(axes[1, 1])
 
-fplt.savefig("../image/data_source.png")
+fplt.savefig("data_source.png")
 plt.close(fig)

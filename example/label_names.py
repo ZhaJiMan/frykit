@@ -54,7 +54,7 @@ def plot_district_map() -> None:
     fplt.add_cn_district(ax, lw=0.2, fc=get_colors())
     fplt.add_cn_line(ax, lw=0.5)
     # fplt.label_cn_district(ax, fontsize=5)
-    fplt.savefig("../image/district_map.png")
+    fplt.savefig("district_map.png")
     plt.close(fig)
 
 

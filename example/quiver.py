@@ -63,5 +63,5 @@ fplt.clip_by_cn_border(cf)
 fplt.clip_by_cn_border(Q)
 
 # 保存图片
-fplt.savefig("../image/quiver.png")
+fplt.savefig("quiver.png")
 plt.close(fig)

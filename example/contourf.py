@@ -106,5 +106,5 @@ main_ax.set_title(
 )
 
 # 保存图片
-fplt.savefig("../image/contourf.png")
+fplt.savefig("contourf.png")
 plt.close(fig)

@@ -105,5 +105,5 @@ for name, lon, lat in zip(names, df["lon"], df["lat"]):
     )
 
 # 保存图片
-fplt.savefig("../image/nerv_style.png")
+fplt.savefig("nerv_style.png")
 plt.close(fig)

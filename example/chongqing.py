@@ -1,4 +1,7 @@
-"""高德数据在市级行政区划上将重庆分为了重庆城区和重庆郊县，展示其划分"""
+"""高德数据在市级行政区划上将重庆分为了重庆城区和重庆郊县，展示其划分
+
+更新 frykit_data 后将会废弃这个例子
+"""
 
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
@@ -33,5 +36,5 @@ ax.legend(
 )
 ax.set_title("重庆区县", fontsize="x-large")
 
-fplt.savefig("../image/chongqing.png")
+fplt.savefig("chongqing.png")
 plt.close(fig)

@@ -115,7 +115,7 @@ def join_with_cn_comma(strings: Iterable[str]) -> str:
 
 def _get_full_name(obj: Any) -> str:
     """获取 __module__.__qualname__ 的字符串"""
-    assert hasattr(obj, "__module__") and hasattr(obj, "__qualname__")
+    assert hasattr(obj, "__module__") and hasattr(obj, "__qualname__"), obj
     if obj.__module__ in {"__main__", "builtins"}:
         return obj.__qualname__
     else:

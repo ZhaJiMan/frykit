@@ -28,7 +28,7 @@ def plot_province_map() -> None:
     fplt.add_cn_province(ax, lw=0.2, fc=get_colors())
     fplt.add_cn_line(ax, lw=0.5)
     fplt.label_cn_province(ax, fontsize="small")
-    fplt.savefig("../image/province_map.png")
+    fplt.savefig("province_map.png")
     plt.close(fig)
 
 
@@ -41,7 +41,7 @@ def plot_city_map() -> None:
     fplt.add_cn_city(ax, lw=0.2, fc=get_colors())
     fplt.add_cn_line(ax, lw=0.5)
     fplt.label_cn_city(ax, fontsize=5)
-    fplt.savefig("../image/city_map.png")
+    fplt.savefig("city_map.png")
     plt.close(fig)
 
 

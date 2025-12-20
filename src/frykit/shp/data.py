@@ -252,6 +252,7 @@ def _get_cn_city_indices(
     if city is not None:
         return _get_cn_indices(lookup.city_name, lookup.city_adcode, city)
     else:
+        # 这里的 assert 是给类型检查用的
         assert province is not None
         return _get_cn_indices(lookup.province_name, lookup.province_adcode, province)
 

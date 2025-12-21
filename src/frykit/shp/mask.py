@@ -7,9 +7,9 @@ from numpy.typing import ArrayLike, NDArray
 from frykit.calc import asarrays, is_monotonic_decreasing, is_monotonic_increasing
 from frykit.shp.typing import PolygonType
 from frykit.typing import RealNumber
-from frykit.utils import deprecator, format_type_error
+from frykit.utils import format_type_error
 
-__all__ = ["polygon_mask", "polygon_mask2", "polygon_to_mask"]
+__all__ = ["polygon_mask", "polygon_mask2"]
 
 
 def polygon_mask(
@@ -219,10 +219,3 @@ def polygon_mask2(
         mask = mask[::-1, :]
 
     return mask
-
-
-@deprecator(alternative=polygon_mask)
-def polygon_to_mask(
-    polygon: PolygonType, x: ArrayLike, y: ArrayLike
-) -> NDArray[np.bool_]:
-    return polygon_mask(polygon, x, y, include_boundary=False)

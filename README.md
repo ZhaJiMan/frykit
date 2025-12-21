@@ -74,7 +74,7 @@ Python 版本不满足要求时可能装上老版本的 frykit，缺少新函数
 `get_cn_xxx` 系列函数能读取中国行政区划，返回 [Shapely](https://shapely.readthedocs.io/en/stable/manual.html) 多边形对象。具体来说：
 
 - `get_cn_border`：读取国界
-- `get_cn_line`：读取九段线
+- `get_cn_line`：读取九段线、省界、特别行政区界等
 - `get_cn_province`：读取省界。默认返回所有省，也可以通过省名指定单个省或多个省。
 - `get_cn_city`：读取市界。默认返回所有市。
   - 通过市名指定单个市或多个市
@@ -116,6 +116,46 @@ import frykit.shp as fshp
 京津冀 = fshp.get_cn_province([110000, 120000, 130000])
 ```
 
+### 读取 GeoDataFrame
+
+安装额外的 GeoPandas 依赖后可以通过 `get_cn_xxx_geodataframe` 系列函数读取带有元数据的 `GeoDataFrame`，方便后续做地理计算，或者导出 shapefile、GeoJSON 等格式：
+
+```python
+province_gdf = fshp.get_cn_province_geodataframe()
+city_gdf = fshp.get_cn_city_geodataframe()
+district_gdf = fshp.get_cn_district_geodataframe()
+```
+
+`province_gdf` 的内容：
+
+| province_name | province_adcode | short_name | lon | lat | geometry |
+|---------------|-----------------|------------|-----|-----|----------|
+| 北京市 | 110000 | 北京 | 116.5 | 40.2 | Polygon |
+| 天津市 | 120000 | 天津 | 117.4 | 39.0 | MultiPolygon |
+| 河北省 | 130000 | 河北 | 115.5 | 38.5 | MultiPolygon |
+| 山西省 | 140000 | 山西 | 112.5 | 37.7 | Polygon |
+| 内蒙古自治区 | 150000 | 内蒙古 | 111.2 | 41.5 | Polygon |
+
+`city_gdf` 的内容：
+
+| province_name | province_adcode | city_name | city_adcode | short_name | lon | lat | geometry |
+|---------------|-----------------|-----------|-------------|------------|-----|-----|----------|
+| 北京市 | 110000 | 北京市 | 110000 | 北京 | 116.5 | 40.2 | Polygon |
+| 天津市 | 120000 | 天津市 | 120000 | 天津 | 117.4 | 39.0 | MultiPolygon |
+| 河北省 | 130000 | 石家庄市 | 130100 | 石家庄 | 114.5 | 38.1 | Polygon |
+| 河北省 | 130000 | 唐山市 | 130200 | 唐山 | 118.2 | 39.7 | MultiPolygon |
+| 河北省 | 130000 | 秦皇岛市 | 130300 | 秦皇岛 | 119.3 | 40.1 | MultiPolygon |
+
+`district_gdf` 的内容：
+
+| province_name | province_adcode | city_name | city_adcode | district_name | district_adcode | short_name | lon | lat | geometry |
+|---------------|-----------------|-----------|-------------|---------------|-----------------|------------|-----|-----|----------|
+| 北京市 | 110000 | 北京市 | 110000 | 东城区 | 110101 | 东城区 | 116.407 | 39.917 | Polygon |
+| 北京市 | 110000 | 北京市 | 110000 | 西城区 | 110102 | 西城区 | 116.357 | 39.916 | Polygon |
+| 北京市 | 110000 | 北京市 | 110000 | 朝阳区 | 110105 | 朝阳区 | 116.53 | 39.949 | MultiPolygon |
+| 北京市 | 110000 | 北京市 | 110000 | 丰台区 | 110106 | 丰台区 | 116.246 | 39.85 | Polygon |
+| 北京市 | 110000 | 北京市 | 110000 | 石景山区 | 110107 | 石景山区 | 116.164 | 39.933 | Polygon |
+
 ### 切换数据源
 
 > 0.7 版本新增
@@ -125,7 +165,6 @@ import frykit.shp as fshp
 - 高德数据更精细；天地图数据更精简，画图更快。
 - 市级和县级区划有差异，例如天地图有台湾的区县。
 - 高德数据存在飞地，例如内蒙古境内有黑龙江的飞地加格达奇区（[issue#5](https://github.com/ZhaJiMan/frykit/issues/5)）。
-- 高德数据的直辖市在市级的名称从 XX 市变为 XX 城区，adcode 也不同。
 
 推荐使用天地图数据，因为画图更快、没有飞地问题，且官网带一个审图号。但因为旧版本只有高德数据，所以为了兼容性而默认使用高德数据。切换数据源的方法有：
 
@@ -188,9 +227,6 @@ plt.show()
 画出北京所有区：
 
 ```python
-import matplotlib.pyplot as plt
-import frykit.plot as fplt
-
 ax = plt.axes(projection=fplt.PLATE_CARREE)
 fplt.add_cn_district(ax, province='北京市', fc=plt.cm.Pastel1.colors)
 fplt.label_cn_district(ax, province='北京市')
@@ -284,9 +320,6 @@ frykit.config.fast_transform = False
 用国界裁剪 `contourf` 的例子：
 
 ```python
-import matplotlib.pyplot as plt
-import frykit.plot as fplt
-
 ax = plt.axes(projection=fplt.PLATE_CARREE)
 fplt.add_cn_province(ax)
 fplt.add_cn_line(ax)

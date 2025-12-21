@@ -300,7 +300,7 @@ class TextCollection(Artist):
         kwargs.setdefault("verticalalignment", "center")
         kwargs.setdefault("clip_on", True)
         self.texts = [
-            Text(xi, yi, si, **kwargs)  # pyright: ignore[reportArgumentType]
+            Text(xi, yi, si, **kwargs)
             for xi, yi, si in zip(*map(np.ndarray.tolist, [self.x, self.y, self.s]))
         ]
 
@@ -519,7 +519,7 @@ class Compass(PathCollection):
             va="center",
             rotation=0,
             transform=None,
-            **text_kwargs,  # pyright: ignore[reportArgumentType]
+            **text_kwargs,
         )
 
     @staticmethod

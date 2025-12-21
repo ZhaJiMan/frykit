@@ -1,22 +1,30 @@
 """比较 cartopy 和 frykit 画中国地图的耗时"""
 
+from __future__ import annotations
+
 import timeit
 from functools import partial
 from io import BytesIO
 from itertools import product
-from typing import cast
+from typing import Literal, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from cartopy.mpl.geoaxes import GeoAxes
+from loguru import logger
+from typing_extensions import assert_never
 
 import frykit
 import frykit.plot as fplt
 import frykit.shp as fshp
 
 
-def plot_map(small_map=False, level="border", lib="cartopy"):
+def plot_map(
+    small_map: bool = False,
+    level: Literal["border", "province", "city", "district"] = "border",
+    lib: Literal["cartopy", "frykit"] = "cartopy",
+) -> None:
     if small_map:
         extents = (115, 120, 24, 28)
     else:
@@ -32,7 +40,7 @@ def plot_map(small_map=False, level="border", lib="cartopy"):
         case "district":
             data = fshp.get_cn_district()
         case _:
-            raise ValueError
+            assert_never(level)
 
     match lib:
         case "cartopy":
@@ -44,7 +52,7 @@ def plot_map(small_map=False, level="border", lib="cartopy"):
                 ax, data, fc="none", ec="k", lw=0.5
             )
         case _:
-            raise ValueError
+            assert_never(lib)
 
     fig = plt.figure()
     ax = plt.axes(projection=fplt.CN_AZIMUTHAL_EQUIDISTANT)
@@ -58,10 +66,10 @@ def plot_map(small_map=False, level="border", lib="cartopy"):
     plt.close(fig)
 
 
-def main():
+def main() -> None:
     small_map_values = [False, True]
-    levels = ["border", "province", "city", "district"]
-    libs = ["cartopy", "frykit"]
+    levels = ("border", "province", "city", "district")
+    libs = ("cartopy", "frykit")
     numbers = list(range(1, 4))
 
     index = pd.MultiIndex.from_product(
@@ -81,7 +89,7 @@ def main():
             times = timeit.repeat(task, number=1, repeat=len(numbers))
             for i, time in enumerate(times):
                 df.loc[(small_map, level), (lib, i + 1)] = time
-            print(f"{data_source=}, {small_map=}, {level=}, {lib=}")
+            logger.info(f"{data_source=}, {small_map=}, {level=}, {lib=}")
 
         df.round(2).to_csv(f"time_{data_source}.csv")
 

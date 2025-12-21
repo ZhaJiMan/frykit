@@ -6,9 +6,11 @@
 - 大圆航线
 """
 
-# https://scitools.org.uk/cartopy/docs/latest/matplotlib/intro.html
+from typing import cast
+
 import matplotlib.pyplot as plt
 import numpy as np
+from cartopy.mpl.geoaxes import GeoAxes
 from pyproj import Geod
 
 import frykit.plot as fplt
@@ -40,6 +42,7 @@ great_circle_line = np.column_stack([r.lons, r.lats])
 
 fig = plt.figure(figsize=(8, 8))
 ax = fig.add_subplot(projection=map_crs)
+ax = cast(GeoAxes, ax)
 fplt.set_map_ticks(ax, dx=60, yticks=np.arange(-80, 81, 20))
 ax.stock_img()
 
@@ -71,5 +74,5 @@ ax.legend(framealpha=1, fontsize="large")
 ax.set_title("Different Lines in Web Mercator Map", fontsize="x-large")
 
 # 保存图片
-fplt.savefig("../image/mercator.png")
+fplt.savefig("mercator.png")
 plt.close(fig)

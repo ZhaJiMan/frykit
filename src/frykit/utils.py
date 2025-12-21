@@ -3,14 +3,14 @@ from __future__ import annotations
 import os
 import shutil
 import warnings
-from collections.abc import Callable, Generator, Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
 from functools import wraps
 from importlib.metadata import version
 from pathlib import Path
 from typing import Any, overload
 
-from frykit.typing import HashableT, P, PathType, T
+from frykit.typing import HashableT, P, StrPath, T
 
 __all__ = [
     "DeprecationError",
@@ -30,7 +30,7 @@ __all__ = [
 ]
 
 
-def new_dir(dirpath: PathType) -> Path:
+def new_dir(dirpath: StrPath) -> Path:
     """新建目录"""
     dirpath = Path(dirpath)
     dirpath.mkdir(parents=True, exist_ok=True)
@@ -38,7 +38,7 @@ def new_dir(dirpath: PathType) -> Path:
     return dirpath
 
 
-def del_dir(dirpath: PathType) -> Path:
+def del_dir(dirpath: StrPath) -> Path:
     """删除目录"""
     dirpath = Path(dirpath)
     if dirpath.exists():
@@ -47,14 +47,19 @@ def del_dir(dirpath: PathType) -> Path:
     return dirpath
 
 
-def renew_dir(dirpath: PathType) -> Path:
+def renew_dir(dirpath: StrPath) -> Path:
     """重建目录"""
     return new_dir(del_dir(dirpath))
 
 
 @contextmanager
-def chdir_context(dirpath: PathType) -> Generator[None]:
-    """临时切换工作目录的上下文管理器"""
+def chdir_context(dirpath: StrPath) -> Iterator[None]:
+    """临时切换工作目录的上下文管理器
+
+    See Also
+    --------
+    contextlib.chdir
+    """
     cwd = Path.cwd()
     try:
         os.chdir(dirpath)
@@ -110,7 +115,7 @@ def join_with_cn_comma(strings: Iterable[str]) -> str:
 
 def _get_full_name(obj: Any) -> str:
     """获取 __module__.__qualname__ 的字符串"""
-    assert hasattr(obj, "__module__") and hasattr(obj, "__qualname__")
+    assert hasattr(obj, "__module__") and hasattr(obj, "__qualname__"), obj
     if obj.__module__ in {"__main__", "builtins"}:
         return obj.__qualname__
     else:
@@ -120,8 +125,7 @@ def _get_full_name(obj: Any) -> str:
 def format_type_error(
     param_name: str, param_value: Any, expected_type: str | type | Iterable[str | type]
 ) -> str:
-    """
-    构造用于 TypeError 的消息字符串
+    """构造用于 TypeError 的消息字符串
 
     Parameters
     ----------
@@ -168,8 +172,7 @@ def format_type_error(
 def format_literal_error(
     param_name: str, param_value: Any, literal_value: Any | Iterable[Any]
 ) -> str:
-    """
-    构造用于字面值 ValueError 的消息字符串
+    """构造用于字面值 ValueError 的消息字符串
 
     Parameters
     ----------
@@ -241,8 +244,7 @@ def deprecator(
     | None = None,
     raise_error: bool = False,
 ) -> Callable[P, T] | Callable[[Callable[P, T]], Callable[P, T]]:
-    """
-    提示函数弃用的装饰器
+    """提示函数弃用的装饰器
 
     Parameters
     ----------
@@ -309,8 +311,7 @@ def deprecator(
 def simple_deprecator(
     reason: str, raise_error: bool = False
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
-    """
-    提示函数弃用的装饰器
+    """提示函数弃用的装饰器
 
     Parameters
     ----------
@@ -324,6 +325,10 @@ def simple_deprecator(
     -------
     callable
         以被弃用函数为参数的装饰器
+
+    See Also
+    --------
+    warnings.deprecated
     """
 
     def decorator(func: Callable[P, T]) -> Callable[P, T]:

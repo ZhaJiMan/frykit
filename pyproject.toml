@@ -1,6 +1,6 @@
 [project]
 name = "frykit"
-version = "0.7.6"
+version = "0.8.0"
 authors = [{ name = "ZhaJiMan", email = "915023793@qq.com" }]
 description = "A simple toolbox for Matplotib and Cartopy"
 readme = "README.md"
@@ -18,13 +18,27 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
+    "typing-extensions>=4.13.0",
     "pandas>=2.0.0",
     "shapely>=2.0.0",
     "cartopy>=0.22.0",
 ]
 
 [project.optional-dependencies]
-data = ["frykit_data~=0.0.1"]
+data = ["frykit_data==0.1.0"]
+
+[dependency-groups]
+dev = [
+    "cmaps>=2.0.1",
+    "frykit_data==0.1.0",
+    "geopandas>=1.1.1",
+    "ipykernel>=7.1.0",
+    "line-profiler>=5.0.0",
+    "loguru>=0.7.3",
+    "ruff>=0.14.6",
+    "scipy>=1.15.3",
+    "typos>=1.40.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/ZhaJiMan/frykit"
@@ -32,8 +46,12 @@ Issues = "https://github.com/ZhaJiMan/frykit/issues"
 Changelog = "https://github.com/ZhaJiMan/frykit/blob/main/CHANGELOG.md"
 
 [build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
+requires = ["uv_build>=0.9.0,<0.10.0"]
+build-backend = "uv_build"
+
+[[tool.uv.index]]
+url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/"
+default = true
 
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F", "I", "RUF022"]
@@ -48,3 +66,4 @@ NEO_modis_aer_od = "NEO_modis_aer_od"
 [tool.basedpyright]
 typeCheckingMode = "standard"
 reportMissingTypeStubs = false
+reportUnnecessaryTypeIgnoreComment = true

@@ -25,10 +25,20 @@ from matplotlib.transforms import Affine2D, Bbox, ScaledTranslation, offset_copy
 from numpy import ma
 from numpy.typing import ArrayLike, NDArray
 from shapely.geometry.base import BaseGeometry
+from typing_extensions import Unpack
 
 from frykit.calc import get_values_between, t_to_az
 from frykit.conf import config
 from frykit.plot.projection import PLATE_CARREE
+from frykit.plot.typing import (
+    CompassPcKwargs,
+    CompassTextKwargs,
+    FrameKwargs,
+    GeometryPathCollectionKwargs,
+    QuiverLegendPatchKwargs,
+    QuiverLegendQkKwargs,
+    TextCollectionKwargs,
+)
 from frykit.plot.utils import (
     EMPTY_PATH,
     box_path,
@@ -87,6 +97,7 @@ _key_to_crs_to_path: WeakKeyDictionary[
 ] = WeakKeyDictionary()
 
 
+@_with_lock
 def clear_path_cache() -> None:
     """清理几何对象到 Path 的缓存"""
     _key_to_geometry.clear()
@@ -195,7 +206,7 @@ class GeometryPathCollection(PathCollection):
         crs: CRS | None,
         fast_transform: bool | None = None,
         skip_outside: bool | None = None,
-        **kwargs: Any,
+        **kwargs: Unpack[GeometryPathCollectionKwargs],
     ) -> None:
         self.geometries = np.asarray(geometries, dtype=np.object_)
         self.fast_transform = _resolve_fast_transform(fast_transform)
@@ -227,12 +238,12 @@ class GeometryPathCollection(PathCollection):
             x1, y1 = bounds[:, 2:].max(axis=0)
             if all(x is not ma.masked for x in [x0, y0, x1, y1]):
                 path = box_path(x0, x1, y0, y1).interpolated(100)
-                polygon = shapely.Polygon(path.vertices)  # type: ignore
+                polygon = shapely.Polygon(path.vertices)  # pyright: ignore[reportArgumentType]
                 paths = self._geometries_to_paths([polygon])
 
         super().__init__(paths, **kwargs)
         ax.add_collection(self)
-        ax._request_autoscale_view()  # type: ignore
+        ax._request_autoscale_view()  # pyright: ignore[reportAttributeAccessIssue]
 
     def _init(self) -> None:
         if not self.skip_outside:
@@ -269,7 +280,7 @@ class TextCollection(Artist):
         y: ArrayLike,
         s: ArrayLike,
         skip_outside: bool | None = None,
-        **kwargs: Any,
+        **kwargs: Unpack[TextCollectionKwargs],
     ) -> None:
         super().__init__()
         self.skip_outside = _resolve_skip_outside(skip_outside)
@@ -284,12 +295,13 @@ class TextCollection(Artist):
             raise ValueError("x、y 和 s 长度必须相同")
         self.coords = np.column_stack([self.x, self.y])
 
-        kwargs = normalize_kwargs(kwargs, Text)
+        kwargs = cast(TextCollectionKwargs, normalize_kwargs(kwargs, Text))
         kwargs.setdefault("horizontalalignment", "center")
         kwargs.setdefault("verticalalignment", "center")
         kwargs.setdefault("clip_on", True)
         self.texts = [
-            Text(xi, yi, si, **kwargs) for xi, yi, si in zip(self.x, self.y, self.s)
+            Text(xi, yi, si, **kwargs)
+            for xi, yi, si in zip(*map(np.ndarray.tolist, [self.x, self.y, self.s]))
         ]
 
     def set_figure(self, fig: Figure | SubFigure) -> None:
@@ -338,8 +350,8 @@ class QuiverLegend(QuiverKey):
         loc: Literal[
             "lower left", "lower right", "upper left", "upper right"
         ] = "lower right",
-        qk_kwargs: dict[str, Any] | None = None,
-        patch_kwargs: dict[str, Any] | None = None,
+        qk_kwargs: QuiverLegendQkKwargs | None = None,
+        patch_kwargs: QuiverLegendPatchKwargs | None = None,
     ) -> None:
         self.units = units
         self.width = width
@@ -368,7 +380,8 @@ class QuiverLegend(QuiverKey):
                     )
                 )
 
-        qk_kwargs = normalize_kwargs(qk_kwargs)  # type: ignore
+        if qk_kwargs is None:
+            qk_kwargs = {}
 
         super().__init__(
             Q=Q,
@@ -385,7 +398,11 @@ class QuiverLegend(QuiverKey):
         zorder = qk_kwargs.get("zorder", 5)
         self.set_zorder(zorder)
 
-        patch_kwargs = normalize_kwargs(patch_kwargs, Rectangle)  # type: ignore
+        if patch_kwargs is None:
+            patch_kwargs = {}
+        patch_kwargs = cast(
+            QuiverLegendPatchKwargs, normalize_kwargs(patch_kwargs, Rectangle)
+        )
         patch_kwargs.setdefault("linewidth", 0.8)
         patch_kwargs.setdefault("edgecolor", "k")
         patch_kwargs.setdefault("facecolor", "w")
@@ -407,9 +424,9 @@ class QuiverLegend(QuiverKey):
 
         # 将 qk 调整至 patch 的中心
         self._labelsep_inches: float
-        fontsize = self.text.get_fontsize() / 72  # type: ignore
+        fontsize = cast(int, self.text.get_fontsize()) / 72
         dy = (self._labelsep_inches + fontsize) / 2
-        trans = offset_copy(ax.transAxes, fig, 0, dy)  # type: ignore
+        trans = offset_copy(ax.transAxes, fig, 0, dy)  # pyright: ignore[reportArgumentType]
         self.set_transform(trans)
 
         self.patch.axes = ax
@@ -441,8 +458,8 @@ class Compass(PathCollection):
         angle: float | None = None,
         size: float = 20,
         style: Literal["arrow", "star", "circle"] = "arrow",
-        pc_kwargs: dict[str, Any] | None = None,
-        text_kwargs: dict[str, Any] | None = None,
+        pc_kwargs: CompassPcKwargs | None = None,
+        text_kwargs: CompassTextKwargs | None = None,
     ) -> None:
         self.x = x
         self.y = y
@@ -478,7 +495,9 @@ class Compass(PathCollection):
                     format_literal_error("style", style, ["arrow", "circle", "star"])
                 )
 
-        pc_kwargs = normalize_kwargs(pc_kwargs, PathCollection)  # type: ignore
+        if pc_kwargs is None:
+            pc_kwargs = {}
+        pc_kwargs = cast(CompassPcKwargs, normalize_kwargs(pc_kwargs, PathCollection))
         pc_kwargs.setdefault("linewidth", 1)
         pc_kwargs.setdefault("edgecolor", "k")
         pc_kwargs.setdefault("facecolor", colors)
@@ -487,9 +506,11 @@ class Compass(PathCollection):
         super().__init__(paths, transform=None, **pc_kwargs)
 
         # 文字在箭头上方
-        pad = head / 2.5
-        text_kwargs = normalize_kwargs(text_kwargs, Text)  # type: ignore
+        if text_kwargs is None:
+            text_kwargs = {}
+        text_kwargs = cast(CompassTextKwargs, normalize_kwargs(text_kwargs, Text))
         text_kwargs.setdefault("fontsize", size / 1.5)
+        pad = head / 2.5
         self.text = Text(
             x=0,
             y=axis + pad,
@@ -531,12 +552,12 @@ class Compass(PathCollection):
                 lon1, lat1 = lon0, min(lat0 + 0.01, 90)
                 x1, y1 = ax.projection.transform_point(lon1, lat1, PLATE_CARREE)
                 theta = math.degrees(math.atan2(y1 - y0, x1 - x0))
-                azimuth = cast(float, t_to_az(theta, degrees=True))
+                azimuth = float(t_to_az(theta, degrees=True))
             else:
                 azimuth = 0
 
         rotation = Affine2D().rotate_deg(-azimuth)
-        translation = ScaledTranslation(self.x, self.y, ax.transAxes)  # type: ignore
+        translation = ScaledTranslation(self.x, self.y, ax.transAxes)  # pyright: ignore[reportArgumentType]
         trans = fig.dpi_scale_trans + rotation + translation
         self.text.set_transform(trans)
         self.text.set_rotation(-azimuth)
@@ -583,7 +604,7 @@ class ScaleBar(Axes):
 
         if ax.figure is None:
             raise ValueError("必须设置 ax.figure")
-        super().__init__(ax.figure, (0, 0, 1, 1), zorder=5)  # type: ignore
+        super().__init__(ax.figure, (0, 0, 1, 1), zorder=5)  # pyright: ignore[reportArgumentType]
         ax.add_child_axes(self)
 
         # 只显示上边框的刻度
@@ -646,13 +667,13 @@ class ScaleBar(Axes):
 class Frame(Artist):
     """GMT风格的边框"""
 
-    def __init__(self, width: float = 5, **kwargs: Any) -> None:
+    def __init__(self, width: float = 5, **kwargs: Unpack[FrameKwargs]) -> None:
         self.width = width
         self._width = width / 72
         super().__init__()
         self.set_zorder(2.5)
 
-        kwargs = normalize_kwargs(kwargs, PathCollection)
+        kwargs = cast(FrameKwargs, normalize_kwargs(kwargs, PathCollection))
         kwargs.setdefault("linewidth", 1)
         kwargs.setdefault("edgecolor", "k")
         kwargs.setdefault("facecolor", ["k", "w"])
@@ -745,7 +766,7 @@ class Frame(Artist):
         ]
         self.pc_dict["corner"].set_paths(corner_paths)
         fc = self.pc_dict["top"].get_facecolor()[-1]
-        self.pc_dict["corner"].set_facecolor(fc)  # type: ignore
+        self.pc_dict["corner"].set_facecolor(fc)  # pyright: ignore[reportArgumentType]
 
     def set_figure(self, fig: Figure | SubFigure) -> None:
         super().set_figure(fig)

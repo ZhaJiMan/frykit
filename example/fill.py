@@ -1,8 +1,11 @@
 """模仿 GeoDataFrame.plot，按数值给每个省份填色"""
 
+from typing import cast
+
 import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 import numpy as np
+from cartopy.mpl.geoaxes import GeoAxes
 from matplotlib.colors import BoundaryNorm, ListedColormap
 from matplotlib.patches import Patch
 from matplotlib.patheffects import Normal, Stroke
@@ -21,12 +24,14 @@ data_crs = ccrs.PlateCarree()
 # 准备主地图
 fig = plt.figure(figsize=(10, 6))
 main_ax = fig.add_subplot(projection=map_crs)
+main_ax = cast(GeoAxes, main_ax)
 main_ax.set_extent((78, 134, 14, 55), data_crs)
 fplt.add_cn_line(main_ax, lw=0.5)
 main_ax.axis("off")
 
 # 准备小地图
 mini_ax = fplt.add_mini_axes(main_ax)
+mini_ax = cast(GeoAxes, mini_ax)
 mini_ax.set_extent((105, 120, 2, 25), data_crs)
 fplt.add_cn_line(mini_ax, lw=0.5)
 
@@ -73,5 +78,5 @@ scale_bar.set_xticks([0, 500, 1000])
 scale_bar.set_xticks([250, 750], minor=True)
 
 # 保存图片
-fplt.savefig("../image/fill.png")
+fplt.savefig("fill.png")
 plt.close(fig)

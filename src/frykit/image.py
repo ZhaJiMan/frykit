@@ -2,17 +2,19 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, TypeAlias, cast
+from typing import IO, Any, Literal, TypeAlias, TypedDict, cast
 
 import numpy as np
 from numpy.typing import NDArray
 from PIL import Image
+from PIL.ImagePalette import ImagePalette
+from typing_extensions import Unpack
 
-from frykit.typing import PathType
+from frykit.typing import StrOrBytesPath
 
 __all__ = ["ImageInput", "compare_images", "make_gif", "merge_images", "split_image"]
 
-ImageInput: TypeAlias = PathType | Image.Image
+ImageInput: TypeAlias = StrOrBytesPath | IO[bytes] | Image.Image
 
 
 def _read_image(image: ImageInput) -> Image.Image:
@@ -24,23 +26,41 @@ def _read_image(image: ImageInput) -> Image.Image:
         return im
 
 
+Disposal: TypeAlias = Literal[0, 1, 2, 3]
+
+
+class MakeGifKwargs(TypedDict, total=False):
+    include_color_table: bool
+    interalce: bool
+    disposal: Disposal | list[Disposal] | tuple[Disposal, ...]
+    palette: bytes | bytearray | ImagePalette
+    optimize: bool
+    transparency: int
+    duration: int | list[int] | tuple[int, ...]
+    loop: int | None
+    comment: str | bytes
+
+
 # TODO: alpha
-def make_gif(images: Sequence[ImageInput], filepath: PathType, **kwargs: Any) -> None:
-    """
-    制作 gif 图。结果的 mode 和尺寸由第一张图决定。
+def make_gif(
+    images: Sequence[ImageInput],
+    filepath: StrOrBytesPath | IO[bytes],
+    **kwargs: Unpack[MakeGifKwargs],
+) -> None:
+    """制作 gif 图。结果的 mode 和尺寸由第一张图决定。
 
     Parameters
     ----------
     images : sequence of ImageInput
         输入的一组图片
 
-    filepath : PathType
+    filepath : StrOrBytesPath or IO[bytes]
         输出 gif 图片的路径
 
     **kwargs
         用 pillow 保存 gif 时的参数。
         例如 duration、loop、disposal、transparency 等。
-        https://pillow.readthedocs.io/en/stable/handbook/image-file-formats.html
+        https://pillow.readthedocs.io/en/stable/handbook/image-file-formats.html#gif-saving
     """
     if len(images) == 0:
         raise ValueError("至少需要一张图片")
@@ -79,10 +99,13 @@ def _images_to_array2d(images: Any) -> NDArray[np.object_]:
 def merge_images(
     images: Any,
     mode: str | None = None,
-    bgcolor: float | tuple[float, ...] | str | None = "white",
+    bgcolor: float
+    | tuple[float, float, float]
+    | tuple[float, float, float, float]
+    | str
+    | None = "white",
 ) -> Image.Image:
-    """
-    合并一组图片
+    """合并一组图片
 
     Parameters
     ----------
@@ -109,7 +132,7 @@ def merge_images(
     for index in np.ndindex(arr.shape):
         if arr[index] is None:
             continue
-        image = _read_image(arr[index])  # type: ignore
+        image = _read_image(cast(Image.Image, arr[index]))
         arr[index] = image
         if first_image is None:
             first_image = image
@@ -137,8 +160,7 @@ def merge_images(
 
 
 def split_image(image: ImageInput, shape: int | tuple[int, int]) -> NDArray[np.object_]:
-    """
-    将一张图片分割成形如 shape 的图片数组
+    """将一张图片分割成形如 shape 的图片数组
 
     Parameters
     ----------
@@ -176,8 +198,7 @@ def split_image(image: ImageInput, shape: int | tuple[int, int]) -> NDArray[np.o
 
 
 def compare_images(image1: ImageInput, image2: ImageInput) -> Image.Image:
-    """
-    通过求两张图片的绝对差值比较前后差异
+    """通过求两张图片的绝对差值比较前后差异
 
     要求两张图片大小和模式相同。
 

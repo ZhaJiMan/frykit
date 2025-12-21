@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Callable
 from functools import lru_cache
 from typing import Sequence, overload
 
@@ -57,8 +56,7 @@ def _linear_ring_codes(n: int) -> NDArray[np.uint8]:
 
 
 def geometry_to_path(geometry: BaseGeometry) -> Path:
-    """
-    将几何对象转为 Matplotlib 的 Path 对象
+    """将几何对象转为 Matplotlib 的 Path 对象
 
     - 空多边形对应空 Path
     - Polygon 会先调整为外环顺时针，内环逆时针，再转为 Path。
@@ -107,8 +105,7 @@ def geometry_to_path(geometry: BaseGeometry) -> Path:
 
 
 def path_to_polygon(path: Path) -> PolygonType:
-    """
-    将 Matplotlib 的 Path 对象转为多边形对象
+    """将 Matplotlib 的 Path 对象转为多边形对象
 
     - 空 Path 对应空多边形
     - 要求输入是 geometry_to_path(polygon) 的结果，其它输入可能产生错误。
@@ -118,11 +115,11 @@ def path_to_polygon(path: Path) -> PolygonType:
     - cartopy.mpl.patch.path_to_geos
     - cartopy.mpl.path.path_to_shapely
     """
-    if len(path.vertices) == 0:  # type: ignore
+    if len(path.vertices) == 0:  # pyright: ignore[reportArgumentType]
         return EMPTY_POLYGON
 
     collection: list[tuple[shapely.LinearRing, list[shapely.LinearRing]]] = []
-    indices = np.nonzero(path.codes == Path.MOVETO)[0][1:]  # type: ignore
+    indices = np.nonzero(path.codes == Path.MOVETO)[0][1:]  # pyright: ignore[reportArgumentType]
     for coords in np.vsplit(path.vertices, indices):
         linear_ring = shapely.LinearRing(coords)
         if linear_ring.is_ccw:
@@ -144,17 +141,6 @@ def path_to_polygon(path: Path) -> PolygonType:
 def make_transformer(crs_from: CRS, crs_to: CRS) -> Transformer:
     """创建 pyproj 的 Transformer 对象"""
     return Transformer.from_crs(crs_from, crs_to, always_xy=True)
-
-
-def _make_transformation(
-    crs_from: CRS, crs_to: CRS
-) -> Callable[[NDArray[np.float64]], NDArray[np.float64]]:
-    # shapely>=2.1.0 且 interleaved=False 时就不需要这个辅助函数了
-    def transformation(coords: NDArray[np.float64]) -> NDArray[np.float64]:
-        transformer = make_transformer(crs_from, crs_to)
-        return np.column_stack(transformer.transform(coords[:, 0], coords[:, 1]))
-
-    return transformation
 
 
 @overload
@@ -183,8 +169,10 @@ def project_geometry(
 
     # 尽管 pyproj.Transformer 也能处理 crs 相等的情况，但还是有明显的性能损失
     if crs_from != crs_to:
-        transformation = _make_transformation(crs_from, crs_to)
-        geometries = shapely.transform(geometries, transformation)
+        transformer = make_transformer(crs_from, crs_to)
+        coords = shapely.get_coordinates(geometries)
+        coords = np.column_stack(transformer.transform(coords[:, 0], coords[:, 1]))
+        shapely.set_coordinates(geometries, coords)  # inplace
 
     # 要模仿 shapely 对数组的处理吗？
     if geometries.ndim == 0 and not isinstance(geometry, np.ndarray):

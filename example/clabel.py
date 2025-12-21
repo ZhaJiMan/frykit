@@ -4,8 +4,11 @@
 需要在 GUI 窗口里用鼠标点击决定标签位置
 """
 
+from typing import cast
+
 import matplotlib.pyplot as plt
 import numpy as np
+from cartopy.mpl.geoaxes import GeoAxes
 
 import frykit.plot as fplt
 
@@ -21,6 +24,7 @@ Z = (np.cos(X / (x1 - x0) * np.pi) + np.sin(np.radians(Y)) * 2) * 2
 crs = fplt.PLATE_CARREE
 fig = plt.figure(figsize=(8, 8))
 ax = plt.axes(projection=fplt.CN_AZIMUTHAL_EQUIDISTANT)
+ax = cast(GeoAxes, ax)
 ax.set_extent((78, 128, 15, 55), crs=crs)
 fplt.add_cn_border(ax)
 fplt.add_cn_line(ax)
@@ -34,5 +38,5 @@ labels = ax.clabel(cs, levels, manual=True, fontsize="large")
 fplt.clip_by_cn_border(cf)
 fplt.clip_by_cn_border(cs)
 
-fplt.savefig("../image/clabel.png")
+fplt.savefig("clabel.png")
 plt.close(fig)

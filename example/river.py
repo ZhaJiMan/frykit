@@ -21,9 +21,9 @@ fplt.set_map_ticks(ax, (78, 128, 15, 53))
 
 ax.set_facecolor("#a4d7f6")
 fplt.add_countries(ax, fc="#ffffff")
-fplt.add_cn_province(ax, fc=plt.cm.Pastel2.colors)
+fplt.add_cn_province(ax, fc=plt.cm.Pastel2.colors)  # pyright: ignore[reportAttributeAccessIssue]
 fplt.add_cn_line(ax)
 fplt.add_geometries(ax, line_strings, fc="none", ec="#188ebf", zorder=2)
 
-fplt.savefig("../image/river.png")
+fplt.savefig("river.png")
 plt.close(fig)

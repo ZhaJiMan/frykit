@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from collections.abc import Generator
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, fields
 from typing import Any, Literal, TypeAlias, TypedDict, cast
+
+from typing_extensions import Unpack
 
 from frykit.utils import format_literal_error, format_type_error
 
@@ -25,6 +27,14 @@ def _validate_bool(name: str, value: Any) -> None:
 
 
 class ConfigDict(TypedDict):
+    data_source: DataSource
+    fast_transform: bool
+    skip_outside: bool
+    strict_clip: bool
+
+
+# TODO: 如何减少重复定义
+class PartialConfigDict(TypedDict, total=False):
     data_source: DataSource
     fast_transform: bool
     skip_outside: bool
@@ -57,8 +67,6 @@ class Config:
                 _validate_data_source(value)
             case "fast_transform" | "skip_outside" | "strict_clip":
                 _validate_bool(name, value)
-            case _:
-                pass
 
     def validate(self, name: str, value: Any) -> None:
         """校验一条配置"""
@@ -74,7 +82,7 @@ class Config:
         """将配置转换为字典"""
         return cast(ConfigDict, asdict(self))
 
-    def update(self, **kwargs: Any) -> None:
+    def update(self, **kwargs: Unpack[PartialConfigDict]) -> None:
         """更新配置"""
         # 校验完再更新，避免校验失败导致部分更新
         for name, value in kwargs.items():
@@ -83,7 +91,7 @@ class Config:
             super().__setattr__(name, value)
 
     @contextmanager
-    def context(self, **kwargs: Any) -> Generator[None]:
+    def context(self, **kwargs: Unpack[PartialConfigDict]) -> Iterator[None]:
         """创建可以临时修改配置的上下文"""
         config_dict = self.to_dict()
         try:

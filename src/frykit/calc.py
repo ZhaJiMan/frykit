@@ -12,13 +12,11 @@ if TYPE_CHECKING:
     import pandas as pd
 
 from frykit.typing import RealNumber, RealNumberT
-from frykit.utils import deprecator
 
 __all__ = [
     "arange2",
     "asarrays",
     "az_to_t",
-    "binned_average_2d",
     "binning2d",
     "count_consecutive_trues",
     "dd_to_dm",
@@ -29,8 +27,6 @@ __all__ = [
     "get_values_between",
     "hav",
     "haversine",
-    "hms_to_degrees",
-    "hms_to_degrees2",
     "interp_nearest_2d",
     "interp_nearest_dd",
     "is_finite",
@@ -41,11 +37,9 @@ __all__ = [
     "make_ellipse",
     "make_evenly_bins",
     "month_to_season",
-    "region_ind",
     "region_mask",
     "rt_to_xy",
     "split_consecutive_trues",
-    "split_coords",
     "t_to_az",
     "uv_to_wswd",
     "wswd_to_uv",
@@ -245,8 +239,7 @@ def make_ellipse(
     npts: int = 100,
     ccw: bool = True,
 ) -> NDArray[np.float64]:
-    """
-    生成椭圆的 xy 坐标序列
+    """生成椭圆的 xy 坐标序列
 
     Parameters
     ----------
@@ -292,8 +285,7 @@ def make_ellipse(
 def make_circle(
     x: float = 0, y: float = 0, r: float = 1, npts: int = 100, ccw: bool = True
 ) -> NDArray[np.float64]:
-    """
-    生成圆的 xy 坐标序列
+    """生成圆的 xy 坐标序列
 
     Parameters
     ----------
@@ -320,8 +312,7 @@ def make_circle(
 def region_mask(
     x: ArrayLike, y: ArrayLike, extents: Sequence[float]
 ) -> tuple[NDArray[np.bool_], NDArray[np.bool_]]:
-    """
-    返回表示坐标点是否落入方框的布尔数组
+    """返回表示坐标点是否落入方框的布尔数组
 
     Parameters
     ----------
@@ -370,14 +361,13 @@ def count_consecutive_trues(mask: ArrayLike) -> NDArray[np.int64]:
     return value_counts
 
 
-def split_consecutive_trues(mask: ArrayLike) -> list[NDArray[np.int64]]:
+def split_consecutive_trues(mask: ArrayLike) -> list[NDArray[np.intp]]:
     """分段返回布尔序列里连续真值段落的索引"""
     mask = np.asarray(mask, dtype=bool)
     if mask.ndim != 1:
         raise ValueError("mask 必须是一维数组")
 
     ii = np.nonzero(mask)[0]
-    ii = ii.astype(np.int64)
     if len(ii) == 0:
         return []
     elif len(ii) == 1:
@@ -394,8 +384,7 @@ def interp_nearest_dd(
     radius: float = float("inf"),
     fill_value: Any = float("nan"),
 ) -> NDArray[Any]:
-    """
-    可以限制搜索半径的多维最近邻插值
+    """可以限制搜索半径的多维最近邻插值
 
     Parameters
     ----------
@@ -455,8 +444,7 @@ def interp_nearest_2d(
     radius: float = float("inf"),
     fill_value: Any = float("nan"),
 ) -> NDArray[Any]:
-    """
-    可以限制搜索半径的二维最近邻插值
+    """可以限制搜索半径的二维最近邻插值
 
     相比 interp_nearest_dd，输入的形状更灵活，方便处理卫星的非规则网格数据。
 
@@ -562,8 +550,7 @@ def binning2d(
     right: bool = True,
     include_lowest: bool = False,
 ) -> NDArray[Any]:
-    """
-    对散点数据做二维分箱
+    """对散点数据做二维分箱
 
     内部通过 pd.cut 实现。当 bins 单调递减时，会先排成升序再调用 pd.cut，最后倒转结果顺序。
 
@@ -660,7 +647,7 @@ def binning2d(
 
     result = (
         df.groupby(["y", "x"], observed=True)
-        .agg(func)  # type: ignore
+        .agg(func)
         .reindex(index, fill_value=fill_value)
         .to_numpy()
     )
@@ -686,34 +673,3 @@ def get_values_between(
     """获取 vmin <= values <= vmax 的元素"""
     values = np.asarray(values)
     return values[(values >= vmin) & (values <= vmax)].copy()
-
-
-@deprecator(alternative=region_mask, raise_error=True)
-def region_ind(*args, **kwargs): ...
-
-
-@deprecator(raise_error=True)
-def split_coords(*args, **kwargs): ...
-
-
-@deprecator(alternative=dms_to_dd)
-def hms_to_degrees(
-    hour: ArrayLike, minute: ArrayLike, second: ArrayLike
-) -> NDArray[np.floating]:
-    return dms_to_dd(hour, minute, second)
-
-
-@deprecator(raise_error=True)
-def hms_to_degrees2(*args, **kwargs): ...
-
-
-@deprecator(alternative=binning2d)
-def binned_average_2d(
-    x: ArrayLike, y: ArrayLike, values: ArrayLike, xbins: ArrayLike, ybins: ArrayLike
-) -> tuple[NDArray[np.floating], NDArray[np.floating], NDArray[np.floating]]:
-    xbins, ybins = asarrays(xbins, ybins)
-    xlabels = (xbins[1:] + xbins[:-1]) / 2
-    ylabels = (ybins[1:] + ybins[:-1]) / 2
-    result = binning2d(x, y, values, xbins, ybins)
-
-    return xlabels, ylabels, result

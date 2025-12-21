@@ -4,7 +4,6 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import IntEnum
 from functools import cache
-from pathlib import Path
 from typing import TYPE_CHECKING, Literal, TypeAlias, TypedDict, cast, overload
 
 import numpy as np
@@ -19,7 +18,7 @@ from frykit import get_data_dir
 from frykit.conf import DataSource, config
 from frykit.shp.binary import BinaryReader
 from frykit.shp.typing import LineStringType, PolygonType
-from frykit.utils import deprecator, format_type_error
+from frykit.utils import format_type_error
 
 __all__ = [
     "AdminLevel",
@@ -30,7 +29,6 @@ __all__ = [
     "NameOrAdcode",
     "Properties",
     "ProvinceProperties",
-    "clear_data_cache",
     "clear_data_cache",
     "get_cn_border",
     "get_cn_city",
@@ -54,7 +52,6 @@ __all__ = [
     "get_cn_province_table",
     "get_countries",
     "get_land",
-    "get_nine_line",
     "get_ocean",
 ]
 
@@ -67,73 +64,70 @@ def _resolve_data_source(data_source: DataSource | None) -> DataSource:
         return data_source
 
 
-def _get_china_dir() -> Path:
-    return get_data_dir() / "china"
-
-
-def _get_world_dir() -> Path:
-    return get_data_dir() / "world"
-
-
 AdminLevel: TypeAlias = Literal["province", "city", "district"]
 
 
 @cache
-def _get_cn_table(level: AdminLevel, data_source: DataSource) -> pd.DataFrame:
-    filepath = _get_china_dir() / data_source / f"cn_{level}.csv"
+def _get_cn_dataframe(level: AdminLevel, data_source: DataSource) -> pd.DataFrame:
+    # 注意不要缓存 data_source=None
+    filepath = get_data_dir() / "china" / data_source / f"cn_{level}.csv"
     return pd.read_csv(filepath)
 
 
-def _get_cn_province_table(data_source: DataSource | None = None) -> pd.DataFrame:
+def _get_cn_province_dataframe(data_source: DataSource | None = None) -> pd.DataFrame:
     data_source = _resolve_data_source(data_source)
-    return _get_cn_table("province", data_source)
+    return _get_cn_dataframe("province", data_source)
 
 
-def _get_cn_city_table(data_source: DataSource | None = None) -> pd.DataFrame:
+def _get_cn_city_dataframe(data_source: DataSource | None = None) -> pd.DataFrame:
     data_source = _resolve_data_source(data_source)
-    return _get_cn_table("city", data_source)
+    return _get_cn_dataframe("city", data_source)
 
 
-def _get_cn_district_table(data_source: DataSource | None = None) -> pd.DataFrame:
+def _get_cn_district_dataframe(data_source: DataSource | None = None) -> pd.DataFrame:
     data_source = _resolve_data_source(data_source)
-    return _get_cn_table("district", data_source)
+    return _get_cn_dataframe("district", data_source)
 
 
-def get_cn_province_table(data_source: DataSource | None = None) -> pd.DataFrame:
-    """获取中国省界元数据的表格"""
-    return _get_cn_province_table(data_source).copy()
+def get_cn_province_dataframe(data_source: DataSource | None = None) -> pd.DataFrame:
+    """获取中国省界元数据的 DataFrame"""
+    return _get_cn_province_dataframe(data_source).copy()
 
 
-def get_cn_city_table(data_source: DataSource | None = None) -> pd.DataFrame:
-    """获取中国市界元数据的表格"""
-    return _get_cn_city_table(data_source).copy()
+def get_cn_city_dataframe(data_source: DataSource | None = None) -> pd.DataFrame:
+    """获取中国市界元数据的 DataFrame"""
+    return _get_cn_city_dataframe(data_source).copy()
 
 
-def get_cn_district_table(data_source: DataSource | None = None) -> pd.DataFrame:
-    """获取中国县界元数据的表格"""
-    return _get_cn_district_table(data_source).copy()
+def get_cn_district_dataframe(data_source: DataSource | None = None) -> pd.DataFrame:
+    """获取中国县界元数据的 DataFrame"""
+    return _get_cn_district_dataframe(data_source).copy()
 
+
+get_cn_province_table = get_cn_province_dataframe
+get_cn_city_table = get_cn_city_dataframe
+get_cn_district_table = get_cn_district_dataframe
 
 NameOrAdcode: TypeAlias = int | str
 
 
 def _get_cn_indices(
-    name_to_indices: dict[str, NDArray[np.int64]],
-    adcode_to_indices: dict[np.int64, NDArray[np.int64]],
+    name_to_indices: dict[str, NDArray[np.intp]],
+    adcode_to_indices: dict[np.int64, NDArray[np.intp]],
     key: NameOrAdcode | Iterable[NameOrAdcode],
-) -> NDArray[np.int64]:
+) -> NDArray[np.intp]:
     if isinstance(key, str) or not isinstance(key, Iterable):
         keys = [key]
     else:
         keys = key
 
-    arrs: list[NDArray[np.int64]] = []
+    arrs: list[NDArray[np.intp]] = []
     for k in keys:
         match k:
             case str():
                 arrs.append(name_to_indices[k])
             case int() | np.integer():
-                arrs.append(adcode_to_indices[cast(np.int64, k)])
+                arrs.append(adcode_to_indices[k])  # pyright: ignore[reportArgumentType]
             case _:
                 raise TypeError(format_type_error("key", k, [str, int]))
 
@@ -142,31 +136,31 @@ def _get_cn_indices(
 
 @dataclass
 class Lookup:
-    index: NDArray[np.int64]
+    index: NDArray[np.intp]
 
 
 @dataclass
 class ProvinceLookup(Lookup):
-    province_name: dict[str, NDArray[np.int64]]
-    province_adcode: dict[np.int64, NDArray[np.int64]]
+    province_name: dict[str, NDArray[np.intp]]
+    province_adcode: dict[np.int64, NDArray[np.intp]]
 
 
 @dataclass
 class CityLookup(Lookup):
-    province_name: dict[str, NDArray[np.int64]]
-    province_adcode: dict[np.int64, NDArray[np.int64]]
-    city_name: dict[str, NDArray[np.int64]]
-    city_adcode: dict[np.int64, NDArray[np.int64]]
+    province_name: dict[str, NDArray[np.intp]]
+    province_adcode: dict[np.int64, NDArray[np.intp]]
+    city_name: dict[str, NDArray[np.intp]]
+    city_adcode: dict[np.int64, NDArray[np.intp]]
 
 
 @dataclass
 class DistrictLookup(Lookup):
-    province_name: dict[str, NDArray[np.int64]]
-    province_adcode: dict[np.int64, NDArray[np.int64]]
-    city_name: dict[str, NDArray[np.int64]]
-    city_adcode: dict[np.int64, NDArray[np.int64]]
-    district_name: dict[str, NDArray[np.int64]]
-    district_adcode: dict[np.int64, NDArray[np.int64]]
+    province_name: dict[str, NDArray[np.intp]]
+    province_adcode: dict[np.int64, NDArray[np.intp]]
+    city_name: dict[str, NDArray[np.intp]]
+    city_adcode: dict[np.int64, NDArray[np.intp]]
+    district_name: dict[str, NDArray[np.intp]]
+    district_adcode: dict[np.int64, NDArray[np.intp]]
 
 
 @overload
@@ -191,8 +185,8 @@ def _get_cn_lookup(
 def _get_cn_lookup(
     admin_level: AdminLevel, data_source: DataSource
 ) -> ProvinceLookup | CityLookup | DistrictLookup:
-    df = _get_cn_table(admin_level, data_source)
-    index = df.index.to_numpy()
+    df = _get_cn_dataframe(admin_level, data_source)
+    index = df.index.to_numpy().astype(np.intp)
     match admin_level:
         case "province":
             cls = ProvinceLookup
@@ -205,7 +199,7 @@ def _get_cn_lookup(
             cols = df.columns[:6]
 
     # 第一次运行 groupby 略慢
-    return cls(index, *[df.groupby(col).indices for col in cols])  # type: ignore
+    return cls(index, *[df.groupby(col).indices for col in cols])  # pyright: ignore[reportArgumentType]
 
 
 def _get_cn_province_lookup(data_source: DataSource | None = None) -> ProvinceLookup:
@@ -226,7 +220,7 @@ def _get_cn_district_lookup(data_source: DataSource | None = None) -> DistrictLo
 def _get_cn_province_indices(
     province: NameOrAdcode | Iterable[NameOrAdcode] | None,
     data_source: DataSource | None = None,
-) -> NDArray[np.int64]:
+) -> NDArray[np.intp]:
     lookup = _get_cn_province_lookup(data_source)
     if province is not None:
         return _get_cn_indices(lookup.province_name, lookup.province_adcode, province)
@@ -238,7 +232,7 @@ def _get_cn_city_indices(
     city: NameOrAdcode | Iterable[NameOrAdcode] | None,
     province: NameOrAdcode | Iterable[NameOrAdcode] | None,
     data_source: DataSource | None = None,
-) -> NDArray[np.int64]:
+) -> NDArray[np.intp]:
     lookup = _get_cn_city_lookup(data_source)
     if city is None and province is None:
         return lookup.index
@@ -248,6 +242,7 @@ def _get_cn_city_indices(
     if city is not None:
         return _get_cn_indices(lookup.city_name, lookup.city_adcode, city)
     else:
+        # 这里的 assert 是给类型检查用的
         assert province is not None
         return _get_cn_indices(lookup.province_name, lookup.province_adcode, province)
 
@@ -257,7 +252,7 @@ def _get_cn_district_indices(
     city: NameOrAdcode | Iterable[NameOrAdcode] | None,
     province: NameOrAdcode | Iterable[NameOrAdcode] | None,
     data_source: DataSource | None = None,
-) -> NDArray[np.int64]:
+) -> NDArray[np.intp]:
     lookup = _get_cn_district_lookup(data_source)
     num_keys = sum(key is not None for key in [district, city, province])
     if num_keys == 0:
@@ -278,7 +273,7 @@ def _get_cn_district_indices(
         )
 
     if isinstance(district, str) and len(indices) > 1:
-        df = _get_cn_district_table(data_source)
+        df = _get_cn_district_dataframe(data_source)
         df_str = df.iloc[indices, :6].to_string(index=False)
         raise ValueError(f"存在复数个同名的县，请用 adcode 指定\n{df_str}")
 
@@ -330,8 +325,7 @@ def get_cn_province_properties(
     province: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
     data_source: DataSource | None = None,
 ) -> ProvinceProperties | list[ProvinceProperties]:
-    """
-    获取中国省界的元数据
+    """获取中国省界的元数据
 
     Parameters
     ----------
@@ -346,7 +340,7 @@ def get_cn_province_properties(
     ProvinceProperties or list of ProvinceProperties
         元数据字典
     """
-    df = _get_cn_province_table(data_source)
+    df = _get_cn_province_dataframe(data_source)
     indices = _get_cn_province_indices(province, data_source)
     if len(indices) != len(df):
         df = df.iloc[indices]
@@ -380,8 +374,7 @@ def get_cn_city_properties(
     province: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
     data_source: DataSource | None = None,
 ) -> CityProperties | list[CityProperties]:
-    """
-    获取中国市界的元数据
+    """获取中国市界的元数据
 
     Parameters
     ----------
@@ -400,7 +393,7 @@ def get_cn_city_properties(
     CityProperties or list of CityProperties
         元数据字典
     """
-    df = _get_cn_city_table(data_source)
+    df = _get_cn_city_dataframe(data_source)
     indices = _get_cn_city_indices(city, province, data_source)
     if len(indices) != len(df):
         df = df.iloc[indices]
@@ -437,8 +430,7 @@ def get_cn_district_properties(
     province: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
     data_source: DataSource | None = None,
 ) -> DistrictProperties | list[DistrictProperties]:
-    """
-    获取中国县界的元数据
+    """获取中国县界的元数据
 
     Parameters
     ----------
@@ -461,7 +453,7 @@ def get_cn_district_properties(
     DistrictProperties or list of DistrictProperties
         元数据字典
     """
-    df = _get_cn_district_table(data_source)
+    df = _get_cn_district_dataframe(data_source)
     indices = _get_cn_district_indices(district, city, province, data_source)
     if len(indices) != len(df):
         df = df.iloc[indices]
@@ -478,52 +470,51 @@ def get_cn_province_names(
     short_name: bool = False, data_source: DataSource | None = None
 ) -> list[str]:
     """获取中国所有省的名字"""
-    df = _get_cn_province_table(data_source)
+    df = _get_cn_province_dataframe(data_source)
     key = "short_name" if short_name else "province_name"
-    return df[key].tolist()
+    return df[key].to_list()
 
 
 def get_cn_city_names(
     short_name: bool = False, data_source: DataSource | None = None
 ) -> list[str]:
     """获取中国所有市的名字"""
-    df = _get_cn_city_table(data_source)
+    df = _get_cn_city_dataframe(data_source)
     key = "short_name" if short_name else "city_name"
-    return df[key].tolist()
+    return df[key].to_list()
 
 
 def get_cn_district_names(
     short_name: bool = False, data_source: DataSource | None = None
 ) -> list[str]:
     """获取中国所有县的名字"""
-    df = _get_cn_district_table(data_source)
+    df = _get_cn_district_dataframe(data_source)
     key = "short_name" if short_name else "district_name"
-    return df[key].tolist()
+    return df[key].to_list()
 
 
 @cache
-def _get_cn_polygons(level: AdminLevel, data_source: DataSource) -> list[PolygonType]:
-    filepath = _get_china_dir() / data_source / f"cn_{level}.bin"
+def _get_cn_polygons(level: AdminLevel, data_source: DataSource) -> NDArray[np.object_]:
+    filepath = get_data_dir() / "china" / data_source / f"cn_{level}.bin"
     with BinaryReader(filepath) as reader:
-        polygons = reader.geometries()
-        return cast(list[PolygonType], polygons)
+        return np.array(reader.geometries())
 
 
 def _get_cn_province_polygons(
     data_source: DataSource | None = None,
-) -> list[PolygonType]:
+) -> NDArray[np.object_]:
     data_source = _resolve_data_source(data_source)
     return _get_cn_polygons("province", data_source)
 
 
-def _get_cn_city_polygons(data_source: DataSource | None = None) -> list[PolygonType]:
+def _get_cn_city_polygons(data_source: DataSource | None = None) -> NDArray[np.object_]:
     data_source = _resolve_data_source(data_source)
     return _get_cn_polygons("city", data_source)
 
 
 def _get_cn_district_polygons(
     data_source: DataSource | None = None,
-) -> list[PolygonType]:
+) -> NDArray[np.object_]:
     data_source = _resolve_data_source(data_source)
     return _get_cn_polygons("district", data_source)
 
@@ -545,8 +536,7 @@ def get_cn_province(
     province: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
     data_source: DataSource | None = None,
 ) -> PolygonType | list[PolygonType]:
-    """
-    获取中国省界的多边形
+    """获取中国省界的多边形
 
     Parameters
     ----------
@@ -564,13 +554,13 @@ def get_cn_province(
     indices = _get_cn_province_indices(province, data_source)
     polygons = _get_cn_province_polygons(data_source)
     if len(indices) == len(polygons):
-        return polygons
+        return polygons.tolist()
 
-    polygons = [polygons[i] for i in indices]
+    polygons = polygons[indices]
     if isinstance(province, (str, int)):
-        return polygons[0]
+        return polygons.item()
     else:
-        return polygons
+        return polygons.tolist()
 
 
 @overload
@@ -594,8 +584,7 @@ def get_cn_city(
     province: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
     data_source: DataSource | None = None,
 ) -> PolygonType | list[PolygonType]:
-    """
-    获取中国市界的多边形
+    """获取中国市界的多边形
 
     Parameters
     ----------
@@ -617,13 +606,13 @@ def get_cn_city(
     indices = _get_cn_city_indices(city, province, data_source)
     polygons = _get_cn_city_polygons(data_source)
     if len(indices) == len(polygons):
-        return polygons
+        return polygons.tolist()
 
-    polygons = [polygons[i] for i in indices]
+    polygons = polygons[indices]
     if isinstance(city, (str, int)):
-        return polygons[0]
+        return polygons.item()
     else:
-        return polygons
+        return polygons.tolist()
 
 
 @overload
@@ -650,8 +639,7 @@ def get_cn_district(
     province: NameOrAdcode | Iterable[NameOrAdcode] | None = None,
     data_source: DataSource | None = None,
 ) -> PolygonType | list[PolygonType]:
-    """
-    获取中国县界的多边形
+    """获取中国县界的多边形
 
     Parameters
     ----------
@@ -677,18 +665,18 @@ def get_cn_district(
     indices = _get_cn_district_indices(district, city, province, data_source)
     polygons = _get_cn_district_polygons(data_source)
     if len(indices) == len(polygons):
-        return polygons
+        return polygons.tolist()
 
-    polygons = [polygons[i] for i in indices]
+    polygons = polygons[indices]
     if isinstance(district, (str, int)):
-        return polygons[0]
+        return polygons.item()
     else:
-        return polygons
+        return polygons.tolist()
 
 
 @cache
 def _get_cn_border(data_source: DataSource) -> shapely.MultiPolygon:
-    filepath = _get_china_dir() / data_source / "cn_border.bin"
+    filepath = get_data_dir() / "china" / data_source / "cn_border.bin"
     with BinaryReader(filepath) as reader:
         return cast(shapely.MultiPolygon, reader.geometry(0))
 
@@ -701,10 +689,9 @@ def get_cn_border(data_source: DataSource | None = None) -> shapely.MultiPolygon
 
 @cache
 def _get_cn_line_strings() -> list[LineStringType]:
-    filepath = _get_china_dir() / "cn_line.bin"
+    filepath = get_data_dir() / "china" / "cn_line.bin"
     with BinaryReader(filepath) as reader:
-        line_strings = reader.geometries()
-        return cast(list[LineStringType], line_strings)
+        return cast(list[LineStringType], reader.geometries())
 
 
 LineName: TypeAlias = Literal["省界", "特别行政区界", "九段线", "未定国界"]
@@ -728,8 +715,7 @@ def get_cn_line(name: Iterable[LineName]) -> list[LineStringType]: ...
 def get_cn_line(
     name: LineName | Iterable[LineName] = "九段线",
 ) -> LineStringType | list[LineStringType]:
-    """
-    获取中国的修饰线段
+    """获取中国的修饰线段
 
     Parameters
     ----------
@@ -751,7 +737,7 @@ def get_cn_line(
 @cache
 def get_countries() -> list[PolygonType]:
     """获取所有国界的多边形"""
-    filepath = _get_world_dir() / "country.bin"
+    filepath = get_data_dir() / "world" / "country.bin"
     with BinaryReader(filepath) as reader:
         return cast(list[PolygonType], reader.geometries())
 
@@ -759,7 +745,7 @@ def get_countries() -> list[PolygonType]:
 @cache
 def get_land() -> shapely.MultiPolygon:
     """获取陆地多边形"""
-    filepath = _get_world_dir() / "land.bin"
+    filepath = get_data_dir() / "world" / "land.bin"
     with BinaryReader(filepath) as reader:
         return cast(shapely.MultiPolygon, reader.geometry(0))
 
@@ -767,34 +753,9 @@ def get_land() -> shapely.MultiPolygon:
 @cache
 def get_ocean() -> shapely.MultiPolygon:
     """获取海洋多边形"""
-    filepath = _get_world_dir() / "ocean.bin"
+    filepath = get_data_dir() / "world" / "ocean.bin"
     with BinaryReader(filepath) as reader:
         return cast(shapely.MultiPolygon, reader.geometry(0))
-
-
-@cache
-def _get_cn_dataframe(level: AdminLevel, data_source: DataSource) -> pd.DataFrame:
-    df = _get_cn_table(level, data_source)
-    polygons = _get_cn_polygons(level, data_source)
-    return df.assign(geometry=polygons)
-
-
-def get_cn_province_dataframe(data_source: DataSource | None = None) -> pd.DataFrame:
-    """获取中国省界的多边形和元数据的 DataFrame"""
-    data_source = _resolve_data_source(data_source)
-    return _get_cn_dataframe("province", data_source).copy()
-
-
-def get_cn_city_dataframe(data_source: DataSource | None = None) -> pd.DataFrame:
-    """获取中国市界的多边形和元数据的 DataFrame"""
-    data_source = _resolve_data_source(data_source)
-    return _get_cn_dataframe("city", data_source).copy()
-
-
-def get_cn_district_dataframe(data_source: DataSource | None = None) -> pd.DataFrame:
-    """获取中国县界的多边形和元数据的 DataFrame"""
-    data_source = _resolve_data_source(data_source)
-    return _get_cn_dataframe("district", data_source).copy()
 
 
 @cache
@@ -803,47 +764,41 @@ def _get_cn_geodataframe(
 ) -> gpd.GeoDataFrame:
     import geopandas as gpd
 
-    df = _get_cn_table(level, data_source)
+    df = _get_cn_dataframe(level, data_source)
     polygons = _get_cn_polygons(level, data_source)
-    return gpd.GeoDataFrame(df, geometry=polygons, crs="EPSG:4326", copy=True)
+    return gpd.GeoDataFrame(df, geometry=polygons, crs=4326)
 
 
 def get_cn_province_geodataframe(
     data_source: DataSource | None = None,
 ) -> gpd.GeoDataFrame:
-    """获取中国省界的多边形和元数据的 GeoDataFrame"""
+    """获取中国省界元数据和多边形的 GeoDataFrame"""
     data_source = _resolve_data_source(data_source)
-    return _get_cn_geodataframe("province", data_source)
+    return _get_cn_geodataframe("province", data_source).copy()
 
 
 def get_cn_city_geodataframe(data_source: DataSource | None = None) -> gpd.GeoDataFrame:
-    """获取中国市界的多边形和元数据的 GeoDataFrame"""
+    """获取中国市界元数据和多边形的 GeoDataFrame"""
     data_source = _resolve_data_source(data_source)
-    return _get_cn_geodataframe("city", data_source)
+    return _get_cn_geodataframe("city", data_source).copy()
 
 
 def get_cn_district_geodataframe(
     data_source: DataSource | None = None,
 ) -> gpd.GeoDataFrame:
-    """获取中国县界的多边形和元数据的 GeoDataFrame"""
+    """获取中国县界元数据和多边形的 GeoDataFrame"""
     data_source = _resolve_data_source(data_source)
-    return _get_cn_geodataframe("district", data_source)
+    return _get_cn_geodataframe("district", data_source).copy()
 
 
 def clear_data_cache() -> None:
     """清除数据缓存"""
-    _get_cn_table.cache_clear()
-    _get_cn_lookup.cache_clear()  # type: ignore
+    _get_cn_dataframe.cache_clear()
+    _get_cn_lookup.cache_clear()  # pyright: ignore[reportFunctionMemberAccess]
     _get_cn_polygons.cache_clear()
     _get_cn_border.cache_clear()
     _get_cn_line_strings.cache_clear()
-    _get_cn_dataframe.cache_clear()
     _get_cn_geodataframe.cache_clear()
     get_countries.cache_clear()
     get_land.cache_clear()
     get_ocean.cache_clear()
-
-
-@deprecator(alternative=get_cn_line)
-def get_nine_line() -> shapely.MultiLineString:
-    return cast(shapely.MultiLineString, get_cn_line())

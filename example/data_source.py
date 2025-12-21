@@ -7,7 +7,7 @@ import frykit.plot as fplt
 
 fig, axes = plt.subplots(2, 2, figsize=(10, 10), subplot_kw={"aspect": 1})
 
-colors = plt.cm.Set3.colors
+colors = plt.cm.Set3.colors  # pyright: ignore[reportAttributeAccessIssue]
 
 for ax in axes[0, :]:
     fplt.set_map_ticks(ax, extents=(115, 130, 40, 55), dx=5, dy=5)
@@ -33,5 +33,5 @@ with frykit.config.context(data_source="tianditu"):
     fplt.add_cn_district(axes[1, 1], fc=colors)
     fplt.label_cn_district(axes[1, 1])
 
-fplt.savefig("../image/data_source.png")
+fplt.savefig("data_source.png")
 plt.close(fig)

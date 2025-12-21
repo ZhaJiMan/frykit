@@ -20,5 +20,5 @@ ax.grid(ls="--", c="gray")
 
 # 保存图片
 ax.set_title("Use Matplotlib Axes", pad=15)
-fplt.savefig("../image/axes.png")
+fplt.savefig("axes.png")
 plt.close(fig)

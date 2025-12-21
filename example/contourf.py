@@ -4,9 +4,12 @@
 需要安装 scipy
 """
 
+from typing import cast
+
 import matplotlib.pyplot as plt
 import numpy as np
 from cartopy.feature import LAND
+from cartopy.mpl.geoaxes import GeoAxes
 from scipy.ndimage import gaussian_filter
 
 import frykit.plot as fplt
@@ -27,6 +30,7 @@ yticks = np.arange(-90, 91, 10)
 # 准备大地图
 fig = plt.figure(figsize=(10, 6))
 main_ax = fig.add_subplot(projection=map_crs)
+main_ax = cast(GeoAxes, main_ax)
 fplt.set_map_ticks(main_ax, (74, 136, 13, 57), xticks, yticks)
 main_ax.gridlines(xlocs=xticks, ylocs=yticks, lw=0.5, ls="--", color="gray")
 
@@ -43,6 +47,7 @@ main_ax.tick_params(
 
 # 准备小地图
 mini_ax = fplt.add_mini_axes(main_ax)
+mini_ax = cast(GeoAxes, mini_ax)
 mini_ax.set_extent((105, 122, 2, 25), data_crs)
 mini_ax.gridlines(xlocs=xticks, ylocs=yticks, lw=0.5, ls="--", color="gray")
 
@@ -70,7 +75,7 @@ for ax in [main_ax, mini_ax]:
 
 # 绘制 colorbar
 cbar = plt.colorbar(
-    cf,
+    cf,  # pyright: ignore[reportPossiblyUnboundVariable]
     ax=main_ax,
     ticks=np.linspace(0, 32, 9),
     shrink=0.6,
@@ -101,5 +106,5 @@ main_ax.set_title(
 )
 
 # 保存图片
-fplt.savefig("../image/contourf.png")
+fplt.savefig("contourf.png")
 plt.close(fig)

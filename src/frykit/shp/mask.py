@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import cast
-
 import numpy as np
 import shapely
 from numpy.typing import ArrayLike, NDArray
@@ -9,16 +7,15 @@ from numpy.typing import ArrayLike, NDArray
 from frykit.calc import asarrays, is_monotonic_decreasing, is_monotonic_increasing
 from frykit.shp.typing import PolygonType
 from frykit.typing import RealNumber
-from frykit.utils import deprecator, format_type_error
+from frykit.utils import format_type_error
 
-__all__ = ["polygon_mask", "polygon_mask2", "polygon_to_mask"]
+__all__ = ["polygon_mask", "polygon_mask2"]
 
 
 def polygon_mask(
     polygon: PolygonType, x: ArrayLike, y: ArrayLike, include_boundary: bool = True
 ) -> NDArray[np.bool_]:
-    """
-    用多边形制作掩膜（mask）数组
+    """用多边形制作掩膜（mask）数组
 
     掩膜数组元素为 True 表示对应的数据点落入多边形内部，False 表示在外部。
     含 nan 或 inf 坐标的点直接返回 False。
@@ -105,18 +102,15 @@ def polygon_mask(
     valid = np.isfinite(x) & np.isfinite(y)
     mask = np.zeros_like(x, dtype=np.bool_)
     mask[valid] = do_recursion(x[valid], y[valid])
-    if mask.ndim == 0:
-        mask = np.bool_(mask)
 
-    return cast(NDArray[np.bool_], mask)
+    return mask
 
 
 # https://gist.github.com/perrette/a78f99b76aed54b6babf3597e0b331f8
 def polygon_mask2(
     polygon: PolygonType, x: ArrayLike, y: ArrayLike, include_boundary: bool = True
 ) -> NDArray[np.bool_]:
-    """
-    用多边形制作掩膜（mask）数组
+    """用多边形制作掩膜（mask）数组
 
     掩膜数组元素为 True 表示对应的网格点落入多边形内部，False 表示在外部。
 
@@ -225,10 +219,3 @@ def polygon_mask2(
         mask = mask[::-1, :]
 
     return mask
-
-
-@deprecator(alternative=polygon_mask)
-def polygon_to_mask(
-    polygon: PolygonType, x: ArrayLike, y: ArrayLike
-) -> NDArray[np.bool_]:
-    return polygon_mask(polygon, x, y, include_boundary=False)

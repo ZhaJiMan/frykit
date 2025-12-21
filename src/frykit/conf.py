@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Generator
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, fields
 from typing import Any, Literal, TypeAlias, TypedDict, cast
@@ -91,7 +91,7 @@ class Config:
             super().__setattr__(name, value)
 
     @contextmanager
-    def context(self, **kwargs: Unpack[PartialConfigDict]) -> Generator[None]:
+    def context(self, **kwargs: Unpack[PartialConfigDict]) -> Iterator[None]:
         """创建可以临时修改配置的上下文"""
         config_dict = self.to_dict()
         try:

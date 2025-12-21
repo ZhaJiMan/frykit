@@ -4,7 +4,6 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import IntEnum
 from functools import cache
-from pathlib import Path
 from typing import TYPE_CHECKING, Literal, TypeAlias, TypedDict, cast, overload
 
 import numpy as np
@@ -65,21 +64,13 @@ def _resolve_data_source(data_source: DataSource | None) -> DataSource:
         return data_source
 
 
-def _get_china_dir() -> Path:
-    return get_data_dir() / "china"
-
-
-def _get_world_dir() -> Path:
-    return get_data_dir() / "world"
-
-
 AdminLevel: TypeAlias = Literal["province", "city", "district"]
 
 
 @cache
 def _get_cn_dataframe(level: AdminLevel, data_source: DataSource) -> pd.DataFrame:
     # 注意不要缓存 data_source=None
-    filepath = _get_china_dir() / data_source / f"cn_{level}.csv"
+    filepath = get_data_dir() / "china" / data_source / f"cn_{level}.csv"
     return pd.read_csv(filepath)
 
 
@@ -116,7 +107,6 @@ def get_cn_district_dataframe(data_source: DataSource | None = None) -> pd.DataF
 get_cn_province_table = get_cn_province_dataframe
 get_cn_city_table = get_cn_city_dataframe
 get_cn_district_table = get_cn_district_dataframe
-
 
 NameOrAdcode: TypeAlias = int | str
 
@@ -505,7 +495,7 @@ def get_cn_district_names(
 
 @cache
 def _get_cn_polygons(level: AdminLevel, data_source: DataSource) -> NDArray[np.object_]:
-    filepath = _get_china_dir() / data_source / f"cn_{level}.bin"
+    filepath = get_data_dir() / "china" / data_source / f"cn_{level}.bin"
     with BinaryReader(filepath) as reader:
         return np.array(reader.geometries())
 
@@ -686,7 +676,7 @@ def get_cn_district(
 
 @cache
 def _get_cn_border(data_source: DataSource) -> shapely.MultiPolygon:
-    filepath = _get_china_dir() / data_source / "cn_border.bin"
+    filepath = get_data_dir() / "china" / data_source / "cn_border.bin"
     with BinaryReader(filepath) as reader:
         return cast(shapely.MultiPolygon, reader.geometry(0))
 
@@ -699,10 +689,9 @@ def get_cn_border(data_source: DataSource | None = None) -> shapely.MultiPolygon
 
 @cache
 def _get_cn_line_strings() -> list[LineStringType]:
-    filepath = _get_china_dir() / "cn_line.bin"
+    filepath = get_data_dir() / "china" / "cn_line.bin"
     with BinaryReader(filepath) as reader:
-        line_strings = reader.geometries()
-        return cast(list[LineStringType], line_strings)
+        return cast(list[LineStringType], reader.geometries())
 
 
 LineName: TypeAlias = Literal["省界", "特别行政区界", "九段线", "未定国界"]
@@ -748,7 +737,7 @@ def get_cn_line(
 @cache
 def get_countries() -> list[PolygonType]:
     """获取所有国界的多边形"""
-    filepath = _get_world_dir() / "country.bin"
+    filepath = get_data_dir() / "world" / "country.bin"
     with BinaryReader(filepath) as reader:
         return cast(list[PolygonType], reader.geometries())
 
@@ -756,7 +745,7 @@ def get_countries() -> list[PolygonType]:
 @cache
 def get_land() -> shapely.MultiPolygon:
     """获取陆地多边形"""
-    filepath = _get_world_dir() / "land.bin"
+    filepath = get_data_dir() / "world" / "land.bin"
     with BinaryReader(filepath) as reader:
         return cast(shapely.MultiPolygon, reader.geometry(0))
 
@@ -764,7 +753,7 @@ def get_land() -> shapely.MultiPolygon:
 @cache
 def get_ocean() -> shapely.MultiPolygon:
     """获取海洋多边形"""
-    filepath = _get_world_dir() / "ocean.bin"
+    filepath = get_data_dir() / "world" / "ocean.bin"
     with BinaryReader(filepath) as reader:
         return cast(shapely.MultiPolygon, reader.geometry(0))
 

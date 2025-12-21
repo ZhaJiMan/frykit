@@ -1,28 +1,24 @@
 from __future__ import annotations
 
-from functools import cache
+from importlib.resources import files
 from pathlib import Path
 
 from frykit.conf import config
-from frykit.utils import deprecator
 
 __version__ = "0.8.0"
 
-__all__ = ["config", "get_data_dir", "get_data_dirpath"]
+__all__ = ["config", "get_data_dir"]
 
 
-@cache
 def get_data_dir() -> Path:
     """获取 frykit_data 的数据目录"""
     try:
-        # TODO: 在 frykit_data 里改名为 DATA_DIR
-        from frykit_data import DATA_DIRPATH
+        dirpath = files("frykit_data") / "data"
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError("需要安装 frykit_data 包") from None
 
-        return DATA_DIRPATH
-    except ImportError:
-        raise ImportError("需要地图数据请 pip install frykit[data]")
+    # 字体文件需要存在于磁盘上
+    if not isinstance(dirpath, Path):
+        raise RuntimeError("frykit_data 包需要以普通文件夹形式安装")
 
-
-@deprecator(alternative=get_data_dir)
-def get_data_dirpath() -> Path:
-    return get_data_dir()
+    return dirpath

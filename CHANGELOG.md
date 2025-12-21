@@ -1,9 +1,16 @@
 ## 0.8.0 (ongoing)
 
 - 新增 `typing_extensions>=4.13.0` 依赖。
+- 提高 `frykit_data` 的依赖到 `0.1.0`，具体变化为：
+  - 更新高德地图数据到 2025.12，县级区划里重庆市的江北区和渝北区合并为两江新区。
+  - 更新天地图数据到 2025.09。
+  - `data_source='amap'` 时取消直辖市在市级的级别：
+    - 北京城区 -> 北京市
+    - 天津城区 -> 天津市
+    - 上海城区 -> 上海市
+    - 重庆城区、重庆郊县 -> 重庆市
 - `plot` 模块：
   - 通过 `TypedDict` 和 `Unpack` 给 matplotlib 相关的 `**kwargs` 参数提供类型提示。
-  - `clip_by_polygon` 函数新增 `union_method` 参数，同时 `clip_by_cn_xxx` 系列函数使用 coverage 算法加快合并速度。
 - `shp` 模块：
   - `binary` 模块解码二进制时将坐标取整到 1e-6 精度。
   - geojson 相关的函数明确会忽略几何对象的 z 轴。

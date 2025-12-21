@@ -2,6 +2,8 @@ from importlib import import_module
 from pathlib import Path
 from unittest import TestCase
 
+from loguru import logger
+
 from frykit.utils import chdir_context, new_dir
 
 
@@ -21,7 +23,6 @@ class TestExample(TestCase):
                 if name not in {"clabel", "river", "nerv_style"}:
                     try:
                         import_module(f"example.{name}")
-                        print(f"[OK] {name}")
-                    except Exception as e:
-                        print(f"[FAIL] {name}")
-                        print(e)
+                        logger.info(name)
+                    except Exception:
+                        logger.exception(name)

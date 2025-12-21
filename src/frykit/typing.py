@@ -23,6 +23,7 @@ P = ParamSpec("P")
 
 HashableT = TypeVar("HashableT", bound=Hashable)
 
+# TODO: 3.12 使用 type 语句替代 TypeAlias
 StrPath: TypeAlias = str | PathLike[str]
 BytesPath: TypeAlias = bytes | PathLike[bytes]
 StrOrBytesPath: TypeAlias = StrPath | BytesPath

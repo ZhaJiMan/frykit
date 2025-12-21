@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import shutil
 import warnings
-from collections.abc import Callable, Generator, Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
 from functools import wraps
 from importlib.metadata import version
@@ -53,7 +53,7 @@ def renew_dir(dirpath: StrPath) -> Path:
 
 
 @contextmanager
-def chdir_context(dirpath: StrPath) -> Generator[None]:
+def chdir_context(dirpath: StrPath) -> Iterator[None]:
     """临时切换工作目录的上下文管理器
 
     See Also

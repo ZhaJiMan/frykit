@@ -17,6 +17,7 @@ __all__ = [
     "chdir_context",
     "compare_sets",
     "del_dir",
+    "del_file",
     "deprecator",
     "format_literal_error",
     "format_type_error",
@@ -30,11 +31,17 @@ __all__ = [
 ]
 
 
+def del_file(filepath: StrPath) -> Path:
+    """删除文件"""
+    filepath = Path(filepath)
+    filepath.unlink(missing_ok=True)
+    return filepath
+
+
 def new_dir(dirpath: StrPath) -> Path:
     """新建目录"""
     dirpath = Path(dirpath)
     dirpath.mkdir(parents=True, exist_ok=True)
-
     return dirpath
 
 

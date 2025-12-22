@@ -1,3 +1,7 @@
+## 0.8.1 (ongoing)
+
+- `utils` 模块新增删除文件的 `del_file` 函数。
+
 ## 0.8.0 (2025-12-21)
 
 - 新增 `typing_extensions>=4.13.0` 依赖。

@@ -116,9 +116,30 @@ import frykit.shp as fshp
 京津冀 = fshp.get_cn_province([110000, 120000, 130000])
 ```
 
+因为一些区县存在重名的情况，所以单个区县推荐用 adcode 查询：
+
+```python
+北京市朝阳区 = fshp.get_cn_district(110105)
+长春市朝阳区 = fshp.get_cn_district(220104)
+```
+
+如果只需要元数据而不需要多边形，可以使用 `get_cn_xxx_properties` 系列函数，返回元数据的字典。参数用法同上面的 `get_cn_xxx` 系列函数：
+
+```python
+print(fshp.get_cn_city_properties("石家庄市"))
+
+{'province_name': '河北省',
+ 'province_adcode': 130000,
+ 'city_name': '石家庄市',
+ 'city_adcode': 130100,
+ 'short_name': '石家庄',
+ 'lon': 114.5,
+ 'lat': 38.1}
+```
+
 ### 读取 GeoDataFrame
 
-安装额外的 GeoPandas 依赖后可以通过 `get_cn_xxx_geodataframe` 系列函数读取带有元数据的 `GeoDataFrame`，方便后续做地理计算，或者导出 shapefile、GeoJSON 等格式：
+安装额外的 GeoPandas 依赖后可以通过 `get_cn_xxx_geodataframe` 系列函数获取同时带有元数据和多边形的 `GeoDataFrame`，方便后续做地理计算，或者导出 shapefile、GeoJSON 等格式：
 
 ```python
 province_gdf = fshp.get_cn_province_geodataframe()
@@ -165,8 +186,9 @@ district_gdf = fshp.get_cn_district_geodataframe()
 - 高德数据更精细；天地图数据更精简，画图更快。
 - 市级和县级区划有差异，例如天地图有台湾的区县。
 - 高德数据存在飞地，例如内蒙古境内有黑龙江的飞地加格达奇区（[issue#5](https://github.com/ZhaJiMan/frykit/issues/5)）。
+- 高德数据可以做更快的 coverage union；而天地图数据里因为前三岛同时属于江苏连云港和山东日照，所以无法简单做 coverage union。
 
-推荐使用天地图数据，因为画图更快、没有飞地问题，且官网带一个审图号。但因为旧版本只有高德数据，所以为了兼容性而默认使用高德数据。切换数据源的方法有：
+推荐使用天地图数据，因为画图更快、没有飞地问题，且官网带一个审图号。如果需要更精细的地图，则可以使用高德数据。因为旧版本只有高德数据，所以为了兼容性而默认使用高德数据。切换数据源的方法有：
 
 ```python
 # 通过函数参数指定

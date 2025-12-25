@@ -214,7 +214,7 @@ class GeometryPathCollection(PathCollection):
 
         match ax:
             case GeoAxes():
-                self.crs = PLATE_CARREE if crs is None else crs
+                self.crs = crs or PLATE_CARREE
                 self._geometries_to_paths = partial(
                     _cached_project_geometries_to_paths,
                     crs_from=self.crs,

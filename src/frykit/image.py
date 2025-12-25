@@ -144,7 +144,7 @@ def merge_images(
 
     nrows, ncols = arr.shape
     merged = Image.new(
-        mode=first_image.mode if mode is None else mode,
+        mode=mode or first_image.mode,
         size=(ncols * max_width, nrows * max_height),
         color=bgcolor,
     )

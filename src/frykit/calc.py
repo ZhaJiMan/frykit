@@ -270,7 +270,7 @@ def make_ellipse(
     verts = np.column_stack([np.cos(t), np.sin(t), np.ones_like(t)])
 
     # 对单位圆做仿射变换
-    b = a if b is None else b
+    b = b or a
     angle = math.radians(angle)
     cos = math.cos(angle)
     sin = math.sin(angle)

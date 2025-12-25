@@ -39,17 +39,14 @@ EMPTY_POLYGON = shapely.Polygon()
 
 
 def _line_string_codes(n: int) -> NDArray[np.uint8]:
-    codes = np.zeros(n, dtype=np.uint8)
+    codes = np.full(n, Path.LINETO)
     codes[0] = Path.MOVETO
-    codes[1:] = Path.LINETO
-
     return codes
 
 
 def _linear_ring_codes(n: int) -> NDArray[np.uint8]:
-    codes = np.zeros(n, dtype=np.uint8)
+    codes = np.full(n, Path.LINETO)
     codes[0] = Path.MOVETO
-    codes[1:-1] = Path.LINETO
     codes[-1] = Path.CLOSEPOLY
 
     return codes
@@ -108,7 +105,9 @@ def path_to_polygon(path: Path) -> PolygonType:
     """将 Matplotlib 的 Path 对象转为多边形对象
 
     - 空 Path 对应空多边形
-    - 要求输入是 geometry_to_path(polygon) 的结果，其它输入可能产生错误。
+    - 如果 Path 对应 Polygon，要求内外环的绕行方向相反
+    - 如果 Path 对应 MultiPolygon，要求各成员的内外环绕行规则相同
+    - 坐标不满足要求时可能产生非法的多边形
 
     See Also
     --------
@@ -118,14 +117,18 @@ def path_to_polygon(path: Path) -> PolygonType:
     if len(path.vertices) == 0:  # pyright: ignore[reportArgumentType]
         return EMPTY_POLYGON
 
+    is_exterior_ccw = None
     collection: list[tuple[shapely.LinearRing, list[shapely.LinearRing]]] = []
     indices = np.nonzero(path.codes == Path.MOVETO)[0][1:]  # pyright: ignore[reportArgumentType]
     for coords in np.vsplit(path.vertices, indices):
         linear_ring = shapely.LinearRing(coords)
-        if linear_ring.is_ccw:
-            collection[-1][1].append(linear_ring)
-        else:
+        if is_exterior_ccw is None:
+            is_exterior_ccw = linear_ring.is_ccw
             collection.append((linear_ring, []))
+        elif linear_ring.is_ccw == is_exterior_ccw:
+            collection.append((linear_ring, []))
+        else:
+            collection[-1][1].append(linear_ring)
 
     polygons = [shapely.Polygon(shell, holes) for shell, holes in collection]
     match len(polygons):

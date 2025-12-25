@@ -5,7 +5,7 @@ from pathlib import Path
 
 from frykit.conf import config
 
-__version__ = "0.8.0"
+__version__ = "0.8.1"
 
 __all__ = ["config", "get_data_dir"]
 

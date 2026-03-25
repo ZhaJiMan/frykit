@@ -151,14 +151,13 @@ def make_transformer(crs_from: CRS, crs_to: CRS) -> Transformer:
 def _get_max_workers(n_jobs: int) -> int:
     if n_jobs == 0:
         raise ValueError("n_jobs 不能为 0")
-
     if n_jobs > 0:
-        max_workers = n_jobs
-    else:
-        cpu_count = os.cpu_count() or 1
-        max_workers = cpu_count + 1 + n_jobs
-        if max_workers <= 0:
-            raise ValueError(f"n_jobs 不能小于 -{cpu_count + 1}")
+        return n_jobs
+
+    cpu_count = os.cpu_count() or 1
+    max_workers = cpu_count + 1 + n_jobs
+    if max_workers <= 0:
+        raise ValueError(f"n_jobs 不能小于 -{cpu_count + 1}")
 
     return max_workers
 

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 from typing import Sequence, overload
 
@@ -146,6 +148,21 @@ def make_transformer(crs_from: CRS, crs_to: CRS) -> Transformer:
     return Transformer.from_crs(crs_from, crs_to, always_xy=True)
 
 
+def _get_max_workers(n_jobs: int) -> int:
+    if n_jobs == 0:
+        raise ValueError("n_jobs 不能为 0")
+
+    if n_jobs > 0:
+        max_workers = n_jobs
+    else:
+        cpu_count = os.cpu_count() or 1
+        max_workers = cpu_count + 1 + n_jobs
+        if max_workers <= 0:
+            raise ValueError(f"n_jobs 不能小于 -{cpu_count + 1}")
+
+    return max_workers
+
+
 @overload
 def project_geometry(geometry: GeometryT, crs_from: CRS, crs_to: CRS) -> GeometryT: ...
 
@@ -166,15 +183,52 @@ def project_geometry(
     geometry: GeometryT | Sequence[GeometryT] | NDArray[np.object_],
     crs_from: CRS,
     crs_to: CRS,
+    n_jobs: int = 1,
 ) -> GeometryT | NDArray[np.object_]:
-    """对一个或一组几何对象做投影。通过直接对坐标数组应用 pyproj 实现。"""
-    geometries = np.array(geometry, dtype=np.object_)
+    """对一个或一组几何对象做投影
+
+    通过直接对几何对象的坐标数组使用 pyproj 的 Transformer 实现
+
+    Parameters
+    ----------
+    geometry : BaseGeometry or sequence of BaseGeometry
+        一个或一组几何对象
+
+    crs_from : CRS
+        源坐标系
+
+    crs_to : CRS
+        目标坐标系
+
+    n_jobs : int, default 1
+        线程数。默认使用单线程。-1 表示 cpu 核心数，-2 表示核心数减 1，以此类推。
+
+    Returns
+    -------
+    BaseGeometry or NDArray[np.object_]
+        投影后的几何对象
+    """
+    max_workers = _get_max_workers(n_jobs)
+    geometries = np.array(geometry, dtype=np.object_)  # copy
 
     # 尽管 pyproj.Transformer 也能处理 crs 相等的情况，但还是有明显的性能损失
     if crs_from != crs_to:
         transformer = make_transformer(crs_from, crs_to)
         coords = shapely.get_coordinates(geometries)
-        coords = np.column_stack(transformer.transform(coords[:, 0], coords[:, 1]))
+
+        # shapely 对象是不可变的，但 numpy 数组是可变的
+        def inplace_transform(coords: NDArray[np.float64]) -> None:
+            coords[:, 0], coords[:, 1] = transformer.transform(
+                coords[:, 0], coords[:, 1]
+            )
+
+        if max_workers == 1:
+            inplace_transform(coords)
+        else:
+            chunks = np.array_split(coords, max_workers)  # view
+            with ThreadPoolExecutor(max_workers) as executor:
+                list(executor.map(inplace_transform, chunks))
+
         shapely.set_coordinates(geometries, coords)  # inplace
 
     # 要模仿 shapely 对数组的处理吗？

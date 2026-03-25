@@ -75,6 +75,7 @@ def chdir_context(dirpath: StrPath) -> Iterator[None]:
         os.chdir(cwd)
 
 
+# 已知会导致 pyinstaller 打包时需要对应的 metadata
 def get_package_version(name: str) -> tuple[int, ...]:
     """获取包的版本号"""
     return tuple(map(int, version(name).split(".")))

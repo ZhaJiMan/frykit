@@ -46,7 +46,7 @@ Issues = "https://github.com/ZhaJiMan/frykit/issues"
 Changelog = "https://github.com/ZhaJiMan/frykit/blob/main/CHANGELOG.md"
 
 [build-system]
-requires = ["uv_build>=0.9.0,<0.10.0"]
+requires = ["uv_build>=0.11.0,<0.12.0"]
 build-backend = "uv_build"
 
 [[tool.uv.index]]
